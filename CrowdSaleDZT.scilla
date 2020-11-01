@@ -1,0 +1,123 @@
+scilla_version 0
+
+(***************************************************)
+(*               Associated library                *)
+(***************************************************)
+import BoolUtils ListUtils IntUtils NatUtils
+
+library CrowdSaleDZT
+
+let one128 = Uint128 1
+let tt = True
+
+let one_msg = 
+  fun (msg : Message) => 
+  let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+
+let list_length : forall 'A. List 'A -> Uint128 =
+   tfun 'A =>
+   fun (l : List 'A) =>
+   let foldl = @list_foldl 'A Uint128 in
+   let init = Uint128 0 in
+   let one = Uint128 1 in
+   let iter =
+     fun (z : Uint128) =>
+     fun (h : 'A) =>
+       builtin add one z
+   in
+     foldl iter init l
+
+
+(* Error events *)
+type Error =
+  | CodeInsufficientAmount
+  | CodeWrongListLength
+  | CodeAlreadyHadDragon
+
+let make_error =
+  fun (result : Error) =>
+    let result_code = 
+      match result with
+      | CodeInsufficientAmount => Int32 -1
+      | CodeWrongListLength => Int32 -2
+      | CodeAlreadyHadDragon => Int32 -3
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
+contract CrowdSaleDZT
+(contract_owner: ByStr20,
+ main_dzt : ByStr20)
+
+
+field incrementer: Uint128 = Uint128 0
+field current_price: Uint128 = Uint128 1000000000000
+field is_dragon_owner: Map ByStr20 Bool = Emp ByStr20 Bool
+
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+procedure BuyOne(count: Uint32)
+  is_approved_call = {
+    _tag: "mint";
+    _recipient: main_dzt;
+    _amount: Uint128 0;
+    to: _sender
+  };
+  msgs = one_msg is_approved_call;
+  send msgs
+end
+
+transition Buy(list_for_dragons: List Uint32)
+  price <- current_price;
+  dragon_count = builtin div _amount price;
+  is_lt_one = builtin lt dragon_count one128;
+  match is_lt_one with
+  | False =>
+    (* Insufficient amount, return error code *)
+    err = CodeInsufficientAmount;
+    ThrowError err
+  | True =>
+    length = @list_length Uint32;
+    list_count = length list_for_dragons;
+    is_eq = builtin eq list_count dragon_count;
+    match is_eq with
+    | False =>
+      (* Wrong list length, return error code *)
+      err = CodeWrongListLength;
+      ThrowError err
+    | True =>
+      accept;
+      forall list_for_dragons BuyOne;
+      inc <- incrementer;
+      addition = builtin mul inc dragon_count;
+      new_price = builtin add price addition;
+      current_price := new_price;
+      is_dragon_owner[_sender] := tt
+    end
+  end
+end
+
+transition AirDrop(address: ByStr20, sig : ByStr64)
+  is_has <- is_dragon_owner[address];
+  is_has_bool = match is_has with
+    | None => False
+    | Some val => val
+  end;
+  match is_has_bool with
+    | True =>
+      (* Wrong list length, return error code *)
+      err = CodeAlreadyHadDragon;
+      ThrowError err
+    | False =>
+      is_dragon_owner[address] := tt
+  end 
+end
+
+transition mintCallBack(recipient: ByStr20, token_id: Uint256, token_uri: String)
+end
+
