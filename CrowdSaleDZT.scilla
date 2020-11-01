@@ -3,8 +3,6 @@ scilla_version 0
 (***************************************************)
 (*               Associated library                *)
 (***************************************************)
-import BoolUtils ListUtils IntUtils NatUtils
-
 library CrowdSaleDZT
 
 let one128 = Uint128 1
@@ -15,7 +13,6 @@ let one_msg =
   fun (msg : Message) => 
   let nil_msg = Nil {Message} in
     Cons {Message} msg nil_msg
-
 
 let list_length : forall 'A. List 'A -> Uint128 =
    tfun 'A =>
@@ -29,7 +26,6 @@ let list_length : forall 'A. List 'A -> Uint128 =
        builtin add one z
    in
      foldl iter init l
-
 
 (* Error events *)
 type Error =
@@ -54,16 +50,22 @@ let make_error =
     in
     { _exception : "Error"; code : result_code }
 
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
 contract CrowdSaleDZT
+
+(*  Parameters *)
 (contract_owner: ByStr20,
  main_dzt : ByStr20)
 
-
+(* Mutable fields *)
 field incrementer: Uint128 = Uint128 0
 field current_price: Uint128 = Uint128 1000000000000
 field serverPubKey: Option ByStr33 = None {ByStr33}
 field is_dragon_owner: Map ByStr20 Bool = Emp ByStr20 Bool
 
+(* Emit Errors *)
 procedure ThrowError(err : Error)
   e = make_error err;
   throw e
