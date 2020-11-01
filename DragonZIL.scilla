@@ -267,7 +267,7 @@ end
 (* Returns error event CodeTokenExists if token already exists.    *)
 (* Returns error event CodeNotAuthorised if _sender is not minter. *)
 (* Revert transition if invalid recipient contract.                *)
-transition mint(to: ByStr20, count: Uint32)
+transition mint(to: ByStr20)
   number_of_tokens <- total_supply;
   token_uri = " ";
   token_id = builtin add number_of_tokens one;
@@ -313,7 +313,7 @@ transition mint(to: ByStr20, count: Uint32)
       (* Revert transition if invalid recipient contract. Ignore if external address *)
       msg_to_recipient = { _tag : "recipientAcceptMint"; _recipient : to; _amount : Uint128 0 };
       msg_to_sender = { _tag : "mintCallBack"; _recipient : _sender; _amount : Uint128 0;
-                        recipient : to; count: count };
+                        recipient : to};
       msgs = two_msgs msg_to_recipient msg_to_sender;
       send msgs
     | False =>
