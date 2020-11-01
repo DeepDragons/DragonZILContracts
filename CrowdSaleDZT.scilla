@@ -8,6 +8,7 @@ import BoolUtils ListUtils IntUtils NatUtils
 library CrowdSaleDZT
 
 let one128 = Uint128 1
+let one32 = Uint32 1
 let tt = True
 
 let one_msg = 
@@ -35,6 +36,9 @@ type Error =
   | CodeInsufficientAmount
   | CodeWrongListLength
   | CodeAlreadyHadDragon
+  | CodeNotAuthorised
+  | CodeNoPubKey
+  | CodeVerificationFailed
 
 let make_error =
   fun (result : Error) =>
@@ -43,6 +47,9 @@ let make_error =
       | CodeInsufficientAmount => Int32 -1
       | CodeWrongListLength => Int32 -2
       | CodeAlreadyHadDragon => Int32 -3
+      | CodeNotAuthorised => Int32 -4
+      | CodeNoPubKey => Int32 -5
+      | CodeVerificationFailed => Int32 -6
       end
     in
     { _exception : "Error"; code : result_code }
@@ -54,6 +61,7 @@ contract CrowdSaleDZT
 
 field incrementer: Uint128 = Uint128 0
 field current_price: Uint128 = Uint128 1000000000000
+field serverPubKey: Option ByStr33 = None {ByStr33}
 field is_dragon_owner: Map ByStr20 Bool = Emp ByStr20 Bool
 
 procedure ThrowError(err : Error)
@@ -70,6 +78,25 @@ procedure BuyOne(count: Uint32)
   };
   msgs = one_msg is_approved_call;
   send msgs
+end
+
+transition setPubKey(pubk: ByStr33)
+  is_owner = builtin eq contract_owner _sender;
+
+  match is_owner with
+  | False =>
+    (* Token exists, return error code *)
+    err = CodeNotAuthorised;
+    ThrowError err
+  | True =>
+    tmp = Some {ByStr33} pubk;
+    serverPubKey := tmp;
+    e = {
+      _eventname: "public_key_success";
+      by: _sender
+    };
+    event e
+  end
 end
 
 transition Buy(list_for_dragons: List Uint32)
@@ -102,7 +129,7 @@ transition Buy(list_for_dragons: List Uint32)
   end
 end
 
-transition AirDrop(address: ByStr20, sig : ByStr64)
+transition AirDrop(address: ByStr20, signature: ByStr64)
   is_has <- is_dragon_owner[address];
   is_has_bool = match is_has with
     | None => False
@@ -110,11 +137,31 @@ transition AirDrop(address: ByStr20, sig : ByStr64)
   end;
   match is_has_bool with
     | True =>
-      (* Wrong list length, return error code *)
+      (* Address already had dragons, return error code *)
       err = CodeAlreadyHadDragon;
       ThrowError err
     | False =>
-      is_dragon_owner[address] := tt
+      pubk_o <- serverPubKey;
+      match pubk_o with
+      | Some pubk =>
+        msg = builtin to_bystr address;
+        sig = builtin schnorr_verify pubk msg signature;
+        match sig with
+        | True =>
+          (* Verification successful*)
+          is_dragon_owner[address] := tt;
+          BuyOne one32
+        | False =>
+          (* Verification failed*)
+          err = CodeVerificationFailed;
+          ThrowError err
+        end
+      | None =>
+        (* We don't have a key-pair. *)
+        err = CodeNoPubKey;
+        ThrowError err
+      end
+      
   end 
 end
 
