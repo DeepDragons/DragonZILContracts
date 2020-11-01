@@ -313,7 +313,7 @@ transition mint(to: ByStr20)
       (* Revert transition if invalid recipient contract. Ignore if external address *)
       msg_to_recipient = { _tag : "recipientAcceptMint"; _recipient : to; _amount : Uint128 0 };
       msg_to_sender = { _tag : "mintCallBack"; _recipient : _sender; _amount : Uint128 0;
-                        recipient : to};
+                        recipient : to; token_id : token_id};
       msgs = two_msgs msg_to_recipient msg_to_sender;
       send msgs
     | False =>

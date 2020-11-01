@@ -26,6 +26,17 @@ let list_length : forall 'A. List 'A -> Uint128 =
        builtin add one z
    in
      foldl iter init l
+     
+let lte =
+    fun (a : Uint128) =>
+    fun (b : Uint128) =>
+        let lt_res = builtin lt a b in
+        match lt_res with
+        | False =>
+            let eq_res = builtin eq a b in
+            eq_res
+        | True => True
+        end
 
 (* Error events *)
 type Error =
@@ -104,8 +115,8 @@ end
 transition Buy(list_for_dragons: List Uint32)
   price <- current_price;
   dragon_count = builtin div _amount price;
-  is_lt_one = builtin lt dragon_count one128;
-  match is_lt_one with
+  is_ge_one = lte one128 dragon_count;
+  match is_ge_one with
   | False =>
     (* Insufficient amount, return error code *)
     err = CodeInsufficientAmount;
@@ -167,6 +178,31 @@ transition AirDrop(address: ByStr20, signature: ByStr64)
   end 
 end
 
-transition mintCallBack(recipient: ByStr20, token_id: Uint256, token_uri: String)
+transition ReturnFund ()
+    blk <- _balance;
+    is_owner = builtin eq contract_owner _sender;
+    
+    match is_owner with
+    | True =>
+        msg = {
+            _tag       : "";
+            _recipient : contract_owner;
+            _amount    : blk
+        };
+        msgs = one_msg msg;
+        send msgs
+    | False =>
+        msg = {
+            _tag       : "";
+            _recipient : _sender;
+            _amount    : Uint128 0;
+            code       : "is not owener"
+        };
+        msgs = one_msg msg;
+        send msgs
+    end
+end
+
+transition mintCallBack(recipient: ByStr20, token_id: Uint256)
 end
 
