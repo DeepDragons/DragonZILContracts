@@ -1,5 +1,6 @@
 scilla_version 0
 
+import PairUtils ListUtils
 (***************************************************)
 (*               Associated library                *)
 (***************************************************)
@@ -26,17 +27,31 @@ let list_length : forall 'A. List 'A -> Uint128 =
        builtin add one z
    in
      foldl iter init l
-     
-let lte =
-    fun (a : Uint128) =>
-    fun (b : Uint128) =>
-        let lt_res = builtin lt a b in
-        match lt_res with
-        | False =>
-            let eq_res = builtin eq a b in
-            eq_res
-        | True => True
+
+let iota : Uint32 -> Uint32 -> List Uint32 =
+  fun (m : Uint32) => fun (n : Uint32) =>
+    let m_lt_n = builtin lt m n in
+    match m_lt_n with
+    | True =>
+        let delta = builtin sub n m in
+        let delta_nat = builtin to_nat delta in
+        let nil = Nil {Uint32} in
+        let acc_init = Pair {(List Uint32) Uint32} nil n in
+        let one = Uint32 1 in
+        let step = fun (xs_n : Pair (List Uint32) Uint32) => fun (ignore : Nat) =>
+          match xs_n with
+          | Pair xs n =>
+              let new_n = builtin sub n one in
+              let new_xs = Cons {Uint32} new_n xs in
+              Pair {(List Uint32) Uint32} new_xs new_n
+          end in
+        let fold = @nat_fold (Pair (List Uint32) Uint32) in
+        let xs_m = fold step acc_init delta_nat in
+        match xs_m with
+        | Pair xs m => xs
         end
+    | False => Nil {Uint32}
+    end
 
 (* Error events *)
 type Error =
@@ -112,33 +127,31 @@ transition setPubKey(pubk: ByStr33)
   end
 end
 
-transition Buy(list_for_dragons: List Uint32)
+transition Buy()
   price <- current_price;
-  dragon_count = builtin div _amount price;
-  is_ge_one = lte one128 dragon_count;
-  match is_ge_one with
-  | False =>
-    (* Insufficient amount, return error code *)
-    err = CodeInsufficientAmount;
-    ThrowError err
-  | True =>
-    length = @list_length Uint32;
-    list_count = length list_for_dragons;
-    is_eq = builtin eq list_count dragon_count;
-    match is_eq with
-    | False =>
-      (* Wrong list length, return error code *)
-      err = CodeWrongListLength;
+  inc <- incrementer;
+
+  dragon_count128 = builtin div _amount price;
+  dragon_count32 = builtin to_uint32 dragon_count128;
+
+  match dragon_count32 with
+   | Some count =>
+    zero = Uint32 0;
+    dumy_list = iota zero count;
+
+    accept;
+
+    forall dumy_list BuyOne;
+
+    addition = builtin mul inc dragon_count128;
+    new_price = builtin add price addition;
+
+    current_price := new_price;
+    is_dragon_owner[_sender] := tt
+   | None =>
+      (* We don't have a key-pair. *)
+      err = CodeInsufficientAmount;
       ThrowError err
-    | True =>
-      accept;
-      forall list_for_dragons BuyOne;
-      inc <- incrementer;
-      addition = builtin mul inc dragon_count;
-      new_price = builtin add price addition;
-      current_price := new_price;
-      is_dragon_owner[_sender] := tt
-    end
   end
 end
 
@@ -178,31 +191,5 @@ transition AirDrop(address: ByStr20, signature: ByStr64)
   end 
 end
 
-transition ReturnFund ()
-    blk <- _balance;
-    is_owner = builtin eq contract_owner _sender;
-    
-    match is_owner with
-    | True =>
-        msg = {
-            _tag       : "";
-            _recipient : contract_owner;
-            _amount    : blk
-        };
-        msgs = one_msg msg;
-        send msgs
-    | False =>
-        msg = {
-            _tag       : "";
-            _recipient : _sender;
-            _amount    : Uint128 0;
-            code       : "is not owener"
-        };
-        msgs = one_msg msg;
-        send msgs
-    end
+transition mintCallBack(recipient: ByStr20, token_id: Uint256, token_uri: String)
 end
-
-transition mintCallBack(recipient: ByStr20, token_id: Uint256)
-end
-
