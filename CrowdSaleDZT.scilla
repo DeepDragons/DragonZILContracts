@@ -98,13 +98,13 @@ procedure ThrowError(err : Error)
 end
 
 procedure BuyOne(count: Uint32)
-  is_approved_call = {
+  mint_call = {
     _tag: "mint";
     _recipient: main_dzt;
     _amount: Uint128 0;
     to: _sender
   };
-  msgs = one_msg is_approved_call;
+  msgs = one_msg mint_call;
   send msgs
 end
 
@@ -191,5 +191,6 @@ transition AirDrop(address: ByStr20, signature: ByStr64)
   end 
 end
 
-transition mintCallBack(recipient: ByStr20, token_id: Uint256, token_uri: String)
+transition mintCallBack(recipient: ByStr20, token_id: Uint256)
 end
+
