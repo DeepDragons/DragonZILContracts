@@ -97,6 +97,17 @@ procedure ThrowError(err : Error)
   throw e
 end
 
+procedure IsOwner()
+  is_owner = builtin eq contract_owner _sender;
+
+  match is_owner with
+  | True =>
+  | False =>
+    err = CodeNotAuthorised;
+    ThrowError err
+  end
+end
+
 procedure BuyOne(count: Uint32)
   mint_call = {
     _tag: "mint";
@@ -108,23 +119,39 @@ procedure BuyOne(count: Uint32)
   send msgs
 end
 
-transition setPubKey(pubk: ByStr33)
-  is_owner = builtin eq contract_owner _sender;
+transition setPrice(price: Uint128)
+  IsOwner;
 
-  match is_owner with
-  | False =>
-    (* Token exists, return error code *)
-    err = CodeNotAuthorised;
-    ThrowError err
-  | True =>
-    tmp = Some {ByStr33} pubk;
-    serverPubKey := tmp;
-    e = {
-      _eventname: "public_key_success";
-      by: _sender
-    };
-    event e
-  end
+  current_price := price;
+  e = {
+    _eventname: "price_change_success";
+    by: _sender
+  };
+  event e
+end
+
+transition setIncrementer(value: Uint128)
+  IsOwner;
+
+  incrementer := value;
+  e = {
+    _eventname: "incrementer_change_success";
+    by: _sender
+  };
+  event e
+end
+
+transition setPubKey(pubk: ByStr33)
+  IsOwner;
+
+  tmp = Some {ByStr33} pubk;
+  serverPubKey := tmp;
+
+  e = {
+    _eventname: "set_public_key_success";
+    by: _sender
+  };
+  event e
 end
 
 transition Buy()
