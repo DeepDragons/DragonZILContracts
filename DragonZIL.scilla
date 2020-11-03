@@ -6,8 +6,8 @@ scilla_version 0
 import BoolUtils
 library DragonZIL
 
-let one_msg = 
-  fun (msg : Message) => 
+let one_msg =
+  fun (msg : Message) =>
   let nil_msg = Nil {Message} in
   Cons {Message} msg nil_msg
 
@@ -20,10 +20,22 @@ fun (msg2 : Message) =>
 let zero = Uint256 0
 let one = Uint256 1
 let default_stage = Uint32 0
+let two = Uint256 2
+let three = Uint256 3
+let four = Uint256 4
+let five = Uint256 5
+let six = Uint256 6
+let seven = Uint256 7
+let eight = Uint256 8
+let nine = Uint256 9
+let ten = Uint256 10
+let ten2 = Uint256 100
+let ten3 = Uint256 1000
+let ten4 = Uint256 10000
 let tt = True
 let ff = False
 
-let add_owner_count = 
+let add_owner_count =
   fun (some_current_count: Option Uint256) =>
     match some_current_count with
     | Some current_count =>
@@ -31,14 +43,14 @@ let add_owner_count =
     | None => one
     end
 
-let sub_owner_count = 
+let sub_owner_count =
 fun (some_current_count: Option Uint256) =>
   match some_current_count with
   | Some current_count =>
     let is_zero = builtin eq current_count zero in
     match is_zero with
     | True => zero
-    | False => 
+    | False =>
         builtin sub current_count one
     end
   | None => zero
@@ -75,7 +87,7 @@ type Error =
 
 let make_error_event =
   fun (result : Error) =>
-    let result_code = 
+    let result_code =
       match result with
       | CodeNotAuthorised    => Int32 -1
       | CodeNotFound         => Int32 -2
@@ -85,6 +97,10 @@ let make_error_event =
       end
     in
     { _eventname : "Error"; code : result_code }
+
+(* Custom ADT storing twitter_id, recipient_address, tweet_id, hashtags *)
+type TokenOwner =
+| TokenOwner of (List Uint256)
 
 (* Dummy user-defined ADT *)
 type Unit =
@@ -128,13 +144,16 @@ field token_uris: Map Uint256 String = Emp Uint256 String
 field token_gen_battle: Map Uint256 Uint256 = Emp Uint256 Uint256
 field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
 
-field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
-  = Emp ByStr20 (Map Uint256 Uint32)
+field token_owner_list: Map ByStr20 TokenOwner = Emp ByStr20 TokenOwner
 
 (* Total token count *)
 field total_supply: Uint256 = Uint256 0
 
-field cloud: String = ""
+(* Gens modification helpers *)
+field gens_image: Uint256 = Uint256 0
+field gens_battle1: Uint256 = Uint256 0
+field gens_battle2: Uint256 = Uint256 0
+
 
 (* Emit Errors *)
 procedure EmitError(err : Error)
@@ -148,12 +167,12 @@ end
 (* @dev: Get number of NFTs assigned to a token_owner *)
 transition balanceOf(address: ByStr20)
   some_bal <- owned_token_count[address];
-  balance = 
+  balance =
     match some_bal with
     | Some bal => bal
     | None => Uint256 0
     end;
-  msg_to_sender = { _tag : "balanceOfCallBack"; _recipient : _sender; 
+  msg_to_sender = { _tag : "balanceOfCallBack"; _recipient : _sender;
                     _amount : Uint128 0; balance : balance};
   msgs = one_msg msg_to_sender;
   send msgs
@@ -188,8 +207,8 @@ end
 transition getApproved(token_id: Uint256)
   some_token_approval <- token_approvals[token_id];
   match some_token_approval with
-  | Some addr => 
-    msg_to_sender = { _tag : "getApprovedCallBack"; _recipient : _sender; _amount : Uint128 0; 
+  | Some addr =>
+    msg_to_sender = { _tag : "getApprovedCallBack"; _recipient : _sender; _amount : Uint128 0;
                       approved_addr : addr; token_id : token_id};
     msgs = one_msg msg_to_sender;
     send msgs
@@ -202,7 +221,7 @@ transition getTokenURI(token_id: Uint256)
   some_token_uri <- token_uris[token_id];
   match some_token_uri with
   | Some token_uri =>
-    msg_to_sender = { _tag : "getTokenURICallBack"; _recipient : _sender; _amount : Uint128 0; 
+    msg_to_sender = { _tag : "getTokenURICallBack"; _recipient : _sender; _amount : Uint128 0;
                       token_uri : token_uri};
     msgs = one_msg msg_to_sender;
     send msgs
@@ -213,7 +232,7 @@ end
 (* @dev: Check if a token_id is owned by a token_owner and get a Bool *)
 transition isOwner(token_id: Uint256, address: ByStr20)
   some_token_owner <- token_owners[token_id];
-  is_owner_bool = 
+  is_owner_bool =
     match some_token_owner with
     | Some addr => builtin eq addr address
     | None => False
@@ -232,7 +251,7 @@ transition isApprovedForAll(token_owner: ByStr20, operator: ByStr20)
     | Some status => status
     | None => False
     end;
-  msg_to_sender = { _tag : "isApprovedForAllCallBack"; _recipient : _sender; _amount : Uint128 0; 
+  msg_to_sender = { _tag : "isApprovedForAllCallBack"; _recipient : _sender; _amount : Uint128 0;
                    is_operator : is_operator};
   msgs = one_msg msg_to_sender;
   send msgs
@@ -253,7 +272,7 @@ transition configureMinter(minter: ByStr20)
   | True =>
     some_minter <- minters[minter];
     match some_minter with
-    | Some Unit => 
+    | Some Unit =>
       delete minters[minter];
       (* Emit success event *)
       e = {_eventname: "RemovedMinterSuccess"; minter: minter};
@@ -269,6 +288,7 @@ transition configureMinter(minter: ByStr20)
 end
 
 procedure addToken(to: ByStr20, token_id: Uint256)
+<<<<<<< HEAD
   tokens_owner_stage[to][token_id] := default_stage
 end
 
@@ -305,16 +325,26 @@ end
 
 transition ChangeCloud(new_cloud: String)
   is_owner = builtin eq contract_owner _sender;
+=======
+  owner_token_list <- token_owner_list[to];
+>>>>>>> 8035731d0b3df2bed635ac49248d34db6e15f7b9
 
-  match is_owner with
-  | False =>
-    err = CodeNotAuthorised;
-    EmitError err
-  | True =>
-    cloud := new_cloud
+  match owner_token_list with
+  | None =>
+    dumy_list = Nil {Uint256};
+    created_list = Cons {Uint256} token_id dumy_list;
+    new_token_owenr = TokenOwner created_list;
+
+    token_owner_list[to] := new_token_owenr
+  | Some (TokenOwner list) =>
+     new_to =
+      let n = token_id in
+      let new_list = Cons {Uint256} n list in
+      TokenOwner new_list;
+
+     token_owner_list[to] := new_to
   end
 end
-
 (* @dev:    Mint new tokens. Only contract_owner can mint.         *)
 (* @param:  to        - Address of the token recipient             *)
 (* @param:  token_id  - ID of the new token to be minted           *)
@@ -351,7 +381,63 @@ transition mint(to: ByStr20)
 
       entropy := random2;
       token_gen_battle[token_id] := random1;
-      token_gen_image[token_id] := random2;
+      (* token_gen_image[token_id] := random2; *)
+
+        gen_num = builtin rem random1 ten;
+        gen_bool = builtin eq gen_num zero;
+        match gen_bool with
+        | True => gens_image := zero
+        | False =>
+        end;
+        gen_bool = builtin eq gen_num one;
+        match gen_bool with
+        | True => gens_image := zero
+        | False =>
+        end;
+        gen_bool = builtin eq gen_num two;
+        match gen_bool with
+        | True => gens_image := zero
+        | False =>
+        end;
+        gen_bool = builtin eq gen_num three;
+        match gen_bool with
+        | True => gens_image := zero
+        | False =>
+        end;
+        gen_bool = builtin eq gen_num four;
+        match gen_bool with
+        | True => gens_image := one
+        | False =>
+        end;
+        gen_bool = builtin eq gen_num five;
+        match gen_bool with
+        | True => gens_image := one
+        | False =>
+        end;
+        gen_bool = builtin eq gen_num six;
+        match gen_bool with
+        | True => gens_image := one
+        | False =>
+        end;
+        gen_bool = builtin eq gen_num seven;
+        match gen_bool with
+        | True => gens_image := two
+        | False =>
+        end;
+        gen_bool = builtin eq gen_num eight;
+        match gen_bool with
+        | True => gens_image := two
+        | False =>
+        end;
+        gen_bool = builtin eq gen_num nine;
+        match gen_bool with
+        | True => gens_image := three
+        | False =>
+        end;
+
+      i <- gens_image;
+      token_gen_image[token_id] := i;
+
 
       (* Add to owner count *)
       some_current_count <- owned_token_count[to];
@@ -400,7 +486,7 @@ transition burn(token_id: Uint256)
     is_owner = builtin eq _sender token_owner;
     (* Check if sender is token_owner approvedForAll operator *)
     some_operator <- operator_approvals[token_owner][_sender];
-    is_approved_for_all = 
+    is_approved_for_all =
       match some_operator with
       | None => False
       | Some val => val
@@ -456,7 +542,7 @@ transition approve(to: ByStr20, token_id: Uint256)
   | Some token_owner =>
     is_owner = builtin eq _sender token_owner;
     some_operator <- operator_approvals[token_owner][_sender];
-    is_operator = 
+    is_operator =
       match some_operator with
       | Some val => val
       | None => False
@@ -471,7 +557,7 @@ transition approve(to: ByStr20, token_id: Uint256)
         (* Emit event *)
         e = {_eventname: "AddApprovalSuccess"; initiator: _sender; approved_spender: to; token_id: token_id};
         event e;
-        msg_to_sender = { _tag : "addApprovalSuccessCallBack"; _recipient : _sender; _amount : Uint128 0; 
+        msg_to_sender = { _tag : "addApprovalSuccessCallBack"; _recipient : _sender; _amount : Uint128 0;
                           approved_spender : to; token_id : token_id };
         msgs = one_msg msg_to_sender;
         send msgs
@@ -480,7 +566,7 @@ transition approve(to: ByStr20, token_id: Uint256)
         (* Emit event *)
         e = {_eventname: "RemoveApprovalSuccess"; initiator: _sender; removed_spender: to; token_id: token_id};
         event e;
-        msg_to_sender = { _tag : "removeApprovalSuccessCallBack"; _recipient : _sender; _amount : Uint128 0; 
+        msg_to_sender = { _tag : "removeApprovalSuccessCallBack"; _recipient : _sender; _amount : Uint128 0;
                           removed_spender : to; token_id : token_id };
         msgs = one_msg msg_to_sender;
         send msgs
@@ -509,7 +595,7 @@ transition setApprovalForAll(to: ByStr20, approved: Bool)
     approved_str = bool_to_string approved;
     e = {_eventname: "SetApprovalForAllSuccess"; initiator: _sender; operator: to; status: approved_str};
     event e;
-    msg_to_sender = { _tag : "setApprovalForAllSuccessCallBack"; _recipient : _sender; _amount : Uint128 0; 
+    msg_to_sender = { _tag : "setApprovalForAllSuccessCallBack"; _recipient : _sender; _amount : Uint128 0;
                       operator : to; status: approved_str };
     msgs = one_msg msg_to_sender;
     send msgs
@@ -558,9 +644,9 @@ transition transfer(to: ByStr20, token_id: Uint256)
       event e;
       (* Send dummy callback message.                                                *)
       (* Revert transition if invalid recipient contract. Ignore if external address *)
-      msg_to_recipient = { _tag : "recipientAcceptTransfer"; _recipient : to; _amount : Uint128 0; 
+      msg_to_recipient = { _tag : "recipientAcceptTransfer"; _recipient : to; _amount : Uint128 0;
                           from : _sender; recipient : to; token_id : token_id };
-      msg_to_sender = { _tag : "transferSuccessCallBack"; _recipient : _sender; _amount : Uint128 0; 
+      msg_to_sender = { _tag : "transferSuccessCallBack"; _recipient : _sender; _amount : Uint128 0;
                         from : _sender; recipient : to; token_id : token_id };
       msgs = two_msgs msg_to_recipient msg_to_sender;
       send msgs
@@ -587,7 +673,7 @@ transition transferFrom(to: ByStr20, token_id: Uint256)
     some_token_approval <- token_approvals[token_id];
     is_approved = match some_token_approval with
       | None => False
-      | Some approved_address => 
+      | Some approved_address =>
         builtin eq _sender approved_address
       end;
     (* Check if sender is an operator *)
@@ -620,9 +706,9 @@ transition transferFrom(to: ByStr20, token_id: Uint256)
       event e;
       (* Send dummy callback message.                                                *)
       (* Revert transition if invalid recipient contract. Ignore if external address *)
-      msg_to_recipient = { _tag : "recipientAcceptTransferFrom"; _recipient : to; _amount : Uint128 0; 
+      msg_to_recipient = { _tag : "recipientAcceptTransferFrom"; _recipient : to; _amount : Uint128 0;
                           from : token_owner; recipient : to; token_id : token_id };
-      msg_to_sender = { _tag : "transferFromSuccessCallBack"; _recipient : _sender; _amount : Uint128 0; 
+      msg_to_sender = { _tag : "transferFromSuccessCallBack"; _recipient : _sender; _amount : Uint128 0;
                         from : token_owner; recipient : to; token_id : token_id };
       msgs = two_msgs msg_to_recipient msg_to_sender;
       send msgs
