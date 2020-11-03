@@ -83,10 +83,6 @@ let make_error_event =
     in
     { _eventname : "Error"; code : result_code }
 
-(* Custom ADT storing twitter_id, recipient_address, tweet_id, hashtags *)
-type TokenOwner =
-| TokenOwner of (List Uint256)
-
 (* Dummy user-defined ADT *)
 type Unit =
 | Unit
@@ -128,7 +124,8 @@ field token_uris: Map Uint256 String = Emp Uint256 String
 field token_gen_battle: Map Uint256 Uint256 = Emp Uint256 Uint256
 field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
 
-field token_owner_list: Map ByStr20 TokenOwner = Emp ByStr20 TokenOwner
+field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
+  = Emp ByStr20 (Map Uint256 Uint32)
 
 (* Total token count *)
 field total_supply: Uint256 = Uint256 0
@@ -268,23 +265,9 @@ transition configureMinter(minter: ByStr20)
 end
 
 procedure addToken(to: ByStr20, token_id: Uint256)
-  owner_token_list <- token_owner_list[to];
+  stage = Uint32 0;
 
-  match owner_token_list with
-  | None => 
-    dumy_list = Nil {Uint256};
-    created_list = Cons {Uint256} token_id dumy_list;
-    new_token_owenr = TokenOwner created_list;
-
-    token_owner_list[to] := new_token_owenr
-  | Some (TokenOwner list) =>
-     new_to =
-      let n = token_id in
-      let new_list = Cons {Uint256} n list in
-      TokenOwner new_list;
-
-     token_owner_list[to] := new_to
-  end
+  tokens_owner_stage[to][token_id] := stage
 end
 
 transition ChangeCloud(new_cloud: String)
