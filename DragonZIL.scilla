@@ -144,10 +144,13 @@ field token_uris: Map Uint256 String = Emp Uint256 String
 field token_gen_battle: Map Uint256 Uint256 = Emp Uint256 Uint256
 field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
 
-field token_owner_list: Map ByStr20 TokenOwner = Emp ByStr20 TokenOwner
+field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
+  = Emp ByStr20 (Map Uint256 Uint32)
 
 (* Total token count *)
 field total_supply: Uint256 = Uint256 0
+
+field cloud: String = ""
 
 (* Gens modification helpers *)
 field gens_image: Uint256 = Uint256 0
@@ -288,7 +291,6 @@ transition configureMinter(minter: ByStr20)
 end
 
 procedure addToken(to: ByStr20, token_id: Uint256)
-<<<<<<< HEAD
   tokens_owner_stage[to][token_id] := default_stage
 end
 
@@ -325,24 +327,13 @@ end
 
 transition ChangeCloud(new_cloud: String)
   is_owner = builtin eq contract_owner _sender;
-=======
-  owner_token_list <- token_owner_list[to];
->>>>>>> 8035731d0b3df2bed635ac49248d34db6e15f7b9
 
-  match owner_token_list with
-  | None =>
-    dumy_list = Nil {Uint256};
-    created_list = Cons {Uint256} token_id dumy_list;
-    new_token_owenr = TokenOwner created_list;
-
-    token_owner_list[to] := new_token_owenr
-  | Some (TokenOwner list) =>
-     new_to =
-      let n = token_id in
-      let new_list = Cons {Uint256} n list in
-      TokenOwner new_list;
-
-     token_owner_list[to] := new_to
+  match is_owner with
+  | False =>
+    err = CodeNotAuthorised;
+    EmitError err
+  | True =>
+    cloud := new_cloud
   end
 end
 (* @dev:    Mint new tokens. Only contract_owner can mint.         *)
