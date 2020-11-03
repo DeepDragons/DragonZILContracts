@@ -83,6 +83,10 @@ let make_error_event =
     in
     { _eventname : "Error"; code : result_code }
 
+(* Custom ADT storing twitter_id, recipient_address, tweet_id, hashtags *)
+type TokenOwner =
+| TokenOwner of (List Uint256)
+
 (* Dummy user-defined ADT *)
 type Unit =
 | Unit
@@ -123,6 +127,8 @@ field token_uris: Map Uint256 String = Emp Uint256 String
 
 field token_gen_battle: Map Uint256 Uint256 = Emp Uint256 Uint256
 field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
+
+field token_owner_list: Map ByStr20 TokenOwner = Emp ByStr20 TokenOwner
 
 (* Total token count *)
 field total_supply: Uint256 = Uint256 0
@@ -260,6 +266,25 @@ transition configureMinter(minter: ByStr20)
   end
 end
 
+procedure addToken(to: ByStr20, token_id: Uint256)
+  owner_token_list <- token_owner_list[to];
+
+  match owner_token_list with
+  | None => 
+    dumy_list = Nil {Uint256};
+    created_list = Cons {Uint256} token_id dumy_list;
+    new_token_owenr = TokenOwner created_list;
+
+    token_owner_list[to] := new_token_owenr
+  | Some (TokenOwner list) =>
+     new_to =
+      let n = token_id in
+      let new_list = Cons {Uint256} n list in
+      TokenOwner new_list;
+
+     token_owner_list[to] := new_to
+  end
+end
 (* @dev:    Mint new tokens. Only contract_owner can mint.         *)
 (* @param:  to        - Address of the token recipient             *)
 (* @param:  token_id  - ID of the new token to be minted           *)
@@ -290,11 +315,14 @@ transition mint(to: ByStr20)
       token_owners[token_id] := to;
       entropyNumber <- entropy;
       balanceNumber <- _balance;
+
       random1 = random entropyNumber balanceNumber _amount;
       random2 = random random1 balanceNumber _amount;
+
       entropy := random2;
       token_gen_battle[token_id] := random1;
       token_gen_image[token_id] := random2;
+
       (* Add to owner count *)
       some_current_count <- owned_token_count[to];
       new_count = add_owner_count some_current_count;
@@ -304,7 +332,8 @@ transition mint(to: ByStr20)
       (* Add to total_supply *)
       current_supply <- total_supply;
       new_supply = builtin add current_supply one;
-      total_supply := new_supply; 
+      total_supply := new_supply;
+      addToken to token_id;
       (* Emit success event *)
       e = {_eventname: "MintSuccess"; by: _sender; recipient: to;
            token_id: token_id; token_uri: token_uri};
