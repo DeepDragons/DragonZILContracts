@@ -133,6 +133,7 @@ field token_owner_list: Map ByStr20 TokenOwner = Emp ByStr20 TokenOwner
 (* Total token count *)
 field total_supply: Uint256 = Uint256 0
 
+field cloud: String = ""
 
 (* Emit Errors *)
 procedure EmitError(err : Error)
@@ -285,6 +286,19 @@ procedure addToken(to: ByStr20, token_id: Uint256)
      token_owner_list[to] := new_to
   end
 end
+
+transition ChangeCloud(new_cloud: String)
+  is_owner = builtin eq contract_owner _sender;
+
+  match is_owner with
+  | False =>
+    err = CodeNotAuthorised;
+    EmitError err
+  | True =>
+    cloud := new_cloud
+  end
+end
+
 (* @dev:    Mint new tokens. Only contract_owner can mint.         *)
 (* @param:  to        - Address of the token recipient             *)
 (* @param:  token_id  - ID of the new token to be minted           *)
