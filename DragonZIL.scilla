@@ -79,15 +79,25 @@ let random =
       builtin to_uint256 rhash2
 
 
-let calc_gens_tmp =
+(* let calc_gens_tmp = *)
+  (* fun (old_val: Uint256) => *)
+  (* fun (gen_bool: Bool) => *)
+  (* fun (val: Uint256) => *)
+    (* match gen_bool with *)
+    (* | True => val *)
+    (* | False => old_val *)
+    (* end *)
+
+let calc_gens_tmp_new =
   fun (old_val: Uint256) =>
-  fun (gen_bool: Bool) =>
+  fun (gen_num: Uint256) =>
+  fun (check_with: Uint256) =>
   fun (val: Uint256) =>
+    let gen_bool = builtin eq gen_num check_with in
     match gen_bool with
     | True => val
     | False => old_val
     end
-
 
 
 
@@ -318,51 +328,8 @@ procedure addToken(to: ByStr20, token_id: Uint256)
      token_owner_list[to] := new_to
   end
 end
-(* @dev:    Mint new tokens. Only contract_owner can mint.         *)
-(* @param:  to        - Address of the token recipient             *)
-(* @param:  token_id  - ID of the new token to be minted           *)
-(* @param:  token_uri -  URI of the the new token to be minted     *)
-(* Returns error event CodeTokenExists if token already exists.    *)
-(* Returns error event CodeNotAuthorised if _sender is not minter. *)
-(* Revert transition if invalid recipient contract.                *)
-transition mint(to: ByStr20)
-  number_of_tokens <- total_supply;
-  token_uri = " ";
-  token_id = builtin add number_of_tokens one;
-  (* Check if token exists *)
-  token_exist <- exists token_owners[token_id];
-  match token_exist with
-  | True =>
-    (* Token exists, return error code *)
-    err = CodeTokenExists;
-    EmitError err
-  | False =>
-    (* Check if sender is contract_owner *)
-    is_contract_owner = builtin eq _sender contract_owner;
-    (* Check if sender is a minter *)
-    is_minter <- exists minters[_sender];
-    is_authorised = orb is_contract_owner is_minter;
-    match is_authorised with
-    | True =>
-      (* Mint new token *)
-      token_owners[token_id] := to;
-      entropyNumber <- entropy;
-      balanceNumber <- _balance;
 
-      random1 = random entropyNumber balanceNumber _amount;
-      random2 = random random1 balanceNumber _amount;
-
-      entropy := random2;
-
-      (* gens init for current token *)
-      gens_image := gens0;
-      gens_battle1 := gens0;
-      gens_battle2 := gens0;
-
-
-
-      token_gen_battle[token_id] := random1;
-      (* token_gen_image[token_id] := random2; *)
+procedure generateImageGen(token_id:Uint256, random: Uint256)
 (* 0>0 0>0 0>0 *)
 (* 1>0 1>0 1>0 *)
 (* 2>0 2>0 2>1 *)
@@ -375,7 +342,7 @@ transition mint(to: ByStr20)
 (* 9>3 9>5 9>4 *)
 
 (* image gen head *)
-gen_num = builtin rem random1 ten;
+gen_num = builtin rem random ten;
 gen_bool = builtin eq gen_num zero;
 match gen_bool with
 | True => gens_tmp := zero
@@ -427,8 +394,8 @@ match gen_bool with
 | False =>
 end;
 (* moving to next digit *)
-random1 = builtin sub random1 gen_num;
-random1 = builtin div random1 ten;
+random1 = builtin sub random gen_num;
+random1 = builtin div random ten;
 i <- gens_tmp;
 i2 <- gens_image;
 i3 = builtin mul i2 ten;
@@ -438,53 +405,44 @@ gens_image := i4;
 
 
 (* image gen wings *)
+gen_rand = builtin rem random ten;
+
 old_val <- gens_tmp;
-gen_num = builtin rem random1 ten;
-gen_bool = builtin eq gen_num zero;
-new_val = calc_gens_tmp old_val gen_bool zero;
+new_val = calc_gens_tmp_new old_val gen_rand zero zero;
 gens_tmp := new_val;
-gen_bool = builtin eq gen_num one;
 old_val <- gens_tmp;
-new_val = calc_gens_tmp old_val gen_bool zero;
+new_val = calc_gens_tmp_new old_val gen_rand one zero;
 gens_tmp := new_val;
-gen_bool = builtin eq gen_num two;
 old_val <- gens_tmp;
-new_val = calc_gens_tmp old_val gen_bool zero;
+new_val = calc_gens_tmp_new old_val gen_rand two zero;
 gens_tmp := new_val;
-gen_bool = builtin eq gen_num three;
 old_val <- gens_tmp;
-new_val = calc_gens_tmp old_val gen_bool one;
+new_val = calc_gens_tmp_new old_val gen_rand three one;
 gens_tmp := new_val;
-gen_bool = builtin eq gen_num four;
 old_val <- gens_tmp;
-new_val = calc_gens_tmp old_val gen_bool one;
+new_val = calc_gens_tmp_new old_val gen_rand four one;
 gens_tmp := new_val;
-gen_bool = builtin eq gen_num five;
 old_val <- gens_tmp;
-new_val = calc_gens_tmp old_val gen_bool two;
+new_val = calc_gens_tmp_new old_val gen_rand five two;
 gens_tmp := new_val;
-gen_bool = builtin eq gen_num six;
 old_val <- gens_tmp;
-new_val = calc_gens_tmp old_val gen_bool two;
+new_val = calc_gens_tmp_new old_val gen_rand six two;
 gens_tmp := new_val;
-gen_bool = builtin eq gen_num seven;
 old_val <- gens_tmp;
-new_val = calc_gens_tmp old_val gen_bool three;
+new_val = calc_gens_tmp_new old_val gen_rand seven three;
 gens_tmp := new_val;
-gen_bool = builtin eq gen_num eight;
 old_val <- gens_tmp;
-new_val = calc_gens_tmp old_val gen_bool four;
+new_val = calc_gens_tmp_new old_val gen_rand eight four;
 gens_tmp := new_val;
-gen_bool = builtin eq gen_num nine;
 old_val <- gens_tmp;
-new_val = calc_gens_tmp old_val gen_bool five;
+new_val = calc_gens_tmp_new old_val gen_rand nine five;
 gens_tmp := new_val;
 
 
 
 (* moving to next digit *)
-random1 = builtin sub random1 gen_num;
-random1 = builtin div random1 ten;
+random1 = builtin sub random gen_num;
+random1 = builtin div random ten;
 i <- gens_tmp;
 i2 <- gens_image;
 i3 = builtin mul i2 ten;
@@ -495,7 +453,56 @@ gens_image := i4;
 
 
       i <- gens_image;
-      token_gen_image[token_id] := i;
+      token_gen_image[token_id] := i
+end
+
+(* @dev:    Mint new tokens. Only contract_owner can mint.         *)
+(* @param:  to        - Address of the token recipient             *)
+(* @param:  token_id  - ID of the new token to be minted           *)
+(* @param:  token_uri -  URI of the the new token to be minted     *)
+(* Returns error event CodeTokenExists if token already exists.    *)
+(* Returns error event CodeNotAuthorised if _sender is not minter. *)
+(* Revert transition if invalid recipient contract.                *)
+transition mint(to: ByStr20)
+  number_of_tokens <- total_supply;
+  token_uri = " ";
+  token_id = builtin add number_of_tokens one;
+  (* Check if token exists *)
+  token_exist <- exists token_owners[token_id];
+  match token_exist with
+  | True =>
+    (* Token exists, return error code *)
+    err = CodeTokenExists;
+    EmitError err
+  | False =>
+    (* Check if sender is contract_owner *)
+    is_contract_owner = builtin eq _sender contract_owner;
+    (* Check if sender is a minter *)
+    is_minter <- exists minters[_sender];
+    is_authorised = orb is_contract_owner is_minter;
+    match is_authorised with
+    | True =>
+      (* Mint new token *)
+      token_owners[token_id] := to;
+      entropyNumber <- entropy;
+      balanceNumber <- _balance;
+
+      random1 = random entropyNumber balanceNumber _amount;
+      random2 = random random1 balanceNumber _amount;
+
+      entropy := random2;
+
+      (* gens init for current token *)
+      gens_image := gens0;
+      gens_battle1 := gens0;
+      gens_battle2 := gens0;
+
+
+
+      token_gen_battle[token_id] := random1;
+      (* token_gen_image[token_id] := random2; *)
+      generateImageGen token_id random1;
+
 
 
       (* Add to owner count *)
