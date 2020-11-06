@@ -29,8 +29,6 @@ let eight = Uint256 8
 let nine = Uint256 9
 let ten = Uint256 10
 let ten2 = Uint256 100
-let ten3 = Uint256 1000
-let ten4 = Uint256 10000
 let tt = True
 let ff = False
 let gens0 = Uint256 2020
@@ -322,8 +320,7 @@ procedure generateImageGenStep(gen_rand:Uint256, check_with:Uint256, val:Uint256
   gens_tmp := new_val
 end
 
-(* !!!!!!!!!!!!!!!!      Сделать на основе Image gen not Battle Gens!!! *)
-(* !!!!!!! добавить ген для раскраски *)
+(* !!!!!!!!!!!!!!!!      Image gen not Battle Gens!!! *)
 procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   (* 0>0 0>0 0>0 *)
   (* 1>0 1>0 1>0 *)
@@ -337,8 +334,6 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   (* 9>3 9>5 9>4 *)
 
   random = random_val;
-
-(* FIRST SET COLOR SCHEME 0 - 99 *)
 
   (* image gen head *)
   gen_rand = builtin rem random ten;
@@ -381,6 +376,17 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
   gens_image := i4;
+
+
+
+  (* color scheme *)
+  gen_rand = builtin rem random ten2;
+  i2 <- gens_image;
+  i3 = builtin mul i2 ten2;
+  i4 = builtin add i3 gen_rand;
+  gens_image := i4;
+
+
 
   i <- gens_image;
   token_gen_image[token_id] := i
