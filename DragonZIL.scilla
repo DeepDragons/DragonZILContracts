@@ -320,9 +320,10 @@ procedure generateImageGenStep(gen_rand:Uint256, check_with:Uint256, val:Uint256
   gens_tmp := new_val
 end
 
-(* !!!!!!!!!!!!!!!!      Image gen not Battle Gens!!! *)
 procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = random_val;
+  (* gens init for current token *)
+  gens_image := gens0;
 
   (* image gen Aura - 4 types *)
   gen_rand = builtin rem random ten;
@@ -586,15 +587,8 @@ transition mint(to: ByStr20)
 
       entropy := random2;
 
-      (* gens init for current token *)
-      gens_image := gens0;
-
-
       token_gen_battle[token_id] := random1;
-      (* token_gen_image[token_id] := random2; *)
-      generateImageGen token_id random1;
-
-
+      generateImageGen token_id random2;
 
       (* Add to owner count *)
       some_current_count <- owned_token_count[to];
