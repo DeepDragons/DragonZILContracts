@@ -549,7 +549,9 @@ transition mint(to: ByStr20)
       (* Add to total_supply *)
       current_supply <- total_supply;
       new_supply = builtin add current_supply one;
+      new_count = builtin add number_of_tokens one;
       total_supply := new_supply;
+      count_supply := new_count;
       addToken to token_id;
       (* Emit success event *)
       e = {_eventname: "MintSuccess"; by: _sender; recipient: to;
