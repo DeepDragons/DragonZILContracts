@@ -34,6 +34,8 @@ let ten3 = Uint256 1000
 let ten4 = Uint256 10000
 let tt = True
 let ff = False
+let gens0 = Uint256 2020
+
 
 let add_owner_count =
   fun (some_current_count: Option Uint256) =>
@@ -76,6 +78,29 @@ let random =
       let rhash1 = builtin concat rhash balancehash in
       let rhash2 = builtin keccak256hash rhash1 in
       builtin to_uint256 rhash2
+
+
+(* let calc_gens_tmp = *)
+  (* fun (old_val: Uint256) => *)
+  (* fun (gen_bool: Bool) => *)
+  (* fun (val: Uint256) => *)
+    (* match gen_bool with *)
+    (* | True => val *)
+    (* | False => old_val *)
+    (* end *)
+
+let calc_gens_tmp_new =
+  fun (old_val: Uint256) =>
+  fun (gen_num: Uint256) =>
+  fun (check_with: Uint256) =>
+  fun (val: Uint256) =>
+    let gen_bool = builtin eq gen_num check_with in
+    match gen_bool with
+    | True => val
+    | False => old_val
+    end
+
+
 
 (* Error events *)
 type Error =
@@ -153,9 +178,10 @@ field total_supply: Uint256 = Uint256 0
 field cloud: String = ""
 
 (* Gens modification helpers *)
-field gens_image: Uint256 = Uint256 0
-field gens_battle1: Uint256 = Uint256 0
-field gens_battle2: Uint256 = Uint256 0
+field gens_image: Uint256 = Uint256 2020
+field gens_battle1: Uint256 = Uint256 2020
+field gens_battle2: Uint256 = Uint256 2020
+field gens_tmp: Uint256 = Uint256 0
 
 
 (* Emit Errors *)
@@ -336,6 +362,134 @@ transition ChangeCloud(new_cloud: String)
     cloud := new_cloud
   end
 end
+
+procedure generateImageGen(token_id:Uint256, random: Uint256)
+(* 0>0 0>0 0>0 *)
+(* 1>0 1>0 1>0 *)
+(* 2>0 2>0 2>1 *)
+(* 3>0 3>1 3>1 *)
+(* 4>1 4>1 4>1 *)
+(* 5>1 5>2 5>2 *)
+(* 6>1 6>2 6>2 *)
+(* 7>2 7>3 7>2 *)
+(* 8>2 8>4 8>3 *)
+(* 9>3 9>5 9>4 *)
+
+(* image gen head *)
+gen_num = builtin rem random ten;
+gen_bool = builtin eq gen_num zero;
+match gen_bool with
+| True => gens_tmp := zero
+| False =>
+end;
+gen_bool = builtin eq gen_num one;
+match gen_bool with
+| True => gens_tmp := zero
+| False =>
+end;
+gen_bool = builtin eq gen_num two;
+match gen_bool with
+| True => gens_tmp := zero
+| False =>
+end;
+gen_bool = builtin eq gen_num three;
+match gen_bool with
+| True => gens_tmp := zero
+| False =>
+end;
+gen_bool = builtin eq gen_num four;
+match gen_bool with
+| True => gens_tmp := one
+| False =>
+end;
+gen_bool = builtin eq gen_num five;
+match gen_bool with
+| True => gens_tmp := one
+| False =>
+end;
+gen_bool = builtin eq gen_num six;
+match gen_bool with
+| True => gens_tmp := one
+| False =>
+end;
+gen_bool = builtin eq gen_num seven;
+match gen_bool with
+| True => gens_tmp := two
+| False =>
+end;
+gen_bool = builtin eq gen_num eight;
+match gen_bool with
+| True => gens_tmp := two
+| False =>
+end;
+gen_bool = builtin eq gen_num nine;
+match gen_bool with
+| True => gens_tmp := three
+| False =>
+end;
+(* moving to next digit *)
+random1 = builtin sub random gen_num;
+random1 = builtin div random ten;
+i <- gens_tmp;
+i2 <- gens_image;
+i3 = builtin mul i2 ten;
+i4 = builtin add i3 i;
+gens_image := i4;
+
+
+
+(* image gen wings *)
+gen_rand = builtin rem random ten;
+
+old_val <- gens_tmp;
+new_val = calc_gens_tmp_new old_val gen_rand zero zero;
+gens_tmp := new_val;
+old_val <- gens_tmp;
+new_val = calc_gens_tmp_new old_val gen_rand one zero;
+gens_tmp := new_val;
+old_val <- gens_tmp;
+new_val = calc_gens_tmp_new old_val gen_rand two zero;
+gens_tmp := new_val;
+old_val <- gens_tmp;
+new_val = calc_gens_tmp_new old_val gen_rand three one;
+gens_tmp := new_val;
+old_val <- gens_tmp;
+new_val = calc_gens_tmp_new old_val gen_rand four one;
+gens_tmp := new_val;
+old_val <- gens_tmp;
+new_val = calc_gens_tmp_new old_val gen_rand five two;
+gens_tmp := new_val;
+old_val <- gens_tmp;
+new_val = calc_gens_tmp_new old_val gen_rand six two;
+gens_tmp := new_val;
+old_val <- gens_tmp;
+new_val = calc_gens_tmp_new old_val gen_rand seven three;
+gens_tmp := new_val;
+old_val <- gens_tmp;
+new_val = calc_gens_tmp_new old_val gen_rand eight four;
+gens_tmp := new_val;
+old_val <- gens_tmp;
+new_val = calc_gens_tmp_new old_val gen_rand nine five;
+gens_tmp := new_val;
+
+
+
+(* moving to next digit *)
+random1 = builtin sub random gen_num;
+random1 = builtin div random ten;
+i <- gens_tmp;
+i2 <- gens_image;
+i3 = builtin mul i2 ten;
+i4 = builtin add i3 i;
+gens_image := i4;
+
+
+
+
+      i <- gens_image;
+      token_gen_image[token_id] := i
+end
+
 (* @dev:    Mint new tokens. Only contract_owner can mint.         *)
 (* @param:  to        - Address of the token recipient             *)
 (* @param:  token_id  - ID of the new token to be minted           *)
@@ -371,63 +525,18 @@ transition mint(to: ByStr20)
       random2 = random random1 balanceNumber _amount;
 
       entropy := random2;
+
+      (* gens init for current token *)
+      gens_image := gens0;
+      gens_battle1 := gens0;
+      gens_battle2 := gens0;
+
+
+
       token_gen_battle[token_id] := random1;
       (* token_gen_image[token_id] := random2; *)
+      generateImageGen token_id random1;
 
-        gen_num = builtin rem random1 ten;
-        gen_bool = builtin eq gen_num zero;
-        match gen_bool with
-        | True => gens_image := zero
-        | False =>
-        end;
-        gen_bool = builtin eq gen_num one;
-        match gen_bool with
-        | True => gens_image := zero
-        | False =>
-        end;
-        gen_bool = builtin eq gen_num two;
-        match gen_bool with
-        | True => gens_image := zero
-        | False =>
-        end;
-        gen_bool = builtin eq gen_num three;
-        match gen_bool with
-        | True => gens_image := zero
-        | False =>
-        end;
-        gen_bool = builtin eq gen_num four;
-        match gen_bool with
-        | True => gens_image := one
-        | False =>
-        end;
-        gen_bool = builtin eq gen_num five;
-        match gen_bool with
-        | True => gens_image := one
-        | False =>
-        end;
-        gen_bool = builtin eq gen_num six;
-        match gen_bool with
-        | True => gens_image := one
-        | False =>
-        end;
-        gen_bool = builtin eq gen_num seven;
-        match gen_bool with
-        | True => gens_image := two
-        | False =>
-        end;
-        gen_bool = builtin eq gen_num eight;
-        match gen_bool with
-        | True => gens_image := two
-        | False =>
-        end;
-        gen_bool = builtin eq gen_num nine;
-        match gen_bool with
-        | True => gens_image := three
-        | False =>
-        end;
-
-      i <- gens_image;
-      token_gen_image[token_id] := i;
 
 
       (* Add to owner count *)
