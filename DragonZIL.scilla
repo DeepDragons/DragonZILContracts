@@ -86,7 +86,7 @@ let calc_gens_tmp_new =
     | False => old_val
     end
 
-
+let format: String = ".png"
 
 (* Error events *)
 type Error =
@@ -156,6 +156,8 @@ field token_owner_list: Map ByStr20 TokenOwner = Emp ByStr20 TokenOwner
 
 (* Total token count *)
 field total_supply: Uint256 = Uint256 0
+
+field cloud: String = ""
 
 (* Gens modification helpers *)
 field gens_image: Uint256 = Uint256 2020
@@ -316,6 +318,18 @@ procedure addToken(to: ByStr20, token_id: Uint256)
   end
 end
 
+transition ChangeCloud(new_cloud: String)
+  is_owner = builtin eq contract_owner _sender;
+
+  match is_owner with
+  | False =>
+    err = CodeNotAuthorised;
+    EmitError err
+  | True =>
+    cloud := new_cloud
+  end
+end
+
 procedure generateImageGen(token_id:Uint256, random: Uint256)
   (* 0>0 0>0 0>0 *)
   (* 1>0 1>0 1>0 *)
@@ -446,8 +460,9 @@ end
 (* Revert transition if invalid recipient contract.                *)
 transition mint(to: ByStr20)
   number_of_tokens <- total_supply;
-  token_uri = " ";
+  cloud_url <- cloud;
   token_id = builtin add number_of_tokens one;
+
   (* Check if token exists *)
   token_exist <- exists token_owners[token_id];
   match token_exist with
@@ -467,6 +482,11 @@ transition mint(to: ByStr20)
       token_owners[token_id] := to;
       entropyNumber <- entropy;
       current_block <- & BLOCKNUMBER;
+      stage_as_str = "0_";
+      number_of_token = builtin to_string token_id;
+      id_name = builtin concat stage_as_str number_of_token;
+      token_image_name = builtin concat id_name format;
+      token_uri = builtin concat cloud_url token_image_name;
 
       random1 = random entropyNumber current_block;
       random2 = random random1 current_block;
