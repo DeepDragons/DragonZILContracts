@@ -78,16 +78,6 @@ let random =
       let rhash2 = builtin keccak256hash rhash1 in
       builtin to_uint256 rhash2
 
-
-(* let calc_gens_tmp = *)
-  (* fun (old_val: Uint256) => *)
-  (* fun (gen_bool: Bool) => *)
-  (* fun (val: Uint256) => *)
-    (* match gen_bool with *)
-    (* | True => val *)
-    (* | False => old_val *)
-    (* end *)
-
 let calc_gens_tmp_new =
   fun (old_val: Uint256) =>
   fun (gen_num: Uint256) =>
@@ -172,8 +162,6 @@ field total_supply: Uint256 = Uint256 0
 
 (* Gens modification helpers *)
 field gens_image: Uint256 = Uint256 2020
-field gens_battle1: Uint256 = Uint256 2020
-field gens_battle2: Uint256 = Uint256 2020
 field gens_tmp: Uint256 = Uint256 0
 
 
@@ -328,132 +316,74 @@ procedure addToken(to: ByStr20, token_id: Uint256)
      token_owner_list[to] := new_to
   end
 end
+procedure generateImageGenStep(gen_rand:Uint256, check_with:Uint256, val:Uint256)
+  old_val <- gens_tmp;
+  new_val = calc_gens_tmp_new old_val gen_rand check_with val;
+  gens_tmp := new_val
+end
 
-procedure generateImageGen(token_id:Uint256, random: Uint256)
-(* 0>0 0>0 0>0 *)
-(* 1>0 1>0 1>0 *)
-(* 2>0 2>0 2>1 *)
-(* 3>0 3>1 3>1 *)
-(* 4>1 4>1 4>1 *)
-(* 5>1 5>2 5>2 *)
-(* 6>1 6>2 6>2 *)
-(* 7>2 7>3 7>2 *)
-(* 8>2 8>4 8>3 *)
-(* 9>3 9>5 9>4 *)
+(* !!!!!!!!!!!!!!!!      Сделать на основе Image gen not Battle Gens!!! *)
+(* !!!!!!! добавить ген для раскраски *)
+procedure generateImageGen(token_id:Uint256, random_val: Uint256)
+  (* 0>0 0>0 0>0 *)
+  (* 1>0 1>0 1>0 *)
+  (* 2>0 2>0 2>1 *)
+  (* 3>0 3>1 3>1 *)
+  (* 4>1 4>1 4>1 *)
+  (* 5>1 5>2 5>2 *)
+  (* 6>1 6>2 6>2 *)
+  (* 7>2 7>3 7>2 *)
+  (* 8>2 8>4 8>3 *)
+  (* 9>3 9>5 9>4 *)
 
-(* image gen head *)
-gen_num = builtin rem random ten;
-gen_bool = builtin eq gen_num zero;
-match gen_bool with
-| True => gens_tmp := zero
-| False =>
-end;
-gen_bool = builtin eq gen_num one;
-match gen_bool with
-| True => gens_tmp := zero
-| False =>
-end;
-gen_bool = builtin eq gen_num two;
-match gen_bool with
-| True => gens_tmp := zero
-| False =>
-end;
-gen_bool = builtin eq gen_num three;
-match gen_bool with
-| True => gens_tmp := zero
-| False =>
-end;
-gen_bool = builtin eq gen_num four;
-match gen_bool with
-| True => gens_tmp := one
-| False =>
-end;
-gen_bool = builtin eq gen_num five;
-match gen_bool with
-| True => gens_tmp := one
-| False =>
-end;
-gen_bool = builtin eq gen_num six;
-match gen_bool with
-| True => gens_tmp := one
-| False =>
-end;
-gen_bool = builtin eq gen_num seven;
-match gen_bool with
-| True => gens_tmp := two
-| False =>
-end;
-gen_bool = builtin eq gen_num eight;
-match gen_bool with
-| True => gens_tmp := two
-| False =>
-end;
-gen_bool = builtin eq gen_num nine;
-match gen_bool with
-| True => gens_tmp := three
-| False =>
-end;
-(* moving to next digit *)
-random1 = builtin sub random gen_num;
-random1 = builtin div random ten;
-i <- gens_tmp;
-i2 <- gens_image;
-i3 = builtin mul i2 ten;
-i4 = builtin add i3 i;
-gens_image := i4;
+  random = random_val;
 
+(* FIRST SET COLOR SCHEME 0 - 99 *)
 
+  (* image gen head *)
+  gen_rand = builtin rem random ten;
+  generateImageGenStep gen_rand zero zero;
+  generateImageGenStep gen_rand one zero;
+  generateImageGenStep gen_rand two zero;
+  generateImageGenStep gen_rand three zero;
+  generateImageGenStep gen_rand four one;
+  generateImageGenStep gen_rand five one;
+  generateImageGenStep gen_rand six one;
+  generateImageGenStep gen_rand seven two;
+  generateImageGenStep gen_rand eight two;
+  generateImageGenStep gen_rand nine three;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  i <- gens_tmp;
+  i2 <- gens_image;
+  i3 = builtin mul i2 ten;
+  i4 = builtin add i3 i;
+  gens_image := i4;
 
-(* image gen wings *)
-gen_rand = builtin rem random ten;
+  (* image gen wings *)
+  gen_rand = builtin rem random ten;
+  generateImageGenStep gen_rand zero zero;
+  generateImageGenStep gen_rand one zero;
+  generateImageGenStep gen_rand two zero;
+  generateImageGenStep gen_rand three one;
+  generateImageGenStep gen_rand four one;
+  generateImageGenStep gen_rand five two;
+  generateImageGenStep gen_rand six two;
+  generateImageGenStep gen_rand seven three;
+  generateImageGenStep gen_rand eight four;
+  generateImageGenStep gen_rand nine five;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  i <- gens_tmp;
+  i2 <- gens_image;
+  i3 = builtin mul i2 ten;
+  i4 = builtin add i3 i;
+  gens_image := i4;
 
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand zero zero;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand one zero;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand two zero;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand three one;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand four one;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand five two;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand six two;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand seven three;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand eight four;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand nine five;
-gens_tmp := new_val;
-
-
-
-(* moving to next digit *)
-random1 = builtin sub random gen_num;
-random1 = builtin div random ten;
-i <- gens_tmp;
-i2 <- gens_image;
-i3 = builtin mul i2 ten;
-i4 = builtin add i3 i;
-gens_image := i4;
-
-
-
-
-      i <- gens_image;
-      token_gen_image[token_id] := i
+  i <- gens_image;
+  token_gen_image[token_id] := i
 end
 
 (* @dev:    Mint new tokens. Only contract_owner can mint.         *)
@@ -494,9 +424,6 @@ transition mint(to: ByStr20)
 
       (* gens init for current token *)
       gens_image := gens0;
-      gens_battle1 := gens0;
-      gens_battle2 := gens0;
-
 
 
       token_gen_battle[token_id] := random1;
