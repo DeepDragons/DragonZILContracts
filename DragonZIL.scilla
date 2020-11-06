@@ -19,7 +19,6 @@ fun (msg2 : Message) =>
 
 let zero = Uint256 0
 let one = Uint256 1
-let default_stage = Uint32 0
 let two = Uint256 2
 let three = Uint256 3
 let four = Uint256 4
@@ -69,25 +68,12 @@ let is_approved_or_owner =
 
 let random =
   fun (entropy: Uint256) =>
-    fun (balance: Uint128) =>
-      fun (amount: Uint128) =>
-      let entropyHash = builtin keccak256hash entropy in
-      let amountHash = builtin keccak256hash amount in
-      let balancehash = builtin keccak256hash balance in
-      let rhash = builtin concat amountHash entropyHash in
-      let rhash1 = builtin concat rhash balancehash in
-      let rhash2 = builtin keccak256hash rhash1 in
-      builtin to_uint256 rhash2
-
-
-(* let calc_gens_tmp = *)
-  (* fun (old_val: Uint256) => *)
-  (* fun (gen_bool: Bool) => *)
-  (* fun (val: Uint256) => *)
-    (* match gen_bool with *)
-    (* | True => val *)
-    (* | False => old_val *)
-    (* end *)
+  fun (block_number: BNum) =>
+    let entropyHash = builtin keccak256hash entropy in
+    let blockhash = builtin keccak256hash block_number in
+    let rhash = builtin concat entropyHash blockhash in
+    let hash = builtin keccak256hash rhash in
+      builtin to_uint256 hash
 
 let calc_gens_tmp_new =
   fun (old_val: Uint256) =>
@@ -108,7 +94,6 @@ type Error =
   | CodeNotFound
   | CodeTokenExists
   | CodeUnexpectedError
-  | CodeStageError
 
 let make_error_event =
   fun (result : Error) =>
@@ -118,7 +103,6 @@ let make_error_event =
       | CodeNotFound         => Int32 -2
       | CodeTokenExists      => Int32 -3
       | CodeUnexpectedError  => Int32 -4
-      | CodeStageError       => Int32 -5
       end
     in
     { _eventname : "Error"; code : result_code }
@@ -144,7 +128,6 @@ contract DragonZIL
 (* Mutable fields *)
 
 field entropy : Uint256 = Uint256 0
-field max_stage : Uint32 = Uint32 0
 
 (* List of minters available *)
 field minters: Map ByStr20 Unit = Emp ByStr20 Unit
@@ -169,13 +152,10 @@ field token_uris: Map Uint256 String = Emp Uint256 String
 field token_gen_battle: Map Uint256 Uint256 = Emp Uint256 Uint256
 field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
 
-field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
-  = Emp ByStr20 (Map Uint256 Uint32)
+field token_owner_list: Map ByStr20 TokenOwner = Emp ByStr20 TokenOwner
 
 (* Total token count *)
 field total_supply: Uint256 = Uint256 0
-
-field cloud: String = ""
 
 (* Gens modification helpers *)
 field gens_image: Uint256 = Uint256 2020
@@ -317,177 +297,144 @@ transition configureMinter(minter: ByStr20)
 end
 
 procedure addToken(to: ByStr20, token_id: Uint256)
-  tokens_owner_stage[to][token_id] := default_stage
-end
+  owner_token_list <- token_owner_list[to];
 
-transition UpState(token_id: Uint256)
-  token_stage <- tokens_owner_stage[_sender][token_id];
-  max_stage_of_token <- max_stage;
+  match owner_token_list with
+  | None =>
+    dumy_list = Nil {Uint256};
+    created_list = Cons {Uint256} token_id dumy_list;
+    new_token_owenr = TokenOwner created_list;
 
-  match token_stage with
-    | Some stage => 
-      one32 = Uint32 1;
-      next_stage = builtin add stage one32;
-      is_max = builtin lt next_stage max_stage_of_token;
+    token_owner_list[to] := new_token_owenr
+  | Some (TokenOwner list) =>
+     new_to =
+      let n = token_id in
+      let new_list = Cons {Uint256} n list in
+      TokenOwner new_list;
 
-      match is_max with
-        | True =>
-          err = CodeStageError;
-          EmitError err
-        | False =>
-          tokens_owner_stage[_sender][token_id] := next_stage;
-          
-          e = {
-            _eventname: "TokenStageUpgrade";
-            token_id: token_id;
-            old_stage: stage;
-            next_stage: next_stage
-          };
-          event e
-      end
-    | None =>
-      err = CodeStageError;
-      EmitError err
-  end
-end
-
-transition ChangeCloud(new_cloud: String)
-  is_owner = builtin eq contract_owner _sender;
-
-  match is_owner with
-  | False =>
-    err = CodeNotAuthorised;
-    EmitError err
-  | True =>
-    cloud := new_cloud
+     token_owner_list[to] := new_to
   end
 end
 
 procedure generateImageGen(token_id:Uint256, random: Uint256)
-(* 0>0 0>0 0>0 *)
-(* 1>0 1>0 1>0 *)
-(* 2>0 2>0 2>1 *)
-(* 3>0 3>1 3>1 *)
-(* 4>1 4>1 4>1 *)
-(* 5>1 5>2 5>2 *)
-(* 6>1 6>2 6>2 *)
-(* 7>2 7>3 7>2 *)
-(* 8>2 8>4 8>3 *)
-(* 9>3 9>5 9>4 *)
+  (* 0>0 0>0 0>0 *)
+  (* 1>0 1>0 1>0 *)
+  (* 2>0 2>0 2>1 *)
+  (* 3>0 3>1 3>1 *)
+  (* 4>1 4>1 4>1 *)
+  (* 5>1 5>2 5>2 *)
+  (* 6>1 6>2 6>2 *)
+  (* 7>2 7>3 7>2 *)
+  (* 8>2 8>4 8>3 *)
+  (* 9>3 9>5 9>4 *)
 
-(* image gen head *)
-gen_num = builtin rem random ten;
-gen_bool = builtin eq gen_num zero;
-match gen_bool with
-| True => gens_tmp := zero
-| False =>
-end;
-gen_bool = builtin eq gen_num one;
-match gen_bool with
-| True => gens_tmp := zero
-| False =>
-end;
-gen_bool = builtin eq gen_num two;
-match gen_bool with
-| True => gens_tmp := zero
-| False =>
-end;
-gen_bool = builtin eq gen_num three;
-match gen_bool with
-| True => gens_tmp := zero
-| False =>
-end;
-gen_bool = builtin eq gen_num four;
-match gen_bool with
-| True => gens_tmp := one
-| False =>
-end;
-gen_bool = builtin eq gen_num five;
-match gen_bool with
-| True => gens_tmp := one
-| False =>
-end;
-gen_bool = builtin eq gen_num six;
-match gen_bool with
-| True => gens_tmp := one
-| False =>
-end;
-gen_bool = builtin eq gen_num seven;
-match gen_bool with
-| True => gens_tmp := two
-| False =>
-end;
-gen_bool = builtin eq gen_num eight;
-match gen_bool with
-| True => gens_tmp := two
-| False =>
-end;
-gen_bool = builtin eq gen_num nine;
-match gen_bool with
-| True => gens_tmp := three
-| False =>
-end;
-(* moving to next digit *)
-random1 = builtin sub random gen_num;
-random1 = builtin div random ten;
-i <- gens_tmp;
-i2 <- gens_image;
-i3 = builtin mul i2 ten;
-i4 = builtin add i3 i;
-gens_image := i4;
+  (* image gen head *)
+  gen_num = builtin rem random ten;
+  gen_bool = builtin eq gen_num zero;
+  match gen_bool with
+  | True => gens_tmp := zero
+  | False =>
+  end;
+  gen_bool = builtin eq gen_num one;
+  match gen_bool with
+  | True => gens_tmp := zero
+  | False =>
+  end;
+  gen_bool = builtin eq gen_num two;
+  match gen_bool with
+  | True => gens_tmp := zero
+  | False =>
+  end;
+  gen_bool = builtin eq gen_num three;
+  match gen_bool with
+  | True => gens_tmp := zero
+  | False =>
+  end;
+  gen_bool = builtin eq gen_num four;
+  match gen_bool with
+  | True => gens_tmp := one
+  | False =>
+  end;
+  gen_bool = builtin eq gen_num five;
+  match gen_bool with
+  | True => gens_tmp := one
+  | False =>
+  end;
+  gen_bool = builtin eq gen_num six;
+  match gen_bool with
+  | True => gens_tmp := one
+  | False =>
+  end;
+  gen_bool = builtin eq gen_num seven;
+  match gen_bool with
+  | True => gens_tmp := two
+  | False =>
+  end;
+  gen_bool = builtin eq gen_num eight;
+  match gen_bool with
+  | True => gens_tmp := two
+  | False =>
+  end;
+  gen_bool = builtin eq gen_num nine;
+  match gen_bool with
+  | True => gens_tmp := three
+  | False =>
+  end;
 
+  (* moving to next digit *)
+  random1 = builtin sub random gen_num;
+  random1 = builtin div random ten;
+  i <- gens_tmp;
+  i2 <- gens_image;
+  i3 = builtin mul i2 ten;
+  i4 = builtin add i3 i;
+  gens_image := i4;
+  
+  (* image gen wings *)
+  gen_rand = builtin rem random ten;
+  
+  old_val <- gens_tmp;
+  new_val = calc_gens_tmp_new old_val gen_rand zero zero;
+  gens_tmp := new_val;
+  old_val <- gens_tmp;
+  new_val = calc_gens_tmp_new old_val gen_rand one zero;
+  gens_tmp := new_val;
+  old_val <- gens_tmp;
+  new_val = calc_gens_tmp_new old_val gen_rand two zero;
+  gens_tmp := new_val;
+  old_val <- gens_tmp;
+  new_val = calc_gens_tmp_new old_val gen_rand three one;
+  gens_tmp := new_val;
+  old_val <- gens_tmp;
+  new_val = calc_gens_tmp_new old_val gen_rand four one;
+  gens_tmp := new_val;
+  old_val <- gens_tmp;
+  new_val = calc_gens_tmp_new old_val gen_rand five two;
+  gens_tmp := new_val;
+  old_val <- gens_tmp;
+  new_val = calc_gens_tmp_new old_val gen_rand six two;
+  gens_tmp := new_val;
+  old_val <- gens_tmp;
+  new_val = calc_gens_tmp_new old_val gen_rand seven three;
+  gens_tmp := new_val;
+  old_val <- gens_tmp;
+  new_val = calc_gens_tmp_new old_val gen_rand eight four;
+  gens_tmp := new_val;
+  old_val <- gens_tmp;
+  new_val = calc_gens_tmp_new old_val gen_rand nine five;
+  gens_tmp := new_val;
+  
+  (* moving to next digit *)
+  random1 = builtin sub random gen_num;
+  random1 = builtin div random ten;
+  i <- gens_tmp;
+  i2 <- gens_image;
+  i3 = builtin mul i2 ten;
+  i4 = builtin add i3 i;
+  gens_image := i4;
 
-
-(* image gen wings *)
-gen_rand = builtin rem random ten;
-
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand zero zero;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand one zero;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand two zero;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand three one;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand four one;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand five two;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand six two;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand seven three;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand eight four;
-gens_tmp := new_val;
-old_val <- gens_tmp;
-new_val = calc_gens_tmp_new old_val gen_rand nine five;
-gens_tmp := new_val;
-
-
-
-(* moving to next digit *)
-random1 = builtin sub random gen_num;
-random1 = builtin div random ten;
-i <- gens_tmp;
-i2 <- gens_image;
-i3 = builtin mul i2 ten;
-i4 = builtin add i3 i;
-gens_image := i4;
-
-
-
-
-      i <- gens_image;
-      token_gen_image[token_id] := i
+    i <- gens_image;
+    token_gen_image[token_id] := i
 end
 
 (* @dev:    Mint new tokens. Only contract_owner can mint.         *)
@@ -519,10 +466,10 @@ transition mint(to: ByStr20)
       (* Mint new token *)
       token_owners[token_id] := to;
       entropyNumber <- entropy;
-      balanceNumber <- _balance;
+      current_block <- & BLOCKNUMBER;
 
-      random1 = random entropyNumber balanceNumber _amount;
-      random2 = random random1 balanceNumber _amount;
+      random1 = random entropyNumber current_block;
+      random2 = random random1 current_block;
 
       entropy := random2;
 
@@ -531,13 +478,9 @@ transition mint(to: ByStr20)
       gens_battle1 := gens0;
       gens_battle2 := gens0;
 
-
-
       token_gen_battle[token_id] := random1;
       (* token_gen_image[token_id] := random2; *)
       generateImageGen token_id random1;
-
-
 
       (* Add to owner count *)
       some_current_count <- owned_token_count[to];
