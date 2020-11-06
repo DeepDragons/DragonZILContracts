@@ -162,6 +162,7 @@ field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
 
 (* Total token count *)
 field total_supply: Uint256 = Uint256 0
+field count_supply: Uint256 = Uint256 0
 
 field cloud: String = ""
 
@@ -340,7 +341,7 @@ transition UpState(token_id: Uint256)
           EmitError err
         | False =>
           tokens_owner_stage[_sender][token_id] := next_stage;
-          
+
           e = {
             _eventname: "TokenStageUpgrade";
             token_id: token_id;
@@ -496,7 +497,7 @@ end
 (* Returns error event CodeNotAuthorised if _sender is not minter. *)
 (* Revert transition if invalid recipient contract.                *)
 transition mint(to: ByStr20)
-  number_of_tokens <- total_supply;
+  number_of_tokens <- count_supply;
   cloud_url <- cloud;
   token_id = builtin add number_of_tokens one;
 
