@@ -94,6 +94,7 @@ type Error =
   | CodeNotFound
   | CodeTokenExists
   | CodeUnexpectedError
+  | CodeStageError
 
 let make_error_event =
   fun (result : Error) =>
@@ -103,6 +104,7 @@ let make_error_event =
       | CodeNotFound         => Int32 -2
       | CodeTokenExists      => Int32 -3
       | CodeUnexpectedError  => Int32 -4
+      | CodeStageError       => Int32 -5
       end
     in
     { _eventname : "Error"; code : result_code }
@@ -128,6 +130,7 @@ contract DragonZIL
 (* Mutable fields *)
 
 field entropy : Uint256 = Uint256 0
+field max_stage : Uint32 = Uint32 0
 
 (* List of minters available *)
 field minters: Map ByStr20 Unit = Emp ByStr20 Unit
@@ -153,6 +156,9 @@ field token_gen_battle: Map Uint256 Uint256 = Emp Uint256 Uint256
 field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
 
 field token_owner_list: Map ByStr20 TokenOwner = Emp ByStr20 TokenOwner
+
+field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
+  = Emp ByStr20 (Map Uint256 Uint32)
 
 (* Total token count *)
 field total_supply: Uint256 = Uint256 0
@@ -315,6 +321,37 @@ procedure addToken(to: ByStr20, token_id: Uint256)
       TokenOwner new_list;
 
      token_owner_list[to] := new_to
+  end
+end
+
+transition UpState(token_id: Uint256)
+  token_stage <- tokens_owner_stage[_sender][token_id];
+  max_stage_of_token <- max_stage;
+
+  match token_stage with
+    | Some stage => 
+      one32 = Uint32 1;
+      next_stage = builtin add stage one32;
+      is_max = builtin lt next_stage max_stage_of_token;
+
+      match is_max with
+        | True =>
+          err = CodeStageError;
+          EmitError err
+        | False =>
+          tokens_owner_stage[_sender][token_id] := next_stage;
+          
+          e = {
+            _eventname: "TokenStageUpgrade";
+            token_id: token_id;
+            old_stage: stage;
+            next_stage: next_stage
+          };
+          event e
+      end
+    | None =>
+      err = CodeStageError;
+      EmitError err
   end
 end
 
