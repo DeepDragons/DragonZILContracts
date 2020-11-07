@@ -67,10 +67,14 @@ let is_approved_or_owner =
 let random =
   fun (entropy: Uint256) =>
   fun (block_number: BNum) =>
-    let entropyHash = builtin keccak256hash entropy in
+  fun (addr: ByStr20) =>
+    let addr_hash = builtin keccak256hash addr in
+    let entropy_hash = builtin keccak256hash entropy in
     let blockhash = builtin keccak256hash block_number in
-    let rhash = builtin concat entropyHash blockhash in
-    let hash = builtin keccak256hash rhash in
+    let ehash = builtin concat entropy_hash blockhash in
+    let ahash = builtin concat ehash addr_hash in
+    let last_hash = builtin concat ehash ahash in
+    let hash = builtin keccak256hash last_hash in
       builtin to_uint256 hash
 
 let calc_gens_tmp_new =
@@ -620,8 +624,8 @@ transition mint(to: ByStr20)
       token_image_name = builtin concat id_name format;
       token_uri = builtin concat cloud_url token_image_name;
 
-      random1 = random entropyNumber current_block;
-      random2 = random random1 current_block;
+      random1 = random entropyNumber current_block to;
+      random2 = random random1 current_block to;
 
       entropy := random2;
 
