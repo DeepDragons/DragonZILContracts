@@ -349,7 +349,7 @@ end
 procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = random_val;
   (* gens init for current token *)
-  gens_image_ = Uint256 2020;
+  gens_image_ = Uint256 777;
   gen_tmp = Uint256 0;
 
   (* image gen Aura - 4 types *)
@@ -664,16 +664,18 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
 
   (* color scheme *)
   gen_rand = builtin rem random ten3;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten3;
   gen_rand = builtin div gen_rand four;
-  gen_rand = builtin add gen_rand ten2;
   i = builtin mul gens_image_ ten3;
   i2 = builtin add i gen_rand;
   gens_image_ = i2;
 
   (* mutagenImutable *)
+  (* last gen no need to move to next digit *)
   gen_rand = builtin rem random ten3;
   gen_rand = builtin div gen_rand four;
-  gen_rand = builtin add gen_rand ten2;
   i = builtin mul gens_image_ ten3;
   i2 = builtin add i gen_rand;
   gens_image_ = i2;
