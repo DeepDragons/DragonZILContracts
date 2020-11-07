@@ -32,7 +32,6 @@ let ten = Uint256 10
 let ten2 = Uint256 100
 let tt = True
 let ff = False
-let gens0 = Uint256 2020
 
 
 let add_owner_count =
@@ -62,7 +61,7 @@ let is_approved_or_owner =
   fun (is_owner: Bool) =>
   fun (is_approved: Bool) =>
   fun (is_approved_for_all: Bool) =>
-    let is_owner_or_approved =  orb is_owner is_approved in
+    let is_owner_or_approved = orb is_owner is_approved in
     orb is_owner_or_approved is_approved_for_all
 
 let random =
@@ -357,28 +356,29 @@ end
 procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = random_val;
   (* gens init for current token *)
-  gens_image := gens0;
+  gens_image_ = Uint256 2020;
 
   (* image gen Aura - 4 types *)
   gen_rand = builtin rem random ten;
-  generateImageGenStep gen_rand zero zero;
-  generateImageGenStep gen_rand one zero;
-  generateImageGenStep gen_rand two zero;
-  generateImageGenStep gen_rand three zero;
-  generateImageGenStep gen_rand four one;
-  generateImageGenStep gen_rand five one;
-  generateImageGenStep gen_rand six two;
-  generateImageGenStep gen_rand seven two;
-  generateImageGenStep gen_rand eight three;
-  generateImageGenStep gen_rand nine four;
+  gen_tmp = Uint256 0;
+  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
+  gen = calc_gens_tmp_new gen gen_rand one zero;
+  gen = calc_gens_tmp_new gen gen_rand two zero;
+  gen = calc_gens_tmp_new gen gen_rand three zero;
+  gen = calc_gens_tmp_new gen gen_rand four one;
+  gen = calc_gens_tmp_new gen gen_rand five one;
+  gen = calc_gens_tmp_new gen gen_rand six two;
+  gen = calc_gens_tmp_new gen gen_rand seven two;
+  gen = calc_gens_tmp_new gen gen_rand eight three;
+  gen = calc_gens_tmp_new gen gen_rand nine four;
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
-  i <- gens_tmp;
-  i2 <- gens_image;
+
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
-  i4 = builtin add i3 i;
-  gens_image := i4;
+  i4 = builtin add i3 gen;
+  gens_image_ = i4;
 
   (* image gen Horns - 7 types *)
   gen_rand = builtin rem random ten;
@@ -396,10 +396,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 (* image gen Scales - 4 types *)
   gen_rand = builtin rem random ten;
@@ -417,10 +417,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 (* image gen Spots - 9 types *)
   gen_rand = builtin rem random ten;
@@ -438,10 +438,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 (* image gen Tails - 7 types *)
   gen_rand = builtin rem random ten;
@@ -459,10 +459,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 (* image gen Wings - 5 types *)
   gen_rand = builtin rem random ten;
@@ -480,10 +480,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 (* image gen Spins - 4 types *)
   gen_rand = builtin rem random ten;
@@ -501,10 +501,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 
 (* image gen Body - 3 types *)
@@ -523,10 +523,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 
 (* image gen Eyes - 9 types *)
@@ -545,10 +545,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 
 (* image gen Head - 5 types *)
@@ -567,22 +567,20 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
   (* color scheme *)
   gen_rand = builtin rem random ten2;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten2;
   i4 = builtin add i3 gen_rand;
-  gens_image := i4;
-
+  gens_image_ = i4;
 
   (* store gens to token *)
-  i <- gens_image;
-  token_gen_image[token_id] := i
+  token_gen_image[token_id] := gens_image_
 end
 
 (* @dev:    Mint new tokens. Only contract_owner can mint.         *)
