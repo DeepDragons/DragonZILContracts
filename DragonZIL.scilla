@@ -698,6 +698,7 @@ transition burn(token_id: Uint256)
       delete token_uris[token_id];
       delete token_gen_battle[token_id];
       delete token_gen_image[token_id];
+      delete tokens_owner_stage[_sender][token_id];
       (* Deduct from owned_token_count *)
       some_current_count <- owned_token_count[token_owner];
       some_new_count = sub_owner_count some_current_count;
@@ -807,6 +808,8 @@ end
 transition transfer(to: ByStr20, token_id: Uint256)
   (* Check if token exists *)
   some_token_owner <- token_owners[token_id];
+  owner_stage <- tokens_owner_stage[_sender][token_id];
+
   match some_token_owner with
   | None =>
     (* Token does not exists, return error code *)
@@ -821,28 +824,37 @@ transition transfer(to: ByStr20, token_id: Uint256)
       err = CodeNotAuthorised;
       EmitError err
     | True =>
-      (* Change token_owner for that token_id *)
-      token_owners[token_id] := to;
-      (* Delete tokenApproval entry for that token_id *)
-      delete token_approvals[token_id];
-      (* Subtract one from previous token owner count *)
-      some_from_count <- owned_token_count[_sender];
-      new_from_count = sub_owner_count some_from_count;
-      owned_token_count[_sender] := new_from_count;
-      (* Add one to the new token owner count *)
-      some_to_count <- owned_token_count[to];
-      new_to_count = add_owner_count some_to_count;
-      owned_token_count[to] := new_to_count;
-      e = {_eventname: "TransferSuccess"; from: _sender; recipient: to; token: token_id};
-      event e;
-      (* Send dummy callback message.                                                *)
-      (* Revert transition if invalid recipient contract. Ignore if external address *)
-      msg_to_recipient = { _tag : "recipientAcceptTransfer"; _recipient : to; _amount : Uint128 0;
+      match owner_stage with
+      | None =>
+        (* Token does not exists, return error code *)
+        err = CodeNotFound;
+        EmitError err
+      | Some stage =>
+        (* Change token_owner for that token_id *)
+        token_owners[token_id] := to;
+        (* Delete tokenApproval entry for that token_id *)
+        delete token_approvals[token_id];
+        delete tokens_owner_stage[_sender][token_id];
+        (* Subtract one from previous token owner count *)
+        some_from_count <- owned_token_count[_sender];
+        new_from_count = sub_owner_count some_from_count;
+        owned_token_count[_sender] := new_from_count;
+        tokens_owner_stage[to][token_id] := stage;
+        (* Add one to the new token owner count *)
+        some_to_count <- owned_token_count[to];
+        new_to_count = add_owner_count some_to_count;
+        owned_token_count[to] := new_to_count;
+        e = {_eventname: "TransferSuccess"; from: _sender; recipient: to; token: token_id};
+        event e;
+        (* Send dummy callback message.                                                *)
+        (* Revert transition if invalid recipient contract. Ignore if external address *)
+        msg_to_recipient = { _tag : "recipientAcceptTransfer"; _recipient : to; _amount : Uint128 0;
+                            from : _sender; recipient : to; token_id : token_id };
+        msg_to_sender = { _tag : "transferSuccessCallBack"; _recipient : _sender; _amount : Uint128 0;
                           from : _sender; recipient : to; token_id : token_id };
-      msg_to_sender = { _tag : "transferSuccessCallBack"; _recipient : _sender; _amount : Uint128 0;
-                        from : _sender; recipient : to; token_id : token_id };
-      msgs = two_msgs msg_to_recipient msg_to_sender;
-      send msgs
+        msgs = two_msgs msg_to_recipient msg_to_sender;
+        send msgs
+      end
     end
   end
 end
