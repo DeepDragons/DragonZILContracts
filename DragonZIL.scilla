@@ -665,6 +665,7 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   (* color scheme *)
   gen_rand = builtin rem random ten3;
   gen_rand = builtin div gen_rand four;
+  gen_rand = builtin add gen_rand ten2;
   i = builtin mul gens_image_ ten3;
   i2 = builtin add i gen_rand;
   gens_image_ = i2;
@@ -672,6 +673,7 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   (* mutagenImutable *)
   gen_rand = builtin rem random ten3;
   gen_rand = builtin div gen_rand four;
+  gen_rand = builtin add gen_rand ten2;
   i = builtin mul gens_image_ ten3;
   i2 = builtin add i gen_rand;
   gens_image_ = i2;
