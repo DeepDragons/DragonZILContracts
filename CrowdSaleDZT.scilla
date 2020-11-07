@@ -61,17 +61,19 @@ type Error =
   | CodeNotAuthorised
   | CodeNoPubKey
   | CodeVerificationFailed
+  | CodeUint32Overflow
 
 let make_error =
   fun (result : Error) =>
     let result_code = 
       match result with
       | CodeInsufficientAmount => Int32 -1
-      | CodeWrongListLength => Int32 -2
-      | CodeAlreadyHadDragon => Int32 -3
-      | CodeNotAuthorised => Int32 -4
-      | CodeNoPubKey => Int32 -5
+      | CodeWrongListLength    => Int32 -2
+      | CodeAlreadyHadDragon   => Int32 -3
+      | CodeNotAuthorised      => Int32 -4
+      | CodeNoPubKey           => Int32 -5
       | CodeVerificationFailed => Int32 -6
+      | CodeUint32Overflow     => Int32 -7
       end
     in
     { _exception : "Error"; code : result_code }
@@ -164,20 +166,27 @@ transition Buy()
 
   match dragon_count32 with
    | Some count =>
-    dumy_list = iota zero count;
+    is_zero = builtin eq count zero;
 
-    accept;
+    match is_zero with
+    | False =>
+      dumy_list = iota zero count;
 
-    forall dumy_list BuyOne;
+      accept;
 
-    addition = builtin mul inc dragon_count128;
-    new_price = builtin add price addition;
+      forall dumy_list BuyOne;
 
-    current_price := new_price;
-    is_dragon_owner[_sender] := tt
-   | None =>
-      (* We don't have a key-pair. *)
+      addition = builtin mul inc dragon_count128;
+      new_price = builtin add price addition;
+
+      current_price := new_price;
+      is_dragon_owner[_sender] := tt
+    | True =>
       err = CodeInsufficientAmount;
+      ThrowError err
+    end
+   | None =>
+      err = CodeUint32Overflow;
       ThrowError err
   end
 end
@@ -215,7 +224,6 @@ transition AirDrop(address: ByStr20, signature: ByStr64)
           ThrowError err
         end
       | None =>
-        (* We don't have a key-pair. *)
         err = CodeNoPubKey;
         ThrowError err
       end
