@@ -133,6 +133,17 @@ transition setPrice(price: Uint128)
   event e
 end
 
+transition changeAriDropRewords(value: Uint32)
+  IsOwner;
+
+  amount_of_tokens := value;
+  e = {
+    _eventname: "amount_of_tokens_change_success";
+    by: _sender
+  };
+  event e
+end
+
 transition setIncrementer(value: Uint128)
   IsOwner;
 
