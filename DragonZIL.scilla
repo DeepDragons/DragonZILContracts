@@ -17,6 +17,7 @@ fun (msg2 : Message) =>
   let msgs_tmp = one_msg msg2 in
   Cons {Message} msg1 msgs_tmp
 
+let default_stage = Uint32 0
 let zero = Uint256 0
 let one = Uint256 1
 let two = Uint256 2
@@ -31,7 +32,6 @@ let ten = Uint256 10
 let ten2 = Uint256 100
 let tt = True
 let ff = False
-let gens0 = Uint256 2020
 
 
 let add_owner_count =
@@ -61,20 +61,17 @@ let is_approved_or_owner =
   fun (is_owner: Bool) =>
   fun (is_approved: Bool) =>
   fun (is_approved_for_all: Bool) =>
-    let is_owner_or_approved =  orb is_owner is_approved in
+    let is_owner_or_approved = orb is_owner is_approved in
     orb is_owner_or_approved is_approved_for_all
 
 let random =
   fun (entropy: Uint256) =>
-    fun (balance: Uint128) =>
-      fun (amount: Uint128) =>
-      let entropyHash = builtin keccak256hash entropy in
-      let amountHash = builtin keccak256hash amount in
-      let balancehash = builtin keccak256hash balance in
-      let rhash = builtin concat amountHash entropyHash in
-      let rhash1 = builtin concat rhash balancehash in
-      let rhash2 = builtin keccak256hash rhash1 in
-      builtin to_uint256 rhash2
+  fun (block_number: BNum) =>
+    let entropyHash = builtin keccak256hash entropy in
+    let blockhash = builtin keccak256hash block_number in
+    let rhash = builtin concat entropyHash blockhash in
+    let hash = builtin keccak256hash rhash in
+      builtin to_uint256 hash
 
 let calc_gens_tmp_new =
   fun (old_val: Uint256) =>
@@ -87,7 +84,7 @@ let calc_gens_tmp_new =
     | False => old_val
     end
 
-
+let format: String = ".png"
 
 (* Error events *)
 type Error =
@@ -95,6 +92,7 @@ type Error =
   | CodeNotFound
   | CodeTokenExists
   | CodeUnexpectedError
+  | CodeStageError
 
 let make_error_event =
   fun (result : Error) =>
@@ -104,6 +102,7 @@ let make_error_event =
       | CodeNotFound         => Int32 -2
       | CodeTokenExists      => Int32 -3
       | CodeUnexpectedError  => Int32 -4
+      | CodeStageError       => Int32 -5
       end
     in
     { _eventname : "Error"; code : result_code }
@@ -129,6 +128,7 @@ contract DragonZIL
 (* Mutable fields *)
 
 field entropy : Uint256 = Uint256 0
+field max_stage : Uint32 = Uint32 0
 
 (* List of minters available *)
 field minters: Map ByStr20 Unit = Emp ByStr20 Unit
@@ -155,8 +155,14 @@ field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
 
 field token_owner_list: Map ByStr20 TokenOwner = Emp ByStr20 TokenOwner
 
+field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
+  = Emp ByStr20 (Map Uint256 Uint32)
+
 (* Total token count *)
 field total_supply: Uint256 = Uint256 0
+field count_supply: Uint256 = Uint256 0
+
+field cloud: String = ""
 
 (* Gens modification helpers *)
 field gens_image: Uint256 = Uint256 2020
@@ -296,23 +302,7 @@ transition configureMinter(minter: ByStr20)
 end
 
 procedure addToken(to: ByStr20, token_id: Uint256)
-  owner_token_list <- token_owner_list[to];
-
-  match owner_token_list with
-  | None =>
-    dumy_list = Nil {Uint256};
-    created_list = Cons {Uint256} token_id dumy_list;
-    new_token_owenr = TokenOwner created_list;
-
-    token_owner_list[to] := new_token_owenr
-  | Some (TokenOwner list) =>
-     new_to =
-      let n = token_id in
-      let new_list = Cons {Uint256} n list in
-      TokenOwner new_list;
-
-     token_owner_list[to] := new_to
-  end
+  tokens_owner_stage[to][token_id] := default_stage
 end
 procedure generateImageGenStep(gen_rand:Uint256, check_with:Uint256, val:Uint256)
   old_val <- gens_tmp;
@@ -320,31 +310,75 @@ procedure generateImageGenStep(gen_rand:Uint256, check_with:Uint256, val:Uint256
   gens_tmp := new_val
 end
 
+transition UpState(token_id: Uint256)
+  token_stage <- tokens_owner_stage[_sender][token_id];
+  max_stage_of_token <- max_stage;
+
+  match token_stage with
+    | Some stage => 
+      one32 = Uint32 1;
+      next_stage = builtin add stage one32;
+      is_max = builtin lt next_stage max_stage_of_token;
+
+      match is_max with
+        | True =>
+          err = CodeStageError;
+          EmitError err
+        | False =>
+          tokens_owner_stage[_sender][token_id] := next_stage;
+
+          e = {
+            _eventname: "TokenStageUpgrade";
+            token_id: token_id;
+            old_stage: stage;
+            next_stage: next_stage
+          };
+          event e
+      end
+    | None =>
+      err = CodeStageError;
+      EmitError err
+  end
+end
+
+transition ChangeCloud(new_cloud: String)
+  is_owner = builtin eq contract_owner _sender;
+
+  match is_owner with
+  | False =>
+    err = CodeNotAuthorised;
+    EmitError err
+  | True =>
+    cloud := new_cloud
+  end
+end
+
 procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = random_val;
   (* gens init for current token *)
-  gens_image := gens0;
+  gens_image_ = Uint256 2020;
 
   (* image gen Aura - 4 types *)
   gen_rand = builtin rem random ten;
-  generateImageGenStep gen_rand zero zero;
-  generateImageGenStep gen_rand one zero;
-  generateImageGenStep gen_rand two zero;
-  generateImageGenStep gen_rand three zero;
-  generateImageGenStep gen_rand four one;
-  generateImageGenStep gen_rand five one;
-  generateImageGenStep gen_rand six two;
-  generateImageGenStep gen_rand seven two;
-  generateImageGenStep gen_rand eight three;
-  generateImageGenStep gen_rand nine four;
+  gen_tmp = Uint256 0;
+  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
+  gen = calc_gens_tmp_new gen gen_rand one zero;
+  gen = calc_gens_tmp_new gen gen_rand two zero;
+  gen = calc_gens_tmp_new gen gen_rand three zero;
+  gen = calc_gens_tmp_new gen gen_rand four one;
+  gen = calc_gens_tmp_new gen gen_rand five one;
+  gen = calc_gens_tmp_new gen gen_rand six two;
+  gen = calc_gens_tmp_new gen gen_rand seven two;
+  gen = calc_gens_tmp_new gen gen_rand eight three;
+  gen = calc_gens_tmp_new gen gen_rand nine four;
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
-  i <- gens_tmp;
-  i2 <- gens_image;
+
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
-  i4 = builtin add i3 i;
-  gens_image := i4;
+  i4 = builtin add i3 gen;
+  gens_image_ = i4;
 
   (* image gen Horns - 7 types *)
   gen_rand = builtin rem random ten;
@@ -362,10 +396,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 (* image gen Scales - 4 types *)
   gen_rand = builtin rem random ten;
@@ -383,10 +417,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 (* image gen Spots - 9 types *)
   gen_rand = builtin rem random ten;
@@ -404,10 +438,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 (* image gen Tails - 7 types *)
   gen_rand = builtin rem random ten;
@@ -425,10 +459,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 (* image gen Wings - 5 types *)
   gen_rand = builtin rem random ten;
@@ -446,10 +480,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 (* image gen Spins - 4 types *)
   gen_rand = builtin rem random ten;
@@ -467,10 +501,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 
 (* image gen Body - 3 types *)
@@ -489,10 +523,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 
 (* image gen Eyes - 9 types *)
@@ -511,10 +545,10 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
 
 (* image gen Head - 5 types *)
@@ -533,22 +567,20 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   i <- gens_tmp;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten;
   i4 = builtin add i3 i;
-  gens_image := i4;
+  gens_image_ = i4;
 
   (* color scheme *)
   gen_rand = builtin rem random ten2;
-  i2 <- gens_image;
+  i2 = gens_image_;
   i3 = builtin mul i2 ten2;
   i4 = builtin add i3 gen_rand;
-  gens_image := i4;
-
+  gens_image_ = i4;
 
   (* store gens to token *)
-  i <- gens_image;
-  token_gen_image[token_id] := i
+  token_gen_image[token_id] := gens_image_
 end
 
 (* @dev:    Mint new tokens. Only contract_owner can mint.         *)
@@ -559,9 +591,10 @@ end
 (* Returns error event CodeNotAuthorised if _sender is not minter. *)
 (* Revert transition if invalid recipient contract.                *)
 transition mint(to: ByStr20)
-  number_of_tokens <- total_supply;
-  token_uri = " ";
+  number_of_tokens <- count_supply;
+  cloud_url <- cloud;
   token_id = builtin add number_of_tokens one;
+
   (* Check if token exists *)
   token_exist <- exists token_owners[token_id];
   match token_exist with
@@ -580,10 +613,15 @@ transition mint(to: ByStr20)
       (* Mint new token *)
       token_owners[token_id] := to;
       entropyNumber <- entropy;
-      balanceNumber <- _balance;
+      current_block <- & BLOCKNUMBER;
+      stage_as_str = "0_";
+      number_of_token = builtin to_string token_id;
+      id_name = builtin concat stage_as_str number_of_token;
+      token_image_name = builtin concat id_name format;
+      token_uri = builtin concat cloud_url token_image_name;
 
-      random1 = random entropyNumber balanceNumber _amount;
-      random2 = random random1 balanceNumber _amount;
+      random1 = random entropyNumber current_block;
+      random2 = random random1 current_block;
 
       entropy := random2;
 
@@ -599,7 +637,9 @@ transition mint(to: ByStr20)
       (* Add to total_supply *)
       current_supply <- total_supply;
       new_supply = builtin add current_supply one;
+      new_count = builtin add number_of_tokens one;
       total_supply := new_supply;
+      count_supply := new_count;
       addToken to token_id;
       (* Emit success event *)
       e = {_eventname: "MintSuccess"; by: _sender; recipient: to;
@@ -656,6 +696,7 @@ transition burn(token_id: Uint256)
       delete token_uris[token_id];
       delete token_gen_battle[token_id];
       delete token_gen_image[token_id];
+      delete tokens_owner_stage[_sender][token_id];
       (* Deduct from owned_token_count *)
       some_current_count <- owned_token_count[token_owner];
       some_new_count = sub_owner_count some_current_count;
@@ -765,6 +806,8 @@ end
 transition transfer(to: ByStr20, token_id: Uint256)
   (* Check if token exists *)
   some_token_owner <- token_owners[token_id];
+  owner_stage <- tokens_owner_stage[_sender][token_id];
+
   match some_token_owner with
   | None =>
     (* Token does not exists, return error code *)
@@ -779,28 +822,37 @@ transition transfer(to: ByStr20, token_id: Uint256)
       err = CodeNotAuthorised;
       EmitError err
     | True =>
-      (* Change token_owner for that token_id *)
-      token_owners[token_id] := to;
-      (* Delete tokenApproval entry for that token_id *)
-      delete token_approvals[token_id];
-      (* Subtract one from previous token owner count *)
-      some_from_count <- owned_token_count[_sender];
-      new_from_count = sub_owner_count some_from_count;
-      owned_token_count[_sender] := new_from_count;
-      (* Add one to the new token owner count *)
-      some_to_count <- owned_token_count[to];
-      new_to_count = add_owner_count some_to_count;
-      owned_token_count[to] := new_to_count;
-      e = {_eventname: "TransferSuccess"; from: _sender; recipient: to; token: token_id};
-      event e;
-      (* Send dummy callback message.                                                *)
-      (* Revert transition if invalid recipient contract. Ignore if external address *)
-      msg_to_recipient = { _tag : "recipientAcceptTransfer"; _recipient : to; _amount : Uint128 0;
+      match owner_stage with
+      | None =>
+        (* Token does not exists, return error code *)
+        err = CodeNotFound;
+        EmitError err
+      | Some stage =>
+        (* Change token_owner for that token_id *)
+        token_owners[token_id] := to;
+        (* Delete tokenApproval entry for that token_id *)
+        delete token_approvals[token_id];
+        delete tokens_owner_stage[_sender][token_id];
+        (* Subtract one from previous token owner count *)
+        some_from_count <- owned_token_count[_sender];
+        new_from_count = sub_owner_count some_from_count;
+        owned_token_count[_sender] := new_from_count;
+        tokens_owner_stage[to][token_id] := stage;
+        (* Add one to the new token owner count *)
+        some_to_count <- owned_token_count[to];
+        new_to_count = add_owner_count some_to_count;
+        owned_token_count[to] := new_to_count;
+        e = {_eventname: "TransferSuccess"; from: _sender; recipient: to; token: token_id};
+        event e;
+        (* Send dummy callback message.                                                *)
+        (* Revert transition if invalid recipient contract. Ignore if external address *)
+        msg_to_recipient = { _tag : "recipientAcceptTransfer"; _recipient : to; _amount : Uint128 0;
+                            from : _sender; recipient : to; token_id : token_id };
+        msg_to_sender = { _tag : "transferSuccessCallBack"; _recipient : _sender; _amount : Uint128 0;
                           from : _sender; recipient : to; token_id : token_id };
-      msg_to_sender = { _tag : "transferSuccessCallBack"; _recipient : _sender; _amount : Uint128 0;
-                        from : _sender; recipient : to; token_id : token_id };
-      msgs = two_msgs msg_to_recipient msg_to_sender;
-      send msgs
+        msgs = two_msgs msg_to_recipient msg_to_sender;
+        send msgs
+      end
     end
   end
 end
@@ -814,6 +866,8 @@ end
 transition transferFrom(to: ByStr20, token_id: Uint256)
   (* Check if token exists *)
   some_token_owner <- token_owners[token_id];
+  owner_stage <- tokens_owner_stage[_sender][token_id];
+
   match some_token_owner with
   | None =>
     (* Token does not exists, return error code *)
@@ -841,28 +895,38 @@ transition transferFrom(to: ByStr20, token_id: Uint256)
       err = CodeNotAuthorised;
       EmitError err
     | True =>
-      (* Change token_owner for that token_id *)
-      token_owners[token_id] := to;
-      (* Delete tokenApproval entry for that token_id *)
-      delete token_approvals[token_id];
-      (* Subtract one from previous token owner count *)
-      some_from_count <- owned_token_count[token_owner];
-      new_from_count = sub_owner_count some_from_count;
-      owned_token_count[token_owner] := new_from_count;
-      (* Add one to the new token owner count *)
-      some_to_count <- owned_token_count[to];
-      new_to_count = add_owner_count some_to_count;
-      owned_token_count[to] := new_to_count;
-      e = {_eventname: "TransferFromSuccess"; from: token_owner; recipient: to; token: token_id};
-      event e;
-      (* Send dummy callback message.                                                *)
-      (* Revert transition if invalid recipient contract. Ignore if external address *)
-      msg_to_recipient = { _tag : "recipientAcceptTransferFrom"; _recipient : to; _amount : Uint128 0;
+      match owner_stage with
+      | None =>
+        (* Token does not exists, return error code *)
+        err = CodeNotFound;
+        EmitError err
+      | Some stage =>
+        (* Change token_owner for that token_id *)
+        token_owners[token_id] := to;
+        (* Delete tokenApproval entry for that token_id *)
+        delete token_approvals[token_id];
+        delete tokens_owner_stage[_sender][token_id];
+        (* Subtract one from previous token owner count *)
+        some_from_count <- owned_token_count[token_owner];
+        new_from_count = sub_owner_count some_from_count;
+
+        tokens_owner_stage[to][token_id] := stage;
+        owned_token_count[token_owner] := new_from_count;
+        (* Add one to the new token owner count *)
+        some_to_count <- owned_token_count[to];
+        new_to_count = add_owner_count some_to_count;
+        owned_token_count[to] := new_to_count;
+        e = {_eventname: "TransferFromSuccess"; from: token_owner; recipient: to; token: token_id};
+        event e;
+        (* Send dummy callback message.*)
+        (* Revert transition if invalid recipient contract. Ignore if external address *)
+        msg_to_recipient = { _tag : "recipientAcceptTransferFrom"; _recipient : to; _amount : Uint128 0;
+                            from : token_owner; recipient : to; token_id : token_id };
+        msg_to_sender = { _tag : "transferFromSuccessCallBack"; _recipient : _sender; _amount : Uint128 0;
                           from : token_owner; recipient : to; token_id : token_id };
-      msg_to_sender = { _tag : "transferFromSuccessCallBack"; _recipient : _sender; _amount : Uint128 0;
-                        from : token_owner; recipient : to; token_id : token_id };
-      msgs = two_msgs msg_to_recipient msg_to_sender;
-      send msgs
+        msgs = two_msgs msg_to_recipient msg_to_sender;
+        send msgs
+      end
     end
   end
 end
