@@ -414,7 +414,7 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
-(* image gen Scales - 4 types *)
+  (* image gen Scales - 4 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
   gen = calc_gens_tmp_new gen gen_rand one zero;
@@ -445,7 +445,7 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
-(* image gen Spots - 9 types *)
+  (* image gen Spots - 9 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
   gen = calc_gens_tmp_new gen gen_rand one one;
@@ -476,7 +476,7 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
-(* image gen Tail - 7 types *)
+  (* image gen Tail - 7 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
   gen = calc_gens_tmp_new gen gen_rand one one;
@@ -507,7 +507,7 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
-(* image gen Wings - 5 types *)
+  (* image gen Wings - 5 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
   gen = calc_gens_tmp_new gen gen_rand one zero;
@@ -538,7 +538,7 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
-(* image gen Spins - 4 types *)
+  (* image gen Spins - 4 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
   gen = calc_gens_tmp_new gen gen_rand one zero;
@@ -569,7 +569,7 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
-(* image gen Body - 3 types *)
+  (* image gen Body - 3 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
   gen = calc_gens_tmp_new gen gen_rand one one;
@@ -600,7 +600,7 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
-(* image gen Eyes - 9 types *)
+  (* image gen Eyes - 9 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
   gen = calc_gens_tmp_new gen gen_rand one one;
@@ -631,7 +631,7 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
-(* image gen Head - 5 types *)
+  (* image gen Head - 5 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
   gen = calc_gens_tmp_new gen gen_rand one one;
