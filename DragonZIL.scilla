@@ -17,6 +17,7 @@ fun (msg2 : Message) =>
   let msgs_tmp = one_msg msg2 in
   Cons {Message} msg1 msgs_tmp
 
+let default_stage = Uint32 0
 let zero = Uint256 0
 let one = Uint256 1
 let two = Uint256 2
@@ -302,23 +303,7 @@ transition configureMinter(minter: ByStr20)
 end
 
 procedure addToken(to: ByStr20, token_id: Uint256)
-  owner_token_list <- token_owner_list[to];
-
-  match owner_token_list with
-  | None =>
-    dumy_list = Nil {Uint256};
-    created_list = Cons {Uint256} token_id dumy_list;
-    new_token_owenr = TokenOwner created_list;
-
-    token_owner_list[to] := new_token_owenr
-  | Some (TokenOwner list) =>
-     new_to =
-      let n = token_id in
-      let new_list = Cons {Uint256} n list in
-      TokenOwner new_list;
-
-     token_owner_list[to] := new_to
-  end
+  tokens_owner_stage[to][token_id] := default_stage
 end
 procedure generateImageGenStep(gen_rand:Uint256, check_with:Uint256, val:Uint256)
   old_val <- gens_tmp;
@@ -912,7 +897,7 @@ transition transferFrom(to: ByStr20, token_id: Uint256)
       owned_token_count[to] := new_to_count;
       e = {_eventname: "TransferFromSuccess"; from: token_owner; recipient: to; token: token_id};
       event e;
-      (* Send dummy callback message.                                                *)
+      (* Send dummy callback message.*)
       (* Revert transition if invalid recipient contract. Ignore if external address *)
       msg_to_recipient = { _tag : "recipientAcceptTransferFrom"; _recipient : to; _amount : Uint128 0;
                           from : token_owner; recipient : to; token_id : token_id };
