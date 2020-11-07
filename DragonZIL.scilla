@@ -372,6 +372,17 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
+  (* image gen Color Aura *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
   (* image gen Horns - 7 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
@@ -384,6 +395,17 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   gen = calc_gens_tmp_new gen gen_rand seven five;
   gen = calc_gens_tmp_new gen gen_rand eight six;
   gen = calc_gens_tmp_new gen gen_rand nine seven;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Horns *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
@@ -412,6 +434,17 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
+  (* image gen Color Scales *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
 (* image gen Spots - 9 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
@@ -432,7 +465,18 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
-(* image gen Tails - 7 types *)
+  (* image gen Color Spots *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+(* image gen Tail - 7 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
   gen = calc_gens_tmp_new gen gen_rand one one;
@@ -444,6 +488,17 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   gen = calc_gens_tmp_new gen gen_rand seven five;
   gen = calc_gens_tmp_new gen gen_rand eight six;
   gen = calc_gens_tmp_new gen gen_rand nine seven;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Tail *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
@@ -472,6 +527,17 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
+  (* image gen Color Wings *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
 (* image gen Spins - 4 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
@@ -484,6 +550,17 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   gen = calc_gens_tmp_new gen gen_rand seven three;
   gen = calc_gens_tmp_new gen gen_rand eight three;
   gen = calc_gens_tmp_new gen gen_rand nine four;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Spins *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
@@ -512,6 +589,17 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
+  (* image gen Color Body *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
 (* image gen Eyes - 9 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
@@ -524,6 +612,17 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   gen = calc_gens_tmp_new gen gen_rand seven seven;
   gen = calc_gens_tmp_new gen gen_rand eight eight;
   gen = calc_gens_tmp_new gen gen_rand nine nine;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Eyes *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
@@ -552,6 +651,17 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
+  (* image gen Color Claws *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
   (* color scheme *)
   gen_rand = builtin rem random ten3;
   gen_rand = builtin div gen_rand four;
@@ -565,19 +675,6 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   i = builtin mul gens_image_ ten3;
   i2 = builtin add i gen_rand;
   gens_image_ = i2;
-
-(* //03 detailAuraColorGen = 00h - 04h *)
-(* //06 detailWingsColor2Gen = 00h - 04h *)
-(* //09 detailTailColor2Gen = 00h - 04h *)
-(* //11 detailBodyColorGen = 00h - 04h *)
-(* //13 detailSpotsColorGen = 00h - 04h *)
-(* //15 detailScalesColorGen = 00h - 04h *)
-(* //17 detailHornsColorGen = 00h - 04h *)
-(* //20 mutagenImutable 00h-FFh *)
-(* //23 detailClawsColorGen = 00h - 04h *)
-(* //25 detailEyesColorGen = 00h - 04h *)
-(* //27 detailSpinsColorGen = 00h - 04h *)
-
 
   (* store gens to token *)
   token_gen_image[token_id] := gens_image_
