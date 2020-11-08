@@ -766,7 +766,6 @@ end
 
 transition mint(to: ByStr20)
   number_of_tokens <- count_supply;
-  cloud_url <- cloud;
   token_id = builtin add number_of_tokens one;
 
   (* Check if token exists *)
