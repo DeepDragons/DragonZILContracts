@@ -111,10 +111,6 @@ let make_error_event =
     in
     { _eventname : "Error"; code : result_code }
 
-(* Custom ADT storing twitter_id, recipient_address, tweet_id, hashtags *)
-type TokenOwner =
-| TokenOwner of (List Uint256)
-
 (* Dummy user-defined ADT *)
 type Unit =
 | Unit
@@ -156,8 +152,6 @@ field token_uris: Map Uint256 String = Emp Uint256 String
 
 field token_gen_battle: Map Uint256 Uint256 = Emp Uint256 Uint256
 field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
-
-field token_owner_list: Map ByStr20 TokenOwner = Emp ByStr20 TokenOwner
 
 field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
   = Emp ByStr20 (Map Uint256 Uint32)
@@ -305,6 +299,25 @@ transition configureMinter(minter: ByStr20)
   end
 end
 
+transition configureStage(value: Uint32)
+  is_owner = builtin eq contract_owner _sender;
+
+  match is_owner with
+  | False =>
+    err = CodeNotAuthorised;
+    EmitError err
+  | True =>
+    stage <- max_stage;
+    max_stage := value;
+    e = {
+      _eventname: "MaxStageChanged";
+      old: stage;
+      new: value
+    };
+    event e
+  end
+end
+
 procedure addToken(to: ByStr20, token_id: Uint256)
   tokens_owner_stage[to][token_id] := default_stage
 end
@@ -315,33 +328,51 @@ procedure generateImageGenStep(gen_rand:Uint256, check_with:Uint256, val:Uint256
 end
 
 transition UpState(token_id: Uint256)
-  token_stage <- tokens_owner_stage[_sender][token_id];
+  (* Check if token exists *)
+  some_token_owner <- token_owners[token_id];
   max_stage_of_token <- max_stage;
 
-  match token_stage with
-    | Some stage => 
-      one32 = Uint32 1;
-      next_stage = builtin add stage one32;
-      is_max = builtin lt next_stage max_stage_of_token;
+  match some_token_owner with
+  | None =>
+    (* Token does not exists, return error code *)
+    err = CodeNotFound;
+    EmitError err
+  | Some token_owner =>
+    is_owner = builtin eq _sender token_owner;
 
-      match is_max with
-        | True =>
+    match is_owner with
+    | False =>
+      (* Unauthorised transaction*)
+      err = CodeNotAuthorised;
+      EmitError err
+    | True =>
+      some_token_stage <- tokens_owner_stage[token_owner][token_id];
+      match some_token_stage with
+        | Some stage => 
+          one32 = Uint32 1;
+          next_stage = builtin add stage one32;
+          is_max = builtin lt next_stage max_stage_of_token;
+
+          match is_max with
+            | True =>
+              err = CodeStageError;
+              EmitError err
+            | False =>
+              tokens_owner_stage[_sender][token_id] := next_stage;
+
+              e = {
+                _eventname: "TokenStageUpgrade";
+                token_id: token_id;
+                old_stage: stage;
+                next_stage: next_stage
+              };
+              event e
+          end
+        | None =>
           err = CodeStageError;
           EmitError err
-        | False =>
-          tokens_owner_stage[_sender][token_id] := next_stage;
-
-          e = {
-            _eventname: "TokenStageUpgrade";
-            token_id: token_id;
-            old_stage: stage;
-            next_stage: next_stage
-          };
-          event e
       end
-    | None =>
-      err = CodeStageError;
-      EmitError err
+    end
   end
 end
 
@@ -700,7 +731,7 @@ transition burn(token_id: Uint256)
       delete token_uris[token_id];
       delete token_gen_battle[token_id];
       delete token_gen_image[token_id];
-      delete tokens_owner_stage[_sender][token_id];
+      delete tokens_owner_stage[token_owner][token_id];
       (* Deduct from owned_token_count *)
       some_current_count <- owned_token_count[token_owner];
       some_new_count = sub_owner_count some_current_count;
@@ -810,7 +841,6 @@ end
 transition transfer(to: ByStr20, token_id: Uint256)
   (* Check if token exists *)
   some_token_owner <- token_owners[token_id];
-  owner_stage <- tokens_owner_stage[_sender][token_id];
 
   match some_token_owner with
   | None =>
@@ -826,6 +856,8 @@ transition transfer(to: ByStr20, token_id: Uint256)
       err = CodeNotAuthorised;
       EmitError err
     | True =>
+      owner_stage <- tokens_owner_stage[token_owner][token_id];
+
       match owner_stage with
       | None =>
         (* Token does not exists, return error code *)
@@ -836,7 +868,7 @@ transition transfer(to: ByStr20, token_id: Uint256)
         token_owners[token_id] := to;
         (* Delete tokenApproval entry for that token_id *)
         delete token_approvals[token_id];
-        delete tokens_owner_stage[_sender][token_id];
+        delete tokens_owner_stage[token_owner][token_id];
         (* Subtract one from previous token owner count *)
         some_from_count <- owned_token_count[_sender];
         new_from_count = sub_owner_count some_from_count;
@@ -870,7 +902,6 @@ end
 transition transferFrom(to: ByStr20, token_id: Uint256)
   (* Check if token exists *)
   some_token_owner <- token_owners[token_id];
-  owner_stage <- tokens_owner_stage[_sender][token_id];
 
   match some_token_owner with
   | None =>
@@ -878,6 +909,7 @@ transition transferFrom(to: ByStr20, token_id: Uint256)
     err = CodeNotFound;
     EmitError err
   | Some token_owner =>
+    owner_stage <- tokens_owner_stage[token_owner][token_id];
     (* Check if sender is an approved_spender *)
     some_token_approval <- token_approvals[token_id];
     is_approved = match some_token_approval with
@@ -909,7 +941,7 @@ transition transferFrom(to: ByStr20, token_id: Uint256)
         token_owners[token_id] := to;
         (* Delete tokenApproval entry for that token_id *)
         delete token_approvals[token_id];
-        delete tokens_owner_stage[_sender][token_id];
+        delete tokens_owner_stage[token_owner][token_id];
         (* Subtract one from previous token owner count *)
         some_from_count <- owned_token_count[token_owner];
         new_from_count = sub_owner_count some_from_count;
