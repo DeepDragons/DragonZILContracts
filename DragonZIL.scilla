@@ -157,9 +157,6 @@ field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
 field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
   = Emp ByStr20 (Map Uint256 Uint32)
 
-field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
-  = Emp ByStr20 (Map Uint256 Uint32)
-
 (* Total token count *)
 field total_supply: Uint256 = Uint256 0
 field count_supply: Uint256 = Uint256 0
@@ -302,18 +299,6 @@ end
 
 procedure addToken(to: ByStr20, token_id: Uint256)
   tokens_owner_stage[to][token_id] := default_stage
-end
-
-transition ChangeCloud(new_cloud: String)
-  is_owner = builtin eq contract_owner _sender;
-
-  match is_owner with
-  | False =>
-    err = CodeNotAuthorised;
-    EmitError err
-  | True =>
-    cloud := new_cloud
-  end
 end
 
 transition UpState(token_id: Uint256)
