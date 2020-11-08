@@ -182,6 +182,22 @@ procedure IsContractOwner()
   end
 end
 
+procedure ChangeTokenURI(token_id: Uint256, stage: Uint32)
+  cloud_url <- cloud;
+
+  separate = "_";
+
+  stage_as_astring = builtin to_string stage;
+  stage_separate = builtin concat stage_as_astring separate;
+  number_of_token = builtin to_string token_id;
+  id_name = builtin concat stage_separate number_of_token;
+  token_image_name = builtin concat id_name format;
+  token_uri = builtin concat cloud_url token_image_name;
+
+  (* Add token_uri for token_id *)
+  token_uris[token_id] := token_uri
+end
+
 (* Getter transitions *)
 
 (* @dev: Get number of NFTs assigned to a token_owner *)
@@ -340,8 +356,16 @@ transition configureMinter(minter: ByStr20)
   end
 end
 
-procedure addToken(to: ByStr20, token_id: Uint256)
-  tokens_owner_stage[to][token_id] := default_stage
+transition configureStage(value: Uint32)
+  IsContractOwner;
+
+  stage <- max_stage;
+  max_stage := value;
+  e = {
+    _eventname: "MaxStageChanged";
+    old: stage;
+    new: value
+  };
 end
 
 transition UpState(token_id: Uint256)
@@ -375,7 +399,9 @@ transition UpState(token_id: Uint256)
               err = CodeStageError;
               EmitError err
             | False =>
-              tokens_owner_stage[_sender][token_id] := next_stage;
+              tokens_owner_stage[token_owner][token_id] := next_stage;
+
+              ChangeTokenURI token_owner next_stage;
 
               e = {
                 _eventname: "TokenStageUpgrade";
@@ -737,13 +763,6 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   token_gen_image[token_id] := gens_image_
 end
 
-(* @dev:    Mint new tokens. Only contract_owner can mint.         *)
-(* @param:  to        - Address of the token recipient             *)
-(* @param:  token_id  - ID of the new token to be minted           *)
-(* @param:  token_uri -  URI of the the new token to be minted     *)
-(* Returns error event CodeTokenExists if token already exists.    *)
-(* Returns error event CodeNotAuthorised if _sender is not minter. *)
-(* Revert transition if invalid recipient contract.                *)
 transition mint(to: ByStr20)
   number_of_tokens <- count_supply;
   cloud_url <- cloud;
@@ -768,11 +787,6 @@ transition mint(to: ByStr20)
       token_owners[token_id] := to;
       entropyNumber <- entropy;
       current_block <- & BLOCKNUMBER;
-      stage_as_str = "0_";
-      number_of_token = builtin to_string token_id;
-      id_name = builtin concat stage_as_str number_of_token;
-      token_image_name = builtin concat id_name format;
-      token_uri = builtin concat cloud_url token_image_name;
 
       random1 = random entropyNumber current_block to;
       random2 = random random1 current_block to;
@@ -786,24 +800,41 @@ transition mint(to: ByStr20)
       some_current_count <- owned_token_count[to];
       new_count = add_owner_count some_current_count;
       owned_token_count[to] := new_count;
-      (* Add token_uri for token_id *)
-      token_uris[token_id] := token_uri;
+
+      ChangeTokenURI token_id default_stage;
+
       (* Add to total_supply *)
       current_supply <- total_supply;
+      token_uri <- token_uris[token_id];
+
       new_supply = builtin add current_supply one;
       new_count = builtin add number_of_tokens one;
       total_supply := new_supply;
       count_supply := new_count;
-      addToken to token_id;
+      tokens_owner_stage[to][token_id] := default_stage;
       (* Emit success event *)
-      e = {_eventname: "MintSuccess"; by: _sender; recipient: to;
-           token_id: token_id; token_uri: token_uri};
+      e = {
+        _eventname: "MintSuccess";
+        by: _sender;
+        recipient: to;
+        token_id: token_id;
+        token_uri: token_uri
+      };
       event e;
       (* Send dummy message.                                                         *)
       (* Revert transition if invalid recipient contract. Ignore if external address *)
-      msg_to_recipient = { _tag : "recipientAcceptMint"; _recipient : to; _amount : Uint128 0 };
-      msg_to_sender = { _tag : "mintCallBack"; _recipient : _sender; _amount : Uint128 0;
-                        recipient : to; token_id : token_id};
+      msg_to_recipient = {
+        _tag: "recipientAcceptMint";
+        _recipient: to;
+        _amount: Uint128 0
+      };
+      msg_to_sender = {
+        _tag: "mintCallBack";
+        _recipient: _sender;
+        _amount: Uint128 0;
+        recipient: to;
+        token_id: token_id
+      };
       msgs = two_msgs msg_to_recipient msg_to_sender;
       send msgs
     | False =>
