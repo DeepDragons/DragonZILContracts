@@ -164,12 +164,22 @@ field count_supply: Uint256 = Uint256 0
 field cloud: String = ""
 
 
-
 (* Emit Errors *)
 procedure EmitError(err : Error)
   e = make_error_event err;
   event e;
   throw
+end
+
+procedure IsContractOwner()
+  is_owner = builtin eq contract_owner _sender;
+
+  match is_owner with
+  | True =>
+  | False =>
+    err = CodeNotAuthorised;
+    EmitError err
+  end
 end
 
 (* Getter transitions *)
@@ -182,8 +192,12 @@ transition balanceOf(address: ByStr20)
     | Some bal => bal
     | None => Uint256 0
     end;
-  msg_to_sender = { _tag : "balanceOfCallBack"; _recipient : _sender;
-                    _amount : Uint128 0; balance : balance};
+  msg_to_sender = {
+    _tag: "balanceOfCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    balance: balance
+  };
   msgs = one_msg msg_to_sender;
   send msgs
 end
@@ -191,24 +205,36 @@ end
 (* @dev: Get total supply of NFTs minted *)
 transition totalSupply()
   current_supply <- total_supply;
-  msg_to_sender = { _tag : "totalSupplyCallBack"; _recipient : _sender; _amount : Uint128 0;
-                   total_supply : current_supply};
+  msg_to_sender = {
+    _tag: "totalSupplyCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    total_supply: current_supply
+  };
   msgs = one_msg msg_to_sender;
   send msgs
 end
 
 (* @dev: Get name of the NFTs *)
 transition name()
-  msg_to_sender = { _tag : "nameCallBack"; _recipient : _sender; _amount : Uint128 0;
-                   name : name};
+  msg_to_sender = {
+    _tag: "nameCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    name: name
+  };
   msgs = one_msg msg_to_sender;
   send msgs
 end
 
 (* @dev: Get name of the NFTs *)
 transition symbol()
-  msg_to_sender = { _tag : "symbolCallBack"; _recipient : _sender; _amount : Uint128 0;
-                   symbol : symbol};
+  msg_to_sender = {
+    _tag: "symbolCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    symbol: symbol
+  };
   msgs = one_msg msg_to_sender;
   send msgs
 end
@@ -218,8 +244,13 @@ transition getApproved(token_id: Uint256)
   some_token_approval <- token_approvals[token_id];
   match some_token_approval with
   | Some addr =>
-    msg_to_sender = { _tag : "getApprovedCallBack"; _recipient : _sender; _amount : Uint128 0;
-                      approved_addr : addr; token_id : token_id};
+    msg_to_sender = {
+      _tag: "getApprovedCallBack";
+      _recipient: _sender;
+      _amount: Uint128 0;
+      approved_addr: addr;
+      token_id: token_id
+    };
     msgs = one_msg msg_to_sender;
     send msgs
   | None => throw
@@ -231,8 +262,12 @@ transition getTokenURI(token_id: Uint256)
   some_token_uri <- token_uris[token_id];
   match some_token_uri with
   | Some token_uri =>
-    msg_to_sender = { _tag : "getTokenURICallBack"; _recipient : _sender; _amount : Uint128 0;
-                      token_uri : token_uri};
+    msg_to_sender = {
+      _tag: "getTokenURICallBack";
+      _recipient: _sender;
+      _amount: Uint128 0;
+      token_uri: token_uri
+    };
     msgs = one_msg msg_to_sender;
     send msgs
   | None => throw
@@ -247,8 +282,12 @@ transition isOwner(token_id: Uint256, address: ByStr20)
     | Some addr => builtin eq addr address
     | None => False
     end;
-  msg_to_sender = { _tag : "isOwnerCallBack"; _recipient : _sender; _amount : Uint128 0;
-                    is_owner : is_owner_bool};
+  msg_to_sender = {
+    _tag: "isOwnerCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    is_owner: is_owner_bool
+  };
   msgs = one_msg msg_to_sender;
   send msgs
 end
@@ -261,8 +300,12 @@ transition isApprovedForAll(token_owner: ByStr20, operator: ByStr20)
     | Some status => status
     | None => False
     end;
-  msg_to_sender = { _tag : "isApprovedForAllCallBack"; _recipient : _sender; _amount : Uint128 0;
-                   is_operator : is_operator};
+  msg_to_sender = {
+    _tag: "isApprovedForAllCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    is_operator: is_operator
+  };
   msgs = one_msg msg_to_sender;
   send msgs
 end
@@ -273,27 +316,27 @@ end
 (* @param:  minter      - Address of the minter to be approved or removed            *)
 (* Returns error event CodeNotAuthorised if _sender is not contract_owner.           *)
 transition configureMinter(minter: ByStr20)
-  is_owner = builtin eq contract_owner _sender;
-  match is_owner with
-  | False =>
-    (* Token exists, return error code *)
-    err = CodeNotAuthorised;
-    EmitError err
-  | True =>
-    some_minter <- minters[minter];
-    match some_minter with
-    | Some Unit =>
-      delete minters[minter];
-      (* Emit success event *)
-      e = {_eventname: "RemovedMinterSuccess"; minter: minter};
-      event e
-    | None =>
-      authorize = Unit;
-      minters[minter] := authorize;
-      (* Emit success event *)
-      e = {_eventname: "AddMinterSuccess"; minter: minter};
-      event e
-    end
+  IsContractOwner;
+
+  some_minter <- minters[minter];
+  match some_minter with
+  | Some Unit =>
+    delete minters[minter];
+    (* Emit success event *)
+    e = {
+      _eventname: "RemovedMinterSuccess";
+      minter: minter
+    };
+    event e
+  | None =>
+    authorize = Unit;
+    minters[minter] := authorize;
+    (* Emit success event *)
+    e = {
+      _eventname: "AddMinterSuccess";
+      minter: minter
+    };
+    event e
   end
 end
 
@@ -351,15 +394,9 @@ transition UpState(token_id: Uint256)
 end
 
 transition ChangeCloud(new_cloud: String)
-  is_owner = builtin eq contract_owner _sender;
+  IsContractOwner;
 
-  match is_owner with
-  | False =>
-    err = CodeNotAuthorised;
-    EmitError err
-  | True =>
-    cloud := new_cloud
-  end
+  cloud := new_cloud
 end
 
 procedure generateImageGen(token_id:Uint256, random_val: Uint256)
