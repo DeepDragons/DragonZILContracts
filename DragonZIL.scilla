@@ -198,234 +198,6 @@ procedure ChangeTokenURI(token_id: Uint256, stage: Uint32)
   token_uris[token_id] := token_uri
 end
 
-(* Getter transitions *)
-
-(* @dev: Get number of NFTs assigned to a token_owner *)
-transition balanceOf(address: ByStr20)
-  some_bal <- owned_token_count[address];
-  balance =
-    match some_bal with
-    | Some bal => bal
-    | None => Uint256 0
-    end;
-  msg_to_sender = {
-    _tag: "balanceOfCallBack";
-    _recipient: _sender;
-    _amount: Uint128 0;
-    balance: balance
-  };
-  msgs = one_msg msg_to_sender;
-  send msgs
-end
-
-(* @dev: Get total supply of NFTs minted *)
-transition totalSupply()
-  current_supply <- total_supply;
-  msg_to_sender = {
-    _tag: "totalSupplyCallBack";
-    _recipient: _sender;
-    _amount: Uint128 0;
-    total_supply: current_supply
-  };
-  msgs = one_msg msg_to_sender;
-  send msgs
-end
-
-(* @dev: Get name of the NFTs *)
-transition name()
-  msg_to_sender = {
-    _tag: "nameCallBack";
-    _recipient: _sender;
-    _amount: Uint128 0;
-    name: name
-  };
-  msgs = one_msg msg_to_sender;
-  send msgs
-end
-
-(* @dev: Get name of the NFTs *)
-transition symbol()
-  msg_to_sender = {
-    _tag: "symbolCallBack";
-    _recipient: _sender;
-    _amount: Uint128 0;
-    symbol: symbol
-  };
-  msgs = one_msg msg_to_sender;
-  send msgs
-end
-
-(* @dev: Get approved_addr for token_id *)
-transition getApproved(token_id: Uint256)
-  some_token_approval <- token_approvals[token_id];
-  match some_token_approval with
-  | Some addr =>
-    msg_to_sender = {
-      _tag: "getApprovedCallBack";
-      _recipient: _sender;
-      _amount: Uint128 0;
-      approved_addr: addr;
-      token_id: token_id
-    };
-    msgs = one_msg msg_to_sender;
-    send msgs
-  | None => throw
-  end
-end
-
-(* @dev: Get the token_uri of a certain token_id *)
-transition getTokenURI(token_id: Uint256)
-  some_token_uri <- token_uris[token_id];
-  match some_token_uri with
-  | Some token_uri =>
-    msg_to_sender = {
-      _tag: "getTokenURICallBack";
-      _recipient: _sender;
-      _amount: Uint128 0;
-      token_uri: token_uri
-    };
-    msgs = one_msg msg_to_sender;
-    send msgs
-  | None => throw
-  end
-end
-
-(* @dev: Check if a token_id is owned by a token_owner and get a Bool *)
-transition isOwner(token_id: Uint256, address: ByStr20)
-  some_token_owner <- token_owners[token_id];
-  is_owner_bool =
-    match some_token_owner with
-    | Some addr => builtin eq addr address
-    | None => False
-    end;
-  msg_to_sender = {
-    _tag: "isOwnerCallBack";
-    _recipient: _sender;
-    _amount: Uint128 0;
-    is_owner: is_owner_bool
-  };
-  msgs = one_msg msg_to_sender;
-  send msgs
-end
-
-(* @dev: Check if address is operator for token_owner and get a Bool *)
-transition isApprovedForAll(token_owner: ByStr20, operator: ByStr20)
-  some_operator_approval <- operator_approvals[token_owner][operator];
-  is_operator =
-    match some_operator_approval with
-    | Some status => status
-    | None => False
-    end;
-  msg_to_sender = {
-    _tag: "isApprovedForAllCallBack";
-    _recipient: _sender;
-    _amount: Uint128 0;
-    is_operator: is_operator
-  };
-  msgs = one_msg msg_to_sender;
-  send msgs
-end
-
-(* Interface transitions *)
-
-(* @dev:    Add or remove approved minters. Only contract_owner can approve minters. *)
-(* @param:  minter      - Address of the minter to be approved or removed            *)
-(* Returns error event CodeNotAuthorised if _sender is not contract_owner.           *)
-transition configureMinter(minter: ByStr20)
-  IsContractOwner;
-
-  some_minter <- minters[minter];
-  match some_minter with
-  | Some Unit =>
-    delete minters[minter];
-    (* Emit success event *)
-    e = {
-      _eventname: "RemovedMinterSuccess";
-      minter: minter
-    };
-    event e
-  | None =>
-    authorize = Unit;
-    minters[minter] := authorize;
-    (* Emit success event *)
-    e = {
-      _eventname: "AddMinterSuccess";
-      minter: minter
-    };
-    event e
-  end
-end
-
-transition configureStage(value: Uint32)
-  IsContractOwner;
-
-  stage <- max_stage;
-  max_stage := value;
-  e = {
-    _eventname: "MaxStageChanged";
-    old: stage;
-    new: value
-  };
-  event e
-end
-
-transition UpState(token_id: Uint256)
-  (* Check if token exists *)
-  some_token_owner <- token_owners[token_id];
-  max_stage_of_token <- max_stage;
-
-  match some_token_owner with
-  | None =>
-    (* Token does not exists, return error code *)
-    err = CodeNotFound;
-    EmitError err
-  | Some token_owner =>
-    is_owner = builtin eq _sender token_owner;
-
-    match is_owner with
-    | False =>
-      (* Unauthorised transaction*)
-      err = CodeNotAuthorised;
-      EmitError err
-    | True =>
-      some_token_stage <- tokens_owner_stage[token_owner][token_id];
-      match some_token_stage with
-        | Some stage => 
-          one32 = Uint32 1;
-          next_stage = builtin add stage one32;
-          is_max = builtin lt next_stage max_stage_of_token;
-
-          match is_max with
-            | True =>
-              err = CodeStageError;
-              EmitError err
-            | False =>
-              tokens_owner_stage[token_owner][token_id] := next_stage;
-
-              ChangeTokenURI token_id next_stage;
-
-              e = {
-                _eventname: "TokenStageUpgrade";
-                token_id: token_id;
-                old_stage: stage;
-                next_stage: next_stage
-              };
-              event e
-          end
-        | None =>
-          err = CodeStageError;
-          EmitError err
-      end
-    end
-  end
-end
-
-transition ChangeCloud(new_cloud: String)
-  IsContractOwner;
-
-  cloud := new_cloud
-end
-
 procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   random = random_val;
   (* gens init for current token *)
@@ -762,6 +534,234 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
 
   (* store gens to token *)
   token_gen_image[token_id] := gens_image_
+end
+
+(* Getter transitions *)
+
+(* @dev: Get number of NFTs assigned to a token_owner *)
+transition balanceOf(address: ByStr20)
+  some_bal <- owned_token_count[address];
+  balance =
+    match some_bal with
+    | Some bal => bal
+    | None => Uint256 0
+    end;
+  msg_to_sender = {
+    _tag: "balanceOfCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    balance: balance
+  };
+  msgs = one_msg msg_to_sender;
+  send msgs
+end
+
+(* @dev: Get total supply of NFTs minted *)
+transition totalSupply()
+  current_supply <- total_supply;
+  msg_to_sender = {
+    _tag: "totalSupplyCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    total_supply: current_supply
+  };
+  msgs = one_msg msg_to_sender;
+  send msgs
+end
+
+(* @dev: Get name of the NFTs *)
+transition name()
+  msg_to_sender = {
+    _tag: "nameCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    name: name
+  };
+  msgs = one_msg msg_to_sender;
+  send msgs
+end
+
+(* @dev: Get name of the NFTs *)
+transition symbol()
+  msg_to_sender = {
+    _tag: "symbolCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    symbol: symbol
+  };
+  msgs = one_msg msg_to_sender;
+  send msgs
+end
+
+(* @dev: Get approved_addr for token_id *)
+transition getApproved(token_id: Uint256)
+  some_token_approval <- token_approvals[token_id];
+  match some_token_approval with
+  | Some addr =>
+    msg_to_sender = {
+      _tag: "getApprovedCallBack";
+      _recipient: _sender;
+      _amount: Uint128 0;
+      approved_addr: addr;
+      token_id: token_id
+    };
+    msgs = one_msg msg_to_sender;
+    send msgs
+  | None => throw
+  end
+end
+
+(* @dev: Get the token_uri of a certain token_id *)
+transition getTokenURI(token_id: Uint256)
+  some_token_uri <- token_uris[token_id];
+  match some_token_uri with
+  | Some token_uri =>
+    msg_to_sender = {
+      _tag: "getTokenURICallBack";
+      _recipient: _sender;
+      _amount: Uint128 0;
+      token_uri: token_uri
+    };
+    msgs = one_msg msg_to_sender;
+    send msgs
+  | None => throw
+  end
+end
+
+(* @dev: Check if a token_id is owned by a token_owner and get a Bool *)
+transition isOwner(token_id: Uint256, address: ByStr20)
+  some_token_owner <- token_owners[token_id];
+  is_owner_bool =
+    match some_token_owner with
+    | Some addr => builtin eq addr address
+    | None => False
+    end;
+  msg_to_sender = {
+    _tag: "isOwnerCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    is_owner: is_owner_bool
+  };
+  msgs = one_msg msg_to_sender;
+  send msgs
+end
+
+(* @dev: Check if address is operator for token_owner and get a Bool *)
+transition isApprovedForAll(token_owner: ByStr20, operator: ByStr20)
+  some_operator_approval <- operator_approvals[token_owner][operator];
+  is_operator =
+    match some_operator_approval with
+    | Some status => status
+    | None => False
+    end;
+  msg_to_sender = {
+    _tag: "isApprovedForAllCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    is_operator: is_operator
+  };
+  msgs = one_msg msg_to_sender;
+  send msgs
+end
+
+(* Interface transitions *)
+
+(* @dev:    Add or remove approved minters. Only contract_owner can approve minters. *)
+(* @param:  minter      - Address of the minter to be approved or removed            *)
+(* Returns error event CodeNotAuthorised if _sender is not contract_owner.           *)
+transition configureMinter(minter: ByStr20)
+  IsContractOwner;
+
+  some_minter <- minters[minter];
+  match some_minter with
+  | Some Unit =>
+    delete minters[minter];
+    (* Emit success event *)
+    e = {
+      _eventname: "RemovedMinterSuccess";
+      minter: minter
+    };
+    event e
+  | None =>
+    authorize = Unit;
+    minters[minter] := authorize;
+    (* Emit success event *)
+    e = {
+      _eventname: "AddMinterSuccess";
+      minter: minter
+    };
+    event e
+  end
+end
+
+transition configureStage(value: Uint32)
+  IsContractOwner;
+
+  stage <- max_stage;
+  max_stage := value;
+  e = {
+    _eventname: "MaxStageChanged";
+    old: stage;
+    new: value
+  };
+  event e
+end
+
+transition UpState(token_id: Uint256)
+  (* Check if token exists *)
+  some_token_owner <- token_owners[token_id];
+  max_stage_of_token <- max_stage;
+
+  match some_token_owner with
+  | None =>
+    (* Token does not exists, return error code *)
+    err = CodeNotFound;
+    EmitError err
+  | Some token_owner =>
+    is_owner = builtin eq _sender token_owner;
+
+    match is_owner with
+    | False =>
+      (* Unauthorised transaction*)
+      err = CodeNotAuthorised;
+      EmitError err
+    | True =>
+      some_token_stage <- tokens_owner_stage[token_owner][token_id];
+      match some_token_stage with
+        | Some stage => 
+          one32 = Uint32 1;
+          next_stage = builtin add stage one32;
+          is_max = builtin lt next_stage max_stage_of_token;
+
+          match is_max with
+            | True =>
+              err = CodeStageError;
+              EmitError err
+            | False =>
+              tokens_owner_stage[token_owner][token_id] := next_stage;
+
+              ChangeTokenURI token_id next_stage;
+
+              e = {
+                _eventname: "TokenStageUpgrade";
+                token_id: token_id;
+                old_stage: stage;
+                next_stage: next_stage
+              };
+              event e
+          end
+        | None =>
+          err = CodeStageError;
+          EmitError err
+      end
+    end
+  end
+end
+
+transition ChangeCloud(new_cloud: String)
+  IsContractOwner;
+
+  cloud := new_cloud
 end
 
 transition mint(to: ByStr20)
