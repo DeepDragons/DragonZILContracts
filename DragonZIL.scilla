@@ -366,6 +366,7 @@ transition configureStage(value: Uint32)
     old: stage;
     new: value
   };
+  event e
 end
 
 transition UpState(token_id: Uint256)
@@ -401,7 +402,7 @@ transition UpState(token_id: Uint256)
             | False =>
               tokens_owner_stage[token_owner][token_id] := next_stage;
 
-              ChangeTokenURI token_owner next_stage;
+              ChangeTokenURI token_id next_stage;
 
               e = {
                 _eventname: "TokenStageUpgrade";
