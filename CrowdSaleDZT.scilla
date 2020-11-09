@@ -190,7 +190,7 @@ transition Buy()
       addition = builtin mul inc dragon_count128;
       new_price = builtin add price addition;
 
-      current_price := new_price;
+      current_price := new_price
     | True =>
       err = CodeInsufficientAmount;
       ThrowError err
