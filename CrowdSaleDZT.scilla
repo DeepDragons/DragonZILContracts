@@ -191,7 +191,6 @@ transition Buy()
       new_price = builtin add price addition;
 
       current_price := new_price;
-      is_dragon_owner[_sender] := tt
     | True =>
       err = CodeInsufficientAmount;
       ThrowError err
