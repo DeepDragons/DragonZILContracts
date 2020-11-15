@@ -15,42 +15,31 @@ let one_msg =
   let nil_msg = Nil {Message} in
     Cons {Message} msg nil_msg
 
-let list_length : forall 'A. List 'A -> Uint128 =
-   tfun 'A =>
-   fun (l : List 'A) =>
-   let foldl = @list_foldl 'A Uint128 in
-   let init = Uint128 0 in
-   let one = Uint128 1 in
-   let iter =
-     fun (z : Uint128) =>
-     fun (h : 'A) =>
-       builtin add one z
-   in
-     foldl iter init l
-
-let iota : Uint32 -> Uint32 -> List Uint32 =
-  fun (m : Uint32) => fun (n : Uint32) =>
+let iota =
+  fun (m : Uint32) =>
+  fun (n : Uint32) =>
+  fun (value : ByStr20) =>
     let m_lt_n = builtin lt m n in
     match m_lt_n with
     | True =>
         let delta = builtin sub n m in
         let delta_nat = builtin to_nat delta in
-        let nil = Nil {Uint32} in
-        let acc_init = Pair {(List Uint32) Uint32} nil n in
+        let nil = Nil {ByStr20} in
+        let acc_init = Pair {(List ByStr20) Uint32} nil n in
         let one = Uint32 1 in
-        let step = fun (xs_n : Pair (List Uint32) Uint32) => fun (ignore : Nat) =>
+        let step = fun (xs_n : Pair (List ByStr20) Uint32) => fun (ignore : Nat) =>
           match xs_n with
           | Pair xs n =>
               let new_n = builtin sub n one in
-              let new_xs = Cons {Uint32} new_n xs in
-              Pair {(List Uint32) Uint32} new_xs new_n
+              let new_xs = Cons {ByStr20} value xs in
+              Pair {(List ByStr20) Uint32} new_xs new_n
           end in
-        let fold = @nat_fold (Pair (List Uint32) Uint32) in
+        let fold = @nat_fold (Pair (List ByStr20) Uint32) in
         let xs_m = fold step acc_init delta_nat in
         match xs_m with
         | Pair xs m => xs
         end
-    | False => Nil {Uint32}
+    | False => Nil {ByStr20}
     end
 
 (* Error events *)
@@ -109,12 +98,12 @@ procedure IsOwner()
   end
 end
 
-procedure BuyOne(count: Uint32)
+procedure MintDragons(onwers: List ByStr20)
   mint_call = {
-    _tag: "Mint";
+    _tag: "BatchMint";
     _recipient: main_dzt;
     _amount: Uint128 0;
-    to: _sender
+    onwers: onwers
   };
   msgs = one_msg mint_call;
   send msgs
@@ -155,11 +144,11 @@ transition Buy()
 
     match is_zero with
     | False =>
-      dumy_list = iota zero count;
+      owner_list = iota zero count _sender;
 
       accept;
 
-      forall dumy_list BuyOne;
+      MintDragons owner_list;
 
       addition = builtin mul inc dragon_count128;
       new_price = builtin add price addition;
