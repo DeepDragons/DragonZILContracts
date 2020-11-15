@@ -705,7 +705,15 @@ procedure Birth(token: Dragon)
     (* Add token gens battle *)
     token_gen_battle[token_id] := gen_battle;
     (* Add token gen image *)
-    token_gen_image[token_id] := gen_image
+    token_gen_image[token_id] := gen_image;
+    e = {
+      _eventname: "BirthSuccess";
+      by: _sender;
+      recipient: owner;
+      token_id: token_id;
+      token_uri: token_uri
+    };
+    event e
   end
 end
 
