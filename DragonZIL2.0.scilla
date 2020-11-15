@@ -889,6 +889,10 @@ transition ConfigureStage(value: Uint32)
   };
   event e
 end
+
+transition GiveBirth()
+  IsMinter _sender;
+end
 (* DragonZIL transition *)
 
 (* @dev:    Add or remove approved minters. Only contract_owner can approve minters. *)
@@ -956,25 +960,6 @@ transition Mint(to: ByStr20)
   send msgs
 end
 
-(* transition BatchMint(to: ByStr20, token_uris_list: List String)
-  pair_token_uri_list = @list_map String (Pair ByStr20 String);
-  tmp_fun = build_pair to;
-  input_list = pair_token_uri_list tmp_fun token_uris_list;
-  forall input_list Minting;
-  msg_to_recipient = {
-    _tag: "RecipientAcceptBatchMint";
-    _recipient: to;
-    _amount: Uint128 0
-  };
-  msg_to_sender = {
-    _tag: "BatchMintCallBack";
-    _recipient: _sender;
-    _amount: Uint128 0
-  };
-  msgs = two_msgs msg_to_recipient msg_to_sender;
-  send msgs
-end *)
-
 (* @dev:    Burn existing tokens. Only token_owner or an operator can burn a NFT. *)
 (* @param:  token_id - Unique ID of the NFT to be destroyed                       *)
 transition Burn(token_id: Uint256)
@@ -1015,7 +1000,6 @@ transition Burn(token_id: Uint256)
     send msgs
   end
 end
-
 
 (* @dev: Approves OR remove an address ability to transfer a given token_id *)
 (* There can only be one approved_spender per token at any given time       *)
