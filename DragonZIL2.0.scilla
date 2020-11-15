@@ -14,9 +14,11 @@ type Operation =
 | Add
 | Sub
 
+(* DragonZIL types *)
 (* Custom ADT storing - token_id, owner, stage, token_uri, token_gen_battle, token_gen_image *)
 type Dragon =
 | Dragon of Uint256 ByStr20 Uint32 String Uint256 Uint256
+(* DragonZIL types *)
 
 (* Global variables *)
 let zero = Uint256 0
@@ -677,7 +679,7 @@ procedure Minting(token_id: Uint256, to: ByStr20)
   UpdateTokenCount add_operation to;
 
   token_uri <- token_uris[token_id];
-  
+
   e = {
     _eventname: "MintSuccess";
     by: _sender;
@@ -686,6 +688,25 @@ procedure Minting(token_id: Uint256, to: ByStr20)
     token_uri: token_uri
   };
   event e
+end
+
+procedure Birth(token: Dragon)
+  match token with
+  | Dragon token_id owner stage token_uri gen_battle gen_image =>
+    IsTokenExists token_id;
+    (* Add address stage. *)
+    tokens_owner_stage[owner][token_id] := stage;
+    (* Mint new non-fungible token *)
+    token_owners[token_id] := owner;
+    (* Add to owner count *)
+    UpdateTokenCount add_operation owner;
+    (* Add token_uri for token_id *)
+    token_uris[token_id] := token_uri;
+    (* Add token gens battle *)
+    token_gen_battle[token_id] := gen_battle;
+    (* Add token gen image *)
+    token_gen_image[token_id] := gen_image
+  end
 end
 
 (* Getter transitions *)
@@ -894,9 +915,11 @@ transition ConfigureStage(value: Uint32)
   event e
 end
 
-(* transition GiveBirth()
+transition GiveBirth(dragons: List Dragon)
   IsMinter _sender;
-end *)
+
+  forall dragons Birth
+end
 (* DragonZIL transition *)
 
 (* @dev:    Add or remove approved minters. Only contract_owner can approve minters. *)
