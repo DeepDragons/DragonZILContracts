@@ -654,6 +654,7 @@ procedure Minting(input_pair: Pair ByStr20 String)
     fst_string_bystr20 input_pair;
   token_uri = let snd_string_bystr20 = @snd ByStr20 String in
     snd_string_bystr20 input_pair;
+
   IsMinter _sender;
   (* Add to owner count *)
   UpdateTokenCount add_operation to;
@@ -1123,40 +1124,51 @@ transition TransferFrom(to: ByStr20, token_id: Uint256)
     err = CodeNotFound;
     ThrowError err
   | Some token_owner =>
-    IsSelf to token_owner;
-    IsApprovedSpenderOrOperator token_id token_owner;
-    (* Change token_owner for that token_id *)
-    token_owners[token_id] := to;
-    (* Delete tokenApproval entry for that token_id *)
-    delete token_approvals[token_id];
-    (* Subtract one from previous token owner count *)
-    UpdateTokenCount sub_operation token_owner;
-    (* Add one to the new token owner count *)
-    UpdateTokenCount add_operation to;
-    e = {
-      _eventname: "TransferFromSuccess";
-      from: token_owner;
-      recipient: to;
-      token_id: token_id
-    };
-    event e;
-    msg_to_recipient = {
-      _tag: "RecipientAcceptTransferFrom";
-      _recipient: to;
-      _amount: Uint128 0; 
-      from: token_owner;
-      recipient: to;
-      token_id: token_id
-    };
-    msg_to_sender = {
-      _tag: "TransferFromSuccessCallBack";
-      _recipient: _sender;
-      _amount: Uint128 0; 
-      from: token_owner;
-      recipient: to;
-      token_id: token_id
-    };
-    msgs = two_msgs msg_to_recipient msg_to_sender;
-    send msgs
+    owner_stage <- tokens_owner_stage[token_owner][token_id];
+    match owner_stage with
+      | None =>
+        (* Token does not exists, return error code *)
+        err = CodeNotFound;
+        ThrowError err
+      | Some stage =>
+        IsSelf to token_owner;
+        IsApprovedSpenderOrOperator token_id token_owner;
+        (* Change token_owner for that token_id *)
+        token_owners[token_id] := to;
+        (* Delete tokenApproval entry for that token_id *)
+        delete token_approvals[token_id];
+        (* Remove stage of tokensOwner *)
+        delete tokens_owner_stage[token_owner][token_id];
+        (* Subtract one from previous token owner count *)
+        UpdateTokenCount sub_operation token_owner;
+        (* Add one to the new token owner count *)
+        UpdateTokenCount add_operation to;
+        tokens_owner_stage[to][token_id] := stage;
+        e = {
+          _eventname: "TransferFromSuccess";
+          from: token_owner;
+          recipient: to;
+          token_id: token_id
+        };
+        event e;
+        msg_to_recipient = {
+          _tag: "RecipientAcceptTransferFrom";
+          _recipient: to;
+          _amount: Uint128 0; 
+          from: token_owner;
+          recipient: to;
+          token_id: token_id
+        };
+        msg_to_sender = {
+          _tag: "TransferFromSuccessCallBack";
+          _recipient: _sender;
+          _amount: Uint128 0; 
+          from: token_owner;
+          recipient: to;
+          token_id: token_id
+        };
+        msgs = two_msgs msg_to_recipient msg_to_sender;
+        send msgs
+    end
   end
 end
