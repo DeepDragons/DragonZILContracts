@@ -187,7 +187,7 @@ procedure ChangeTokenURI(token_id: Uint256, stage: Uint32)
   token_uris[token_id] := token_uri
 end
 
-procedure generateImageGen(token_id:Uint256, random_val: Uint256)
+procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   random = random_val;
   (* gens init for current token *)
   gens_image_ = Uint256 777;
@@ -524,6 +524,19 @@ procedure generateImageGen(token_id:Uint256, random_val: Uint256)
   (* store gens to token *)
   token_gen_image[token_id] := gens_image_
 end
+
+procedure GenerateGens(token_id: Uint256, to: ByStr20)
+  entropyNumber <- entropy;
+  current_block <- & BLOCKNUMBER;
+
+  random1 = random entropyNumber current_block to;
+  random2 = random random1 current_block to;
+
+  entropy := random2;
+
+  token_gen_battle[token_id] := random1;
+  GenerateImageGen token_id random2
+end
 (* DragonZIL procedures *)
 
 (* Emit Errors *)
@@ -649,29 +662,22 @@ procedure UpdateTokenCount(operation: Operation, address: ByStr20)
   end
 end
 
-procedure Minting(input_pair: Pair ByStr20 String)
-  to = let fst_string_bystr20 = @fst ByStr20 String in
-    fst_string_bystr20 input_pair;
-  token_uri = let snd_string_bystr20 = @snd ByStr20 String in
-    snd_string_bystr20 input_pair;
-
-  IsMinter _sender;
-  (* Add to owner count *)
-  UpdateTokenCount add_operation to;
-  (* Add to total_supply *)
-  current_supply <- total_supply;
-  new_supply = builtin add current_supply one;
-  total_supply := new_supply;
-  (* Initiate token_id and check if exists *)
-  token_id = new_supply;
-  IsTokenExists token_id;
+procedure Minting(token_id: Uint256, to: ByStr20)
+  (* Add address stage. *)
+  tokens_owner_stage[to][token_id] := default_stage;
   (* Mint new non-fungible token *)
   token_owners[token_id] := to;
-  (* Add token_uri for token_id *)
-  token_uris[token_id] := token_uri;
+  (* Generate some uri for token. *)
+  ChangeTokenURI token_id default_stage;
+  (* Add to owner count *)
+  UpdateTokenCount add_operation to;
+
+  token_uri <- token_uris[token_id];
+  
   e = {
-    _eventname: "MintSuccess"; by:
-    _sender; recipient: to;
+    _eventname: "MintSuccess";
+    by: _sender;
+    recipient: to;
     token_id: token_id;
     token_uri: token_uri
   };
@@ -773,7 +779,11 @@ end
 (* @dev: Check if a token_id is owned by a token_owner *)
 transition CheckTokenOwner(token_id: Uint256, address: ByStr20)
   IsTokenOwner token_id address;
-  msg_to_sender = { _tag : "IsTokenOwnerCallBack"; _recipient : _sender; _amount : Uint128 0};
+  msg_to_sender = {
+    _tag: "IsTokenOwnerCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0
+  };
   msgs = one_msg msg_to_sender;
   send msgs
 end
@@ -841,7 +851,7 @@ transition ChangeCloud(new_cloud: String)
   event e
 end
 
-transition changeGens(token_id: Uint256, gen_battle: Uint256)
+transition ChangeGens(token_id: Uint256, gen_battle: Uint256)
   IsTokenExists token_id;
   IsMinter _sender;
 
@@ -865,6 +875,19 @@ transition changeGens(token_id: Uint256, gen_battle: Uint256)
   };
   msgs = one_msg msg_to_sender;
   send msgs
+end
+
+transition ConfigureStage(value: Uint32)
+  IsContractOwner;
+
+  stage <- max_stage;
+  max_stage := value;
+  e = {
+    _eventname: "MaxStageChanged";
+    old: stage;
+    new: value
+  };
+  event e
 end
 (* DragonZIL transition *)
 
@@ -895,12 +918,26 @@ end
 
 (* @dev:    Mint new tokens. Only minters can mint.           *)
 (* @param:  to        - Address of the token recipient        *)
-(* @param:  token_uri - URI of the the new token to be minted *)
-transition Mint(to: ByStr20, token_uri: String)
+transition Mint(to: ByStr20)
+  IsMinter _sender;
 
-  input_pair = build_pair to token_uri;
-  Minting input_pair;
-  token_id <- total_supply;
+  current_supply <- total_supply;
+  current_count <- count_supply;
+
+  new_supply = builtin add current_supply one;
+  new_count = builtin add current_count one;
+  (* Initiate token_id *)
+  token_id = new_count;
+
+  GenerateGens token_id to;
+  Minting token_id to;
+
+  (* Add to total_supply *)
+  total_supply := new_supply;
+  (* Add to total_count *)
+  count_supply := new_count;
+
+  token_uri <- token_uris[token_id];
 
   msg_to_recipient = {
     _tag: "RecipientAcceptMint";
@@ -919,7 +956,7 @@ transition Mint(to: ByStr20, token_uri: String)
   send msgs
 end
 
-transition BatchMint(to: ByStr20, token_uris_list: List String)
+(* transition BatchMint(to: ByStr20, token_uris_list: List String)
   pair_token_uri_list = @list_map String (Pair ByStr20 String);
   tmp_fun = build_pair to;
   input_list = pair_token_uri_list tmp_fun token_uris_list;
@@ -936,7 +973,7 @@ transition BatchMint(to: ByStr20, token_uris_list: List String)
   };
   msgs = two_msgs msg_to_recipient msg_to_sender;
   send msgs
-end
+end *)
 
 (* @dev:    Burn existing tokens. Only token_owner or an operator can burn a NFT. *)
 (* @param:  token_id - Unique ID of the NFT to be destroyed                       *)
