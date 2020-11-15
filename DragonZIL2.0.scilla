@@ -14,6 +14,10 @@ type Operation =
 | Add
 | Sub
 
+(* Custom ADT storing - token_id, owner, stage, token_uri, token_gen_battle, token_gen_image *)
+type Dragon =
+| Dragon of Uint256 ByStr20 Uint32 String Uint256 Uint256
+
 (* Global variables *)
 let zero = Uint256 0
 let one = Uint256 1
@@ -890,9 +894,9 @@ transition ConfigureStage(value: Uint32)
   event e
 end
 
-transition GiveBirth()
+(* transition GiveBirth()
   IsMinter _sender;
-end
+end *)
 (* DragonZIL transition *)
 
 (* @dev:    Add or remove approved minters. Only contract_owner can approve minters. *)
