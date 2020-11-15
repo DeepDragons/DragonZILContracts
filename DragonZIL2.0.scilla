@@ -717,6 +717,42 @@ procedure Birth(token: Dragon)
   end
 end
 
+procedure MintFor(to: ByStr20)
+  current_supply <- total_supply;
+  current_count <- count_supply;
+
+  new_supply = builtin add current_supply one;
+  new_count = builtin add current_count one;
+  (* Initiate token_id *)
+  token_id = new_count;
+
+  GenerateGens token_id to;
+  Minting token_id to;
+
+  (* Add to total_supply *)
+  total_supply := new_supply;
+  (* Add to total_count *)
+  count_supply := new_count;
+
+  token_uri <- token_uris[token_id];
+
+  msg_to_recipient = {
+    _tag: "RecipientAcceptMint";
+    _recipient: to;
+    _amount: Uint128 0
+  };
+  msg_to_sender = {
+    _tag: "MintCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    recipient: _sender;
+    token_id: token_id;
+    token_uri: token_uri
+  };
+  msgs = two_msgs msg_to_recipient msg_to_sender;
+  send msgs
+end
+
 (* Getter transitions *)
 
 (* @dev: Get number of NFTs assigned to a token_owner *)
@@ -960,41 +996,14 @@ end
 transition Mint(to: ByStr20)
   IsMinter _sender;
 
-  current_supply <- total_supply;
-  current_count <- count_supply;
-
-  new_supply = builtin add current_supply one;
-  new_count = builtin add current_count one;
-  (* Initiate token_id *)
-  token_id = new_count;
-
-  GenerateGens token_id to;
-  Minting token_id to;
-
-  (* Add to total_supply *)
-  total_supply := new_supply;
-  (* Add to total_count *)
-  count_supply := new_count;
-
-  token_uri <- token_uris[token_id];
-
-  msg_to_recipient = {
-    _tag: "RecipientAcceptMint";
-    _recipient: to;
-    _amount: Uint128 0
-  };
-  msg_to_sender = {
-    _tag: "MintCallBack";
-    _recipient: _sender;
-    _amount: Uint128 0;
-    recipient: _sender;
-    token_id: token_id;
-    token_uri: token_uri
-  };
-  msgs = two_msgs msg_to_recipient msg_to_sender;
-  send msgs
+  MintFor to
 end
 
+transition BatchMint(onwers: List ByStr20)
+  IsMinter _sender;
+
+  forall onwers MintFor
+end
 (* @dev:    Burn existing tokens. Only token_owner or an operator can burn a NFT. *)
 (* @param:  token_id - Unique ID of the NFT to be destroyed                       *)
 transition Burn(token_id: Uint256)

@@ -88,10 +88,8 @@ contract CrowdSaleDZT
  main_dzt : ByStr20)
 
 (* Mutable fields *)
-field amount_of_tokens: Uint32 = Uint32 10
 field incrementer: Uint128 = Uint128 0
 field current_price: Uint128 = Uint128 1000000000000
-field serverPubKey: Option ByStr33 = None {ByStr33}
 field is_dragon_owner: Map ByStr20 Bool = Emp ByStr20 Bool
 
 (* Emit Errors *)
@@ -113,7 +111,7 @@ end
 
 procedure BuyOne(count: Uint32)
   mint_call = {
-    _tag: "mint";
+    _tag: "Mint";
     _recipient: main_dzt;
     _amount: Uint128 0;
     to: _sender
@@ -133,36 +131,12 @@ transition setPrice(price: Uint128)
   event e
 end
 
-transition changeAriDropRewords(value: Uint32)
-  IsOwner;
-
-  amount_of_tokens := value;
-  e = {
-    _eventname: "amount_of_tokens_change_success";
-    by: _sender
-  };
-  event e
-end
-
 transition setIncrementer(value: Uint128)
   IsOwner;
 
   incrementer := value;
   e = {
     _eventname: "incrementer_change_success";
-    by: _sender
-  };
-  event e
-end
-
-transition setPubKey(pubk: ByStr33)
-  IsOwner;
-
-  tmp = Some {ByStr33} pubk;
-  serverPubKey := tmp;
-
-  e = {
-    _eventname: "set_public_key_success";
     by: _sender
   };
   event e
@@ -201,46 +175,6 @@ transition Buy()
   end
 end
 
-transition AirDrop(address: ByStr20, signature: ByStr64)
-  is_has <- is_dragon_owner[address];
-  tokens_amount <- amount_of_tokens;
-
-  is_has_bool = match is_has with
-    | None => False
-    | Some val => val
-  end;
-  match is_has_bool with
-    | True =>
-      (* Address already had dragons, return error code *)
-      err = CodeAlreadyHadDragon;
-      ThrowError err
-    | False =>
-      pubk_o <- serverPubKey;
-
-      match pubk_o with
-      | Some pubk =>
-        msg = builtin to_bystr address;
-        sig = builtin schnorr_verify pubk msg signature;
-
-        match sig with
-        | True =>
-          dumy_list = iota zero tokens_amount;
-          (* Verification successful*)
-          is_dragon_owner[address] := tt;
-          forall dumy_list BuyOne
-        | False =>
-          (* Verification failed*)
-          err = CodeVerificationFailed;
-          ThrowError err
-        end
-      | None =>
-        err = CodeNoPubKey;
-        ThrowError err
-      end
-      
-  end 
-end
-
 transition ReturnFund ()
   IsOwner;
   bal <- _balance;
@@ -261,5 +195,5 @@ transition ReturnFund ()
   send msgs
 end
 
-transition mintCallBack(recipient: ByStr20, token_id: Uint256)
+transition mintCallBack(recipient: ByStr20, token_id: Uint256, token_uri: String)
 end
