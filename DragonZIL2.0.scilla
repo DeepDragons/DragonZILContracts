@@ -61,6 +61,19 @@ let build_pair =
   fun (input_token_uri : String) =>
     Pair {ByStr20 String} input_to_address input_token_uri
 
+let random =
+  fun (entropy: Uint256) =>
+  fun (block_number: BNum) =>
+  fun (addr: ByStr20) =>
+    let addr_hash = builtin keccak256hash addr in
+    let entropy_hash = builtin keccak256hash entropy in
+    let blockhash = builtin keccak256hash block_number in
+    let ehash = builtin concat entropy_hash blockhash in
+    let ahash = builtin concat ehash addr_hash in
+    let last_hash = builtin concat ehash ahash in
+    let hash = builtin keccak256hash last_hash in
+      builtin to_uint256 hash
+
 let calc_gens_tmp_new =
   fun (old_val: Uint256) =>
   fun (gen_num: Uint256) =>
@@ -883,9 +896,11 @@ end
 (* @param:  to        - Address of the token recipient        *)
 (* @param:  token_uri - URI of the the new token to be minted *)
 transition Mint(to: ByStr20, token_uri: String)
+
   input_pair = build_pair to token_uri;
   Minting input_pair;
   token_id <- total_supply;
+
   msg_to_recipient = {
     _tag: "RecipientAcceptMint";
     _recipient: to;
