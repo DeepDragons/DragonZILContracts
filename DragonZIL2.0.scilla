@@ -1079,39 +1079,53 @@ end
 transition Transfer(to: ByStr20, token_id: Uint256)
   IsSelf to _sender;
   IsTokenOwner token_id _sender;
-  (* Change token_owner for that token_id *)
-  token_owners[token_id] := to;
-  (* Delete tokenApproval entry for that token_id *)
-  delete token_approvals[token_id];
-  (* Subtract one from previous token owner count *)
-  UpdateTokenCount sub_operation _sender;
-  (* Add one to the new token owner count *)
-  UpdateTokenCount add_operation to;
-  e = {
-    _eventname: "TransferSuccess";
-    from: _sender;
-    recipient: to;
-    token_id: token_id
-  };
-  event e;
-  msg_to_recipient = {
-    _tag: "RecipientAcceptTransfer";
-    _recipient: to;
-    _amount: Uint128 0; 
-    from: _sender;
-    recipient: to;
-    token_id: token_id
-  };
-  msg_to_sender = {
-    _tag: "TransferSuccessCallBack";
-    _recipient: _sender;
-    _amount: Uint128 0; 
-    from: _sender;
-    recipient: to;
-    token_id: token_id
-  };
-  msgs = two_msgs msg_to_recipient msg_to_sender;
-  send msgs
+
+  owner_stage <- tokens_owner_stage[_sender][token_id];
+
+  match owner_stage with
+  | None =>
+    (* Token does not exists, return error code *)
+    err = CodeNotFound;
+    ThrowError err
+  | Some stage =>
+    (* Change token_owner for that token_id *)
+    token_owners[token_id] := to;
+    (* Delete tokenApproval entry for that token_id *)
+    delete token_approvals[token_id];
+    (* Remove old owner stage *)
+    delete tokens_owner_stage[_sender][token_id];
+    (* Set new owner stage. *)
+    tokens_owner_stage[to][token_id] := stage;
+    (* Subtract one from previous token owner count *)
+    UpdateTokenCount sub_operation _sender;
+    (* Add one to the new token owner count *)
+    UpdateTokenCount add_operation to;
+    e = {
+      _eventname: "TransferSuccess";
+      from: _sender;
+      recipient: to;
+      token_id: token_id
+    };
+    event e;
+    msg_to_recipient = {
+      _tag: "RecipientAcceptTransfer";
+      _recipient: to;
+      _amount: Uint128 0; 
+      from: _sender;
+      recipient: to;
+      token_id: token_id
+    };
+    msg_to_sender = {
+      _tag: "TransferSuccessCallBack";
+      _recipient: _sender;
+      _amount: Uint128 0; 
+      from: _sender;
+      recipient: to;
+      token_id: token_id
+    };
+    msgs = two_msgs msg_to_recipient msg_to_sender;
+    send msgs
+  end
 end
 
 (* @dev: Transfer the ownership of a given token_id to another address. approved_spender or operator only transition. *)
