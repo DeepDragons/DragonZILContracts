@@ -785,7 +785,7 @@ transition UpState(token_id: Uint256)
   (* Check if token exists *)
   max_stage_of_token <- max_stage;
 
-  some_token_stage <- tokens_owner_stage[token_owner][token_id];
+  some_token_stage <- tokens_owner_stage[_sender][token_id];
   match some_token_stage with
     | Some stage => 
       one32 = Uint32 1;
@@ -797,7 +797,7 @@ transition UpState(token_id: Uint256)
           err = CodeStageError;
           ThrowError err
         | False =>
-          tokens_owner_stage[token_owner][token_id] := next_stage;
+          tokens_owner_stage[_sender][token_id] := next_stage;
 
           ChangeTokenURI token_id next_stage;
 
@@ -818,11 +818,11 @@ end
 transition ChangeCloud(new_cloud: String)
   IsContractOwner;
 
-  cloud := new_cloud
+  cloud := new_cloud;
 
   e = {
     _eventname: "ChangedCloudURL";
-    cloud: cloud
+    cloud: new_cloud
   };
   event e
 end
