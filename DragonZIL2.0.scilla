@@ -146,7 +146,7 @@ field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
 field count_supply: Uint256 = Uint256 0
 
 field cloud: String = ""
-
+field token_stage: Map Uint256 Uint32 = Emp Uint256 Uint32
 field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
   = Emp ByStr20 (Map Uint256 Uint32)
 (* DragonZIL fields *)
@@ -671,6 +671,7 @@ end
 procedure Minting(token_id: Uint256, to: ByStr20)
   (* Add address stage. *)
   tokens_owner_stage[to][token_id] := default_stage;
+  token_stage[token_id] := default_stage;
   (* Mint new non-fungible token *)
   token_owners[token_id] := to;
   (* Generate some uri for token. *)
@@ -696,6 +697,7 @@ procedure Birth(token: Dragon)
     IsTokenExists token_id;
     (* Add address stage. *)
     tokens_owner_stage[owner][token_id] := stage;
+    token_stage[token_id] := stage;
     (* Mint new non-fungible token *)
     token_owners[token_id] := owner;
     (* Add to owner count *)
@@ -869,6 +871,26 @@ transition CheckApprovedForAll(token_owner: ByStr20, operator: ByStr20)
   send msgs
 end
 
+(* DragonZIL getters *)
+transition GetStage(token_id: Uint256)
+  some_token_uri <- token_uris[token_id];
+  match some_token_uri with
+  | Some token_uri =>
+    msg_to_sender = {
+      _tag: "GetTokenURICallBack";
+      _recipient: _sender;
+      _amount: Uint128 0; 
+      token_uri: token_uri
+    };
+    msgs = one_msg msg_to_sender;
+    send msgs
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+(* DragonZIL getters *)
+
 (* Interface transitions *)
 
 (* DragonZIL transition *)
@@ -891,6 +913,7 @@ transition UpState(token_id: Uint256)
           ThrowError err
         | False =>
           tokens_owner_stage[_sender][token_id] := next_stage;
+          token_stage[token_id] := next_stage;
 
           ChangeTokenURI token_id next_stage;
 
@@ -1022,6 +1045,7 @@ transition Burn(token_id: Uint256)
     delete token_gen_battle[token_id];
     delete token_gen_image[token_id];
     delete tokens_owner_stage[token_owner][token_id];
+    delete token_stage[token_id];
     (* Deduct from owned_token_count *)
     UpdateTokenCount sub_operation token_owner;
     (* Deduct from total_supply *)
