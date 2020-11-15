@@ -975,6 +975,9 @@ transition Burn(token_id: Uint256)
     delete token_owners[token_id];
     delete token_approvals[token_id];
     delete token_uris[token_id];
+    delete token_gen_battle[token_id];
+    delete token_gen_image[token_id];
+    delete tokens_owner_stage[token_owner][token_id];
     (* Deduct from owned_token_count *)
     UpdateTokenCount sub_operation token_owner;
     (* Deduct from total_supply *)
