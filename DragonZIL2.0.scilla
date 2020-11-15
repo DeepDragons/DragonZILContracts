@@ -550,7 +550,7 @@ procedure IsTokenExists(token_id: Uint256)
 end
 
 procedure IsMinter(address: ByStr20)
-  is_minter <- exists minters[_sender];
+  is_minter <- exists minters[address];
   match is_minter with
   | True =>
   | False =>
@@ -780,53 +780,38 @@ end
 
 (* DragonZIL transition *)
 transition UpState(token_id: Uint256)
+  IsTokenOwner token_id _sender;
+
   (* Check if token exists *)
-  some_token_owner <- token_owners[token_id];
   max_stage_of_token <- max_stage;
 
-  match some_token_owner with
-  | None =>
-    (* Token does not exists, return error code *)
-    err = CodeNotFound;
-    EmitError err
-  | Some token_owner =>
-    is_owner = builtin eq _sender token_owner;
+  some_token_stage <- tokens_owner_stage[token_owner][token_id];
+  match some_token_stage with
+    | Some stage => 
+      one32 = Uint32 1;
+      next_stage = builtin add stage one32;
+      is_max = builtin lt max_stage_of_token next_stage;
 
-    match is_owner with
-    | False =>
-      (* Unauthorised transaction*)
-      err = CodeNotAuthorised;
-      EmitError err
-    | True =>
-      some_token_stage <- tokens_owner_stage[token_owner][token_id];
-      match some_token_stage with
-        | Some stage => 
-          one32 = Uint32 1;
-          next_stage = builtin add stage one32;
-          is_max = builtin lt next_stage max_stage_of_token;
-
-          match is_max with
-            | True =>
-              err = CodeStageError;
-              EmitError err
-            | False =>
-              tokens_owner_stage[token_owner][token_id] := next_stage;
-
-              ChangeTokenURI token_id next_stage;
-
-              e = {
-                _eventname: "TokenStageUpgrade";
-                token_id: token_id;
-                old_stage: stage;
-                next_stage: next_stage
-              };
-              event e
-          end
-        | None =>
+      match is_max with
+        | True =>
           err = CodeStageError;
-          EmitError err
+          ThrowError err
+        | False =>
+          tokens_owner_stage[token_owner][token_id] := next_stage;
+
+          ChangeTokenURI token_id next_stage;
+
+          e = {
+            _eventname: "TokenStageUpgrade";
+            token_id: token_id;
+            old_stage: stage;
+            next_stage: next_stage
+          };
+          event e
       end
-    end
+    | None =>
+      err = CodeStageError;
+      ThrowError err
   end
 end
 
@@ -834,50 +819,38 @@ transition ChangeCloud(new_cloud: String)
   IsContractOwner;
 
   cloud := new_cloud
+
+  e = {
+    _eventname: "ChangedCloudURL";
+    cloud: cloud
+  };
+  event e
 end
 
 transition changeGens(token_id: Uint256, gen_battle: Uint256)
-  (* Check if token exists *)
-  token_exist <- exists token_owners[token_id];
+  IsTokenExists token_id;
+  IsMinter _sender;
 
-  match token_exist with
-  | False =>
-    err = CodeNotFound;
-    EmitError err
-  | True =>
-    (* Check if sender is contract_owner *)
-    is_contract_owner = builtin eq _sender contract_owner;
-    (* Check if sender is a minter *)
-    is_minter <- exists minters[_sender];
-    is_authorised = orb is_contract_owner is_minter;
-    match is_authorised with
-    | True =>
-      current_gen_battle <- token_gen_battle[token_id];
-      token_gen_battle[token_id] := gen_battle;
+  current_gen_battle <- token_gen_battle[token_id];
+  token_gen_battle[token_id] := gen_battle;
 
-      e = {
-        _eventname: "GensChangedSuccess";
-        token_id: token_id;
-        old_gen_battle: current_gen_battle;
-        new_gen_battle: gen_battle
-      };
-      event e;
+  e = {
+    _eventname: "GensChangedSuccess";
+    token_id: token_id;
+    old_gen_battle: current_gen_battle;
+    new_gen_battle: gen_battle
+  };
+  event e;
 
-      msg_to_sender = {
-        _tag: "ChangeGensCallBack";
-        _recipient: _sender;
-        _amount: Uint128 0;
-        token_id: token_id;
-        gen_battle: gen_battle
-      };
-      msgs = one_msg msg_to_sender;
-      send msgs
-    | False =>
-      (* Unauthorised transaction*)
-      err = CodeNotAuthorised;
-      EmitError err
-    end
-  end
+  msg_to_sender = {
+    _tag: "ChangeGensCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0;
+    token_id: token_id;
+    gen_battle: gen_battle
+  };
+  msgs = one_msg msg_to_sender;
+  send msgs
 end
 (* DragonZIL transition *)
 
