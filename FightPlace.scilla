@@ -10,16 +10,17 @@ let zero = Uint256 0
 let one = Uint256 1
 let two = Uint256 2
 let ten = Uint256 10
+let twenty = Uint256 20
+let ninetynine = Uint256 99
 let ten2 = Uint256 100
-let ten3 = Uint256 1000
 let ten20 = Uint256 100000000000000000000
-let tt = True
 
 let one_msg =
   fun (msg : Message) =>
   let nil_msg = Nil {Message} in
     Cons {Message} msg nil_msg
 
+(* todo *)
 (* Error events *)
 type Error =
   | CodeNotAuthorised
@@ -27,6 +28,7 @@ type Error =
   | CodeVerificationFailed
   | CodeUint32Overflow
 
+(* todo *)
 let make_error =
   fun (result : Error) =>
     let result_code =
@@ -49,8 +51,8 @@ contract FightPlace
  main_dzt : ByStr20)
 
 (* Mutable fields *)
+(* todo *)
 field waiting_list: Map Uint256 ByStr20 = Emp Uint256 ByStr20
-field owners_list: Map Uint256 ByStr20 = Emp Uint256 ByStr20
 
 field entropy : Uint256 = Uint256 0
 
@@ -60,10 +62,13 @@ field d2_random_attack_fld : Uint256 = Uint256 0
 field d2_random_defence_fld : Uint256 = Uint256 0
 field random_luck_fld : Uint256 = Uint256 0
 
-field winner_random_attack_fld  : Uint256 = Uint256 0
-field winner_random_defence_fld  : Uint256 = Uint256 0
-field loser_random_attack_fld  : Uint256 = Uint256 0
-field loser_random_defence_fld  : Uint256 = Uint256 0
+field winner_random_attack_fld : Uint256 = Uint256 0
+field winner_random_defence_fld : Uint256 = Uint256 0
+field loser_random_attack_fld : Uint256 = Uint256 0
+field loser_random_defence_fld : Uint256 = Uint256 0
+
+field gen_upgrade_prc_fld : Uint256 = Uint256 5
+field gen_downgrade_prc_fld : Uint256 = Uint256 10
 
 let random =
   fun (entropy: Uint256) =>
@@ -80,8 +85,57 @@ let get_gen_val =
     let gen_str = builtin to_string gen in
     let num32 = builtin to_uint32 num in
     let idx = builtin mul num32 two in
-    let val = substr gen_str num32 two in
+    let val = substr gen_str idx two in
       builtin to_uint256 val
+
+      (* 2+2n *)
+
+
+
+let get_upgraded_genschain =
+  fun (genschain: Uint256) =>
+  fun (num: Uint256) =>
+  num32 = builtin to_uint32 num in
+  genschain_str = builtin to_string genschain in
+  winner_gen_attack_str_idx = builtin mul num32 two
+  winner_gen_attack_str_idx2 = builtin add winner_gen_attack_str_idx two
+  winner_gen_attack_str_val = substr winner_gen_attack_str winner_gen_attack_str_idx two
+  winner_gen_attack_gen = builtin to_uint256 winner_gen_attack_str_val
+  winner_gen_attack_new_gen = get_upgraded_gen winner_gen_attack_gen
+  winner_gen_attack_new_gen_str = builtin to_uint256 winner_gen_attack_new_gen
+
+  winner_gen_attack_str_pre = substr winner_gen_attack_str zero winner_gen_attack_str_idx
+  winner_gen_attack_str_after = substr winner_gen_attack_str winner_gen_attack_str_idx2 two
+  winner_gen_attack_str_new = builtin concat winner_gen_attack_str_pre winner_gen_attack_new_gen_str
+  winner_gen_attack_str_new = builtin concat winner_gen_attack_str_new winner_gen_attack_str_after
+
+  winner_gen_attack = builtin to_uint256 winner_gen_attack_str_new
+
+
+(* maybe better to have 1 function with match? *)
+let get_downgraded_genschain =
+  fun (gen: Uint256) =>
+  fun (num: Uint256) =>
+
+
+
+let get_upgraded_gen =
+  fun (gen: Uint256) =>
+    let gen_upgrade_prc <- gen_upgrade_prc_fld in
+    let gen_prc = builtin div gen gen_upgrade_prc in
+    let new_gen = builtin add gen gen_prc in
+    ninetynine_bool = builtin lt new_gen ninetynine in
+    match ninetynine_bool with
+    | True => new_gen
+    | False => ninetynine
+    end
+
+let get_downgraded_gen =
+  fun (gen: Uint256) =>
+    let gen_downgrade_prc <- gen_downgrade_prc_fld in
+    builtin div gen gen_downgrade_prc
+
+
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
@@ -97,19 +151,6 @@ procedure IsContractOwner()
     err = CodeNotAuthorised;
     ThrowError err
   end
-end
-
-procedure AfterFightDraw(token_id1: Uint256, token_id2: Uint256)
-  random_luck <- random_luck_fld;
-  (* 0.8 luck *)
-
-(* first_token_id *)
-(* some_token1_gen_battle *)
-(* number1 of gen who played *)
-(* number2 of gen who played *)
-(* add 20% - control field *)
-
-(* call change gen msg *)
 end
 
 procedure SetFldsRandWinLose (num_winner: Uint256)
@@ -149,6 +190,19 @@ procedure SetFldsRandWinLose (num_winner: Uint256)
   end *)
 end
 
+procedure AfterFightDraw(token_id1: Uint256, token_id2: Uint256)
+  random_luck <- random_luck_fld;
+  (* 0.8 luck *)
+
+(* first_token_id *)
+(* some_token1_gen_battle *)
+(* number1 of gen who played *)
+(* number2 of gen who played *)
+(* add 20% - control field *)
+
+  SendFightsResultsDraw token_id1 token_id2
+end
+
 procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_battle_winner: Uint256, token_id_loser: Uint256, gen_battle_loser: Uint256)
   (* call procedure to set winner and loser *)
   SetFldsRandWinLose num_winner;
@@ -172,8 +226,8 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   gen_battle_winner = builtin div gen_battle_winner ten20;
 
   winner_gen_defence = builtin rem gen_battle_winner ten20;
+  (* preparing for assemble *)
   gen_battle_winner = builtin sub gen_battle_winner winner_gen_defence;
-  gen_battle_winner = builtin div gen_battle_winner ten20;
 
   loser_luck = builtin rem gen_battle_loser ten2;
   gen_battle_loser = builtin sub gen_battle_loser loser_luck;
@@ -184,23 +238,61 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   gen_battle_loser = builtin div gen_battle_loser ten20;
 
   loser_gen_defence = builtin rem gen_battle_loser ten20;
+  (* preparing for assemble *)
   gen_battle_loser = builtin sub gen_battle_loser loser_gen_defence;
-  gen_battle_loser = builtin div gen_battle_loser ten20;
 
 
-(* winner add 20% - control field *)
+  (* upgrade winner gen *)
+  new_winner_gen_attack = get_upgraded_genschain winner_gen_attack winner_random_attack;
+  new_winner_gen_defence = get_upgraded_genschain winner_gen_defence winner_random_defence;
 
-(* loser div to 2*)
+  (* downgrade loser gen *)
+  new_loser_gen_attack = get_downgraded_genschain loser_gen_attack loser_random_attack;
+  new_loser_gen_defence = get_downgraded_genschain loser_gen_defence loser_random_defence;
+
+  (* winner_random_attack_num32 = builtin to_uint32 winner_random_attack
+  winner_gen_attack_str = builtin to_string winner_gen_attack
+  winner_gen_attack_str_idx = builtin mul winner_random_attack_num32 two
+  winner_gen_attack_str_idx2 = builtin add winner_gen_attack_str_idx two
+  winner_gen_attack_str_val = substr winner_gen_attack_str winner_gen_attack_str_idx two
+  winner_gen_attack_gen = builtin to_uint256 winner_gen_attack_str_val
+  winner_gen_attack_new_gen = get_upgraded_gen winner_gen_attack_gen
+  winner_gen_attack_new_gen_str = builtin to_uint256 winner_gen_attack_new_gen
+
+  winner_gen_attack_str_pre = substr winner_gen_attack_str zero winner_gen_attack_str_idx
+  winner_gen_attack_str_after = substr winner_gen_attack_str winner_gen_attack_str_idx2 two
+  winner_gen_attack_str_new = builtin concat winner_gen_attack_str_pre winner_gen_attack_new_gen_str
+  winner_gen_attack_str_new = builtin concat winner_gen_attack_str_new winner_gen_attack_str_after
+
+  winner_gen_attack = builtin to_uint256 winner_gen_attack_str_new *)
 
 
 
-(* assemble new gen_battle1, gen_battle2 *)
-(* defence -> attack -> luck *)
 
-(* gen_battle_winner mul add *)
-(* gen_battle_loser mul add *)
 
-(* call change gen msg *)
+
+  (* assemble new gens for loser and winner *)
+  gen_battle_winner = builtin add gen_battle_winner winner_gen_defence;
+  gen_battle_winner = builtin mul gen_battle_winner ten20;
+  gen_battle_winner = builtin add gen_battle_winner winner_gen_attack;
+  gen_battle_winner = builtin mul gen_battle_winner ten2;
+  gen_battle_winner = builtin add gen_battle_winner winner_luck;
+
+  gen_battle_loser = builtin add gen_battle_loser loser_gen_defence;
+  gen_battle_loser = builtin mul gen_battle_loser ten20;
+  gen_battle_loser = builtin add gen_battle_loser loser_gen_attack;
+  gen_battle_loser = builtin mul gen_battle_loser ten2;
+  gen_battle_loser = builtin add gen_battle_loser loser_luck;
+
+  SendFightsResultsWinLose token_id_winner gen_battle_winner token_id_loser gen_battle_loser
+end
+
+procedure SendFightsResultsDraw(token_id1: Uint256, token_id2: Uint256)
+ (* event *)
+end
+
+procedure SendFightsResultsWinLose(token_id_winner: Uint256, gen_battle_winner: Uint256, token_id_loser: Uint256, gen_battle_loser: Uint256)
+ (* new gens to tokens and event *)
 end
 
 
@@ -260,6 +352,7 @@ procedure GensMatch(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256
   gen_battle2 = builtin div gen_battle2 ten20;
 
   d2_gen_defence = builtin rem gen_battle2 ten20;
+
 
 
   (* get gens patricipating in fights *)
