@@ -79,43 +79,62 @@ let random =
     let hash = builtin keccak256hash ehash in
       builtin to_uint256 hash
 
-let get_gen_val =
+(* let get_gen_val =
   fun (gen: Uint256) =>
   fun (num: Uint256) =>
     let gen_str = builtin to_string gen in
     let num32 = builtin to_uint32 num in
-    let idx = builtin mul num32 two in
+    let idx = pow_num1 mul num32 two in
     let val = substr gen_str idx two in
-      builtin to_uint256 val
+      builtin to_uint256 val *)
 
-      (* 2+2n *)
-
-
+let get_gen_val =
+  fun (genschain: Uint256) =>
+  fun (num: Uint256) =>
+    let pow_num2 = builtin mul two num in
+    let pow_num1 = builtin add two pow_num2 in
+    let divider1 = builtin pow ten pow_num1 in
+    let divider2 = builtin pow ten pow_num2 in
+    let rem_num1 = builtin rem genschain divider1 in
+    let rem_num2 = builtin rem genschain divider2 in
+    let genzeros = builtin sub rem_num1 rem_num2 in
+      builtin div genzeros divider2
 
 let get_upgraded_genschain =
   fun (genschain: Uint256) =>
   fun (num: Uint256) =>
-  num32 = builtin to_uint32 num in
-  genschain_str = builtin to_string genschain in
-  winner_gen_attack_str_idx = builtin mul num32 two
-  winner_gen_attack_str_idx2 = builtin add winner_gen_attack_str_idx two
-  winner_gen_attack_str_val = substr winner_gen_attack_str winner_gen_attack_str_idx two
-  winner_gen_attack_gen = builtin to_uint256 winner_gen_attack_str_val
-  winner_gen_attack_new_gen = get_upgraded_gen winner_gen_attack_gen
-  winner_gen_attack_new_gen_str = builtin to_uint256 winner_gen_attack_new_gen
-
-  winner_gen_attack_str_pre = substr winner_gen_attack_str zero winner_gen_attack_str_idx
-  winner_gen_attack_str_after = substr winner_gen_attack_str winner_gen_attack_str_idx2 two
-  winner_gen_attack_str_new = builtin concat winner_gen_attack_str_pre winner_gen_attack_new_gen_str
-  winner_gen_attack_str_new = builtin concat winner_gen_attack_str_new winner_gen_attack_str_after
-
-  winner_gen_attack = builtin to_uint256 winner_gen_attack_str_new
+    let pow_num2 = builtin mul two num in
+    let pow_num1 = builtin add two pow_num2 in
+    let divider1 = builtin pow ten pow_num1 in
+    let divider2 = builtin pow ten pow_num2 in
+    let rem_num1 = builtin rem genschain pow_num1 in
+    let rem_num2 = builtin rem genschain pow_num2 in
+    let genzeros = builtin sub rem_num1 rem_num2 in
+    let gen = builtin div genzeros divider2 in
+    let genchain_pre = builtin sub genschain rem_num1 in
+    let genchain_pre2 = builtin add genschain rem_num2 in
+    let new_gen = get_upgraded_gen gen in
+    let new_genzeros = builtin mul new_gen pow_num1 in
+      builtin add genchain_pre2 new_genzeros
 
 
 (* maybe better to have 1 function with match? *)
 let get_downgraded_genschain =
-  fun (gen: Uint256) =>
+  fun (genschain: Uint256) =>
   fun (num: Uint256) =>
+    let pow_num2 = builtin mul two num in
+    let pow_num1 = builtin add two pow_num2 in
+    let divider1 = builtin pow ten pow_num1 in
+    let divider2 = builtin pow ten pow_num2 in
+    let rem_num1 = builtin rem genschain pow_num1 in
+    let rem_num2 = builtin rem genschain pow_num2 in
+    let genzeros = builtin sub rem_num1 rem_num2 in
+    let gen = builtin div genzeros divider2 in
+    let genchain_pre = builtin sub genschain rem_num1 in
+    let genchain_pre2 = builtin add genschain rem_num2 in
+    let new_gen = get_downgraded_gen gen in
+    let new_genzeros = builtin mul new_gen pow_num1 in
+      builtin add genchain_pre2 new_genzeros
 
 
 
@@ -124,7 +143,7 @@ let get_upgraded_gen =
     let gen_upgrade_prc <- gen_upgrade_prc_fld in
     let gen_prc = builtin div gen gen_upgrade_prc in
     let new_gen = builtin add gen gen_prc in
-    ninetynine_bool = builtin lt new_gen ninetynine in
+    let ninetynine_bool = builtin lt new_gen ninetynine in
     match ninetynine_bool with
     | True => new_gen
     | False => ninetynine
@@ -133,7 +152,7 @@ let get_upgraded_gen =
 let get_downgraded_gen =
   fun (gen: Uint256) =>
     let gen_downgrade_prc <- gen_downgrade_prc_fld in
-    builtin div gen gen_downgrade_prc
+      builtin div gen gen_downgrade_prc
 
 
 
