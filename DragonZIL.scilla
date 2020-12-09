@@ -27,7 +27,6 @@ let verdad = Dummy
 let add_operation = Add
 let sub_operation = Sub
 
-let format: String = ".png"
 let default_stage = Uint32 0
 let zero = Uint256 0
 let one = Uint256 1
@@ -141,6 +140,7 @@ field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
 field count_supply: Uint256 = Uint256 0
 
 field cloud: String = ""
+field format_img: String = ".png"
 field token_stage: Map Uint256 Uint32 = Emp Uint256 Uint32
 field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
   = Emp ByStr20 (Map Uint256 Uint32)
@@ -174,7 +174,7 @@ field total_supply: Uint256 = Uint256 0
 (* DragonZIL procedures *)
 procedure ChangeTokenURI(token_id: Uint256, stage: Uint32)
   cloud_url <- cloud;
-
+  format <- format_img;
   separate = "_";
 
   stage_as_astring = builtin to_string stage;
@@ -938,6 +938,18 @@ transition ChangeCloud(new_cloud: String)
   event e
 end
 
+transition ChangeImgFormat(new_format: String)
+  IsContractOwner;
+
+  format_img := new_format;
+
+  e = {
+    _eventname: "ChangeImageFormat";
+    format_img: new_format
+  };
+  event e
+end
+
 transition ChangeGens(token_id: Uint256, gen_battle: Uint256)
   IsTokenExists token_id;
   IsMinter _sender;
@@ -1273,3 +1285,4 @@ transition TransferFrom(to: ByStr20, token_id: Uint256)
     end
   end
 end
+
