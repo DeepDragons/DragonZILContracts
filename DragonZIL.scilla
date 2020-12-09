@@ -62,11 +62,6 @@ let get_bal =
     | None => zero
     end
 
-let build_pair =
-  fun (input_to_address : ByStr20) =>
-  fun (input_token_uri : String) =>
-    Pair {ByStr20 String} input_to_address input_token_uri
-
 let random =
   fun (entropy: Uint256) =>
   fun (block_number: BNum) =>
