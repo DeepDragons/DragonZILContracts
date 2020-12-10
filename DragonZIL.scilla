@@ -896,7 +896,8 @@ transition GetStage(token_id: Uint256)
     msg_to_sender = {
       _tag: "GetStageCallBack";
       _recipient: _sender;
-      _amount: Uint128 0; 
+      _amount: Uint128 0;
+      token_id: token_id;
       stage: stage
     };
     msgs = one_msg msg_to_sender;
@@ -992,6 +993,7 @@ transition ChangeGens(token_id: Uint256, gen_battle: Uint256)
     _recipient: _sender;
     _amount: Uint128 0;
     token_id: token_id;
+    old_gen_battle: current_gen_battle;
     gen_battle: gen_battle
   };
   msgs = one_msg msg_to_sender;
