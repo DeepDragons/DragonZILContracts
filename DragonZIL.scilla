@@ -911,8 +911,8 @@ end
 (* Interface transitions *)
 
 (* DragonZIL transition *)
-transition UpState(token_id: Uint256)
-  IsTokenOwner token_id _sender;
+transition UpStage(token_id: Uint256)
+  IsOwnerOrOperatorOrApprovedSpender token_id _sender;
 
   (* Check if token exists *)
   max_stage_of_token <- max_stage;
