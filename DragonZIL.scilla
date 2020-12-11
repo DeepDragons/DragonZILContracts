@@ -541,6 +541,8 @@ procedure GenerateGens(token_id: Uint256, to: ByStr20)
   token_gen_battle[token_id] := random1;
   GenerateImageGen token_id random2
 end
+
+
 (* DragonZIL procedures *)
 
 (* Emit Errors *)
@@ -777,6 +779,21 @@ procedure MintFor(to: ByStr20)
 
 end
 
+procedure ChangeBattleGen(token_id: Uint256, gen_battle: Uint256)
+  IsTokenExists token_id;
+  
+  current_gen_battle <- token_gen_battle[token_id];
+  token_gen_battle[token_id] := gen_battle;
+
+  e = {
+    _eventname: "GensChangedSuccess";
+    token_id: token_id;
+    old_gen_battle: current_gen_battle;
+    new_gen_battle: gen_battle
+  };
+  event e
+end
+
 (* Getter transitions *)
 
 (* @dev: Get number of NFTs assigned to a token_owner *)
@@ -978,31 +995,19 @@ transition ChangeImgFormat(new_format: String)
   event e
 end
 
-transition ChangeGens(token_id: Uint256, gen_battle: Uint256)
-  IsTokenExists token_id;
+transition ChangeGens(token_id: Uint256, gen_battle: Uint256, token_id2: Uint256, gen_battle2: Uint256)
   IsMinter _sender;
+  
+  ChangeBattleGen token_id gen_battle;
+  
+  is_id2_zero = builtin eq token_id2 zero;
+  match is_id2_zero with
+  | False =>
 
-  current_gen_battle <- token_gen_battle[token_id];
-  token_gen_battle[token_id] := gen_battle;
+    ChangeBattleGen token_id2 gen_battle2
 
-  e = {
-    _eventname: "GensChangedSuccess";
-    token_id: token_id;
-    old_gen_battle: current_gen_battle;
-    new_gen_battle: gen_battle
-  };
-  event e;
-
-  msg_to_sender = {
-    _tag: "ChangeGensCallBack";
-    _recipient: _sender;
-    _amount: Uint128 0;
-    token_id: token_id;
-    old_gen_battle: current_gen_battle;
-    gen_battle: gen_battle
-  };
-  msgs = one_msg msg_to_sender;
-  send msgs
+  | True =>
+  end
 end
 
 transition ConfigureStage(value: Uint32)
