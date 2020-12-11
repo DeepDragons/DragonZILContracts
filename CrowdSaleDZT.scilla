@@ -199,6 +199,3 @@ transition ReturnFund ()
   send msgs
 end
 
-transition MintCallBack(recipient: ByStr20, token_id: Uint256, token_uri: String)
-end
-
