@@ -696,16 +696,19 @@ procedure Minting(token_id: Uint256, to: ByStr20)
   (* Add to owner count *)
   UpdateTokenCount add_operation to;
 
-  token_uri <- token_uris[token_id];
-
-  e = {
-    _eventname: "MintSuccess";
-    by: _sender;
-    recipient: to;
-    token_id: token_id;
-    token_uri: token_uri
-  };
-  event e
+  some_token_uri <- token_uris[token_id];
+  match some_token_uri with
+  | Some token_uri => 
+    e = {
+      _eventname: "MintSuccess";
+      by: _sender;
+      recipient: to;
+      token_id: token_id;
+      token_uri: token_uri
+    };
+    event e
+  | None =>
+  end
 end
 
 procedure Birth(token: Dragon)
