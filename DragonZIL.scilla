@@ -84,6 +84,30 @@ let calc_gens_tmp_new =
     | True => val
     | False => old_val
     end
+
+let calc_gens_2opt_do =
+  fun (gen_num: Uint256) =>
+  fun (val1: Uint256) =>
+  fun (val2: Uint256) =>
+    let gen_bool = builtin lt gen_num five in
+    match gen_bool with
+    | True => val1
+    | False => val2
+    end
+
+let calc_gens_2opt =
+  fun (old_val: Uint256) =>
+  fun (gen_num: Uint256) =>
+  fun (check_with: Uint256) =>
+  fun (gen_num2: Uint256) =>
+  fun (val1: Uint256) =>
+  fun (val2: Uint256) =>
+    let gen_bool = builtin eq gen_num check_with in
+    match gen_bool with
+    | True => calc_gens_2opt_do gen_num2 val1 val2
+    | False => old_val
+    end
+    
 (* Error exception *)
 type Error =
   | CodeNotContractOwner
@@ -197,7 +221,7 @@ procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   gens_image_ = Uint256 777;
   gen_tmp = Uint256 0;
 
-  (* image gen Aura - 4 types *)
+  (* image gen Aura - 5 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
   gen = calc_gens_tmp_new gen gen_rand one zero;
@@ -205,10 +229,18 @@ procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   gen = calc_gens_tmp_new gen gen_rand three zero;
   gen = calc_gens_tmp_new gen gen_rand four one;
   gen = calc_gens_tmp_new gen gen_rand five one;
-  gen = calc_gens_tmp_new gen gen_rand six two;
+  gen = calc_gens_tmp_new gen gen_rand six one;
   gen = calc_gens_tmp_new gen gen_rand seven two;
   gen = calc_gens_tmp_new gen gen_rand eight three;
-  gen = calc_gens_tmp_new gen gen_rand nine four;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 four five;
+  gen_rand = gen_rand2;
+
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
@@ -232,14 +264,22 @@ procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
   gen = calc_gens_tmp_new gen gen_rand one zero;
-  gen = calc_gens_tmp_new gen gen_rand two one;
+  gen = calc_gens_tmp_new gen gen_rand two zero;
   gen = calc_gens_tmp_new gen gen_rand three one;
-  gen = calc_gens_tmp_new gen gen_rand four two;
-  gen = calc_gens_tmp_new gen gen_rand five three;
-  gen = calc_gens_tmp_new gen gen_rand six four;
-  gen = calc_gens_tmp_new gen gen_rand seven five;
-  gen = calc_gens_tmp_new gen gen_rand eight six;
-  gen = calc_gens_tmp_new gen gen_rand nine seven;
+  gen = calc_gens_tmp_new gen gen_rand four one;
+  gen = calc_gens_tmp_new gen gen_rand five two;
+  gen = calc_gens_tmp_new gen gen_rand six three;
+  gen = calc_gens_tmp_new gen gen_rand seven four;
+  gen = calc_gens_tmp_new gen gen_rand eight five;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 six seven;
+  gen_rand = gen_rand2;
+
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
@@ -264,13 +304,21 @@ procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
   gen = calc_gens_tmp_new gen gen_rand one zero;
   gen = calc_gens_tmp_new gen gen_rand two zero;
-  gen = calc_gens_tmp_new gen gen_rand three one;
+  gen = calc_gens_tmp_new gen gen_rand three zero;
   gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five two;
-  gen = calc_gens_tmp_new gen gen_rand six two;
-  gen = calc_gens_tmp_new gen gen_rand seven three;
-  gen = calc_gens_tmp_new gen gen_rand eight three;
-  gen = calc_gens_tmp_new gen gen_rand nine four;
+  gen = calc_gens_tmp_new gen gen_rand five one;
+  gen = calc_gens_tmp_new gen gen_rand six one;
+  gen = calc_gens_tmp_new gen gen_rand seven two;
+  gen = calc_gens_tmp_new gen gen_rand eight two;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 three four;
+  gen_rand = gen_rand2;
+
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
@@ -294,14 +342,22 @@ procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
   gen = calc_gens_tmp_new gen gen_rand one one;
-  gen = calc_gens_tmp_new gen gen_rand two two;
-  gen = calc_gens_tmp_new gen gen_rand three three;
-  gen = calc_gens_tmp_new gen gen_rand four four;
-  gen = calc_gens_tmp_new gen gen_rand five five;
-  gen = calc_gens_tmp_new gen gen_rand six six;
-  gen = calc_gens_tmp_new gen gen_rand seven seven;
-  gen = calc_gens_tmp_new gen gen_rand eight eight;
-  gen = calc_gens_tmp_new gen gen_rand nine nine;
+  gen = calc_gens_tmp_new gen gen_rand two one;
+  gen = calc_gens_tmp_new gen gen_rand three two;
+  gen = calc_gens_tmp_new gen gen_rand four three;
+  gen = calc_gens_tmp_new gen gen_rand five four;
+  gen = calc_gens_tmp_new gen gen_rand six five;
+  gen = calc_gens_tmp_new gen gen_rand seven six;
+  gen = calc_gens_tmp_new gen gen_rand eight seven;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 eight nine;
+  gen_rand = gen_rand2;
+
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
@@ -321,18 +377,26 @@ procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
-  (* image gen Tail - 7 types *)
+  (* image gen Tail - 8 types *)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
   gen = calc_gens_tmp_new gen gen_rand one one;
   gen = calc_gens_tmp_new gen gen_rand two one;
-  gen = calc_gens_tmp_new gen gen_rand three two;
+  gen = calc_gens_tmp_new gen gen_rand three one;
   gen = calc_gens_tmp_new gen gen_rand four two;
   gen = calc_gens_tmp_new gen gen_rand five three;
   gen = calc_gens_tmp_new gen gen_rand six four;
   gen = calc_gens_tmp_new gen gen_rand seven five;
   gen = calc_gens_tmp_new gen gen_rand eight six;
-  gen = calc_gens_tmp_new gen gen_rand nine seven;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 seven eight;
+  gen_rand = gen_rand2;
+
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
@@ -359,11 +423,19 @@ procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   gen = calc_gens_tmp_new gen gen_rand two zero;
   gen = calc_gens_tmp_new gen gen_rand three one;
   gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five two;
+  gen = calc_gens_tmp_new gen gen_rand five one;
   gen = calc_gens_tmp_new gen gen_rand six two;
-  gen = calc_gens_tmp_new gen gen_rand seven three;
-  gen = calc_gens_tmp_new gen gen_rand eight four;
-  gen = calc_gens_tmp_new gen gen_rand nine five;
+  gen = calc_gens_tmp_new gen gen_rand seven two;
+  gen = calc_gens_tmp_new gen gen_rand eight three;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 four five;
+  gen_rand = gen_rand2;
+
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
@@ -392,9 +464,17 @@ procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   gen = calc_gens_tmp_new gen gen_rand four one;
   gen = calc_gens_tmp_new gen gen_rand five two;
   gen = calc_gens_tmp_new gen gen_rand six two;
-  gen = calc_gens_tmp_new gen gen_rand seven three;
-  gen = calc_gens_tmp_new gen gen_rand eight three;
-  gen = calc_gens_tmp_new gen gen_rand nine four;
+  gen = calc_gens_tmp_new gen gen_rand seven two;
+  gen = calc_gens_tmp_new gen gen_rand eight two;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 three four;
+  gen_rand = gen_rand2;
+
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
@@ -421,11 +501,19 @@ procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   gen = calc_gens_tmp_new gen gen_rand two one;
   gen = calc_gens_tmp_new gen gen_rand three one;
   gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five two;
-  gen = calc_gens_tmp_new gen gen_rand six two;
-  gen = calc_gens_tmp_new gen gen_rand seven two;
-  gen = calc_gens_tmp_new gen gen_rand eight three;
-  gen = calc_gens_tmp_new gen gen_rand nine three;
+  gen = calc_gens_tmp_new gen gen_rand five one;
+  gen = calc_gens_tmp_new gen gen_rand six one;
+  gen = calc_gens_tmp_new gen gen_rand seven one;
+  gen = calc_gens_tmp_new gen gen_rand eight one;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 two three;
+  gen_rand = gen_rand2;
+
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
@@ -449,14 +537,22 @@ procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   gen_rand = builtin rem random ten;
   gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
   gen = calc_gens_tmp_new gen gen_rand one one;
-  gen = calc_gens_tmp_new gen gen_rand two two;
-  gen = calc_gens_tmp_new gen gen_rand three three;
-  gen = calc_gens_tmp_new gen gen_rand four four;
-  gen = calc_gens_tmp_new gen gen_rand five five;
-  gen = calc_gens_tmp_new gen gen_rand six six;
-  gen = calc_gens_tmp_new gen gen_rand seven seven;
-  gen = calc_gens_tmp_new gen gen_rand eight eight;
-  gen = calc_gens_tmp_new gen gen_rand nine nine;
+  gen = calc_gens_tmp_new gen gen_rand two one;
+  gen = calc_gens_tmp_new gen gen_rand three two;
+  gen = calc_gens_tmp_new gen gen_rand four three;
+  gen = calc_gens_tmp_new gen gen_rand five four;
+  gen = calc_gens_tmp_new gen gen_rand six five;
+  gen = calc_gens_tmp_new gen gen_rand seven six;
+  gen = calc_gens_tmp_new gen gen_rand eight seven;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 eight nine;
+  gen_rand = gen_rand2;
+
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
@@ -481,13 +577,21 @@ procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
   gen = calc_gens_tmp_new gen gen_rand one one;
   gen = calc_gens_tmp_new gen gen_rand two one;
-  gen = calc_gens_tmp_new gen gen_rand three two;
-  gen = calc_gens_tmp_new gen gen_rand four two;
-  gen = calc_gens_tmp_new gen gen_rand five three;
-  gen = calc_gens_tmp_new gen gen_rand six three;
-  gen = calc_gens_tmp_new gen gen_rand seven four;
-  gen = calc_gens_tmp_new gen gen_rand eight four;
-  gen = calc_gens_tmp_new gen gen_rand nine five;
+  gen = calc_gens_tmp_new gen gen_rand three one;
+  gen = calc_gens_tmp_new gen gen_rand four one;
+  gen = calc_gens_tmp_new gen gen_rand five one;
+  gen = calc_gens_tmp_new gen gen_rand six one;
+  gen = calc_gens_tmp_new gen gen_rand seven two;
+  gen = calc_gens_tmp_new gen gen_rand eight three;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 four five;
+  gen_rand = gen_rand2;
+
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
