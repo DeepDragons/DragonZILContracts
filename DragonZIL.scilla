@@ -164,7 +164,7 @@ field max_stage : Uint32 = Uint32 1
 field token_gen_battle: Map Uint256 Uint256 = Emp Uint256 Uint256
 field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
 
-field count_supply: Uint256 = Uint256 0
+field token_id_count: Uint256 = Uint256 0
 
 field cloud: String = ""
 field format_img: String = ".png"
@@ -819,7 +819,7 @@ end
 
 procedure Birth(token: Dragon)
   current_supply <- total_supply;
-  current_count <- count_supply;
+  current_count <- token_id_count;
   new_supply = builtin add current_supply one;
   new_count = builtin add current_count one;
   (* Initiate token_id *)
@@ -847,7 +847,7 @@ procedure Birth(token: Dragon)
       (* Add to total_supply *)
       total_supply := new_supply;
       (* Add to total_count *)
-      count_supply := new_count;
+      token_id_count := new_count;
       
       e = {
         _eventname: "BirthSuccess";
@@ -866,7 +866,7 @@ end
 
 procedure MintFor(to: ByStr20)
   current_supply <- total_supply;
-  current_count <- count_supply;
+  current_count <- token_id_count;
 
   new_supply = builtin add current_supply one;
   new_count = builtin add current_count one;
@@ -879,7 +879,7 @@ procedure MintFor(to: ByStr20)
   (* Add to total_supply *)
   total_supply := new_supply;
   (* Add to total_count *)
-  count_supply := new_count
+  token_id_count := new_count
 
 end
 
