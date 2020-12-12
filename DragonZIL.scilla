@@ -18,6 +18,10 @@ type Operation =
 (* Custom ADT storing - token_id, owner, stage, token_uri, token_gen_battle, token_gen_image *)
 type Dragon =
 | Dragon of Uint256 ByStr20 Uint32 String Uint256 Uint256
+
+(* Custom ADT storing - token_id, token_gen_battle *)
+type IdBattleGenPair =
+| IdBattleGenPair of Uint256 Uint256
 (* DragonZIL types *)
 
 (* Global variables *)
@@ -942,25 +946,27 @@ procedure MintFor(to: ByStr20)
 
 end
 
-procedure ChangeBattleGen(token_id: Uint256, gen_battle: Uint256)
-  token_exist <- exists token_owners[token_id];
-  
-  match token_exist with
-  | False =>
-    err = CodeNotFound;
-    ThrowError err
-  | True =>
-    option_gen_battle <- token_gen_battle[token_id];
-    current_gen_battle = option_uint256 zero option_gen_battle;
-    token_gen_battle[token_id] := gen_battle;
-    
-    e = {
-      _eventname: "GensChangedSuccess";
-      token_id: token_id;
-      old_gen_battle: current_gen_battle;
-      new_gen_battle: gen_battle
-    };
-    event e
+procedure ChangeBattleGen(id_gen: IdBattleGenPair)
+  match id_gen with
+  | IdBattleGenPair token_id gen_battle =>
+    token_exist <- exists token_gen_battle[token_id];
+    match token_exist with
+    | False =>
+      err = CodeNotFound;
+      ThrowError err
+    | True =>
+      option_gen_battle <- token_gen_battle[token_id];
+      current_gen_battle = option_uint256 zero option_gen_battle;
+      token_gen_battle[token_id] := gen_battle;
+
+      e = {
+        _eventname: "GensChangedSuccess";
+        token_id: token_id;
+        old_gen_battle: current_gen_battle;
+        new_gen_battle: gen_battle
+      };
+      event e
+    end
   end
 end
 
@@ -1204,19 +1210,10 @@ transition ChangeImgFormat(new_format: String)
   event e
 end
 
-transition ChangeGens(token_id: Uint256, gen_battle: Uint256, token_id2: Uint256, gen_battle2: Uint256)
+transition ChangeBattleGens(id_gen_list: List IdBattleGenPair)
   IsMinter _sender;
   
-  ChangeBattleGen token_id gen_battle;
-  
-  is_id2_zero = builtin eq token_id2 zero;
-  match is_id2_zero with
-  | False =>
-
-    ChangeBattleGen token_id2 gen_battle2
-
-  | True =>
-  end
+  forall id_gen_list ChangeBattleGen
 end
 
 transition ConfigureStage(value: Uint32)
