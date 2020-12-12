@@ -202,42 +202,23 @@ procedure SetFldsRandWinLose (num_winner: Uint256)
   end
 end
 
-procedure AfterFightDraw(token_id1: Uint256, token_id2: Uint256)
-  random_luck <- random_luck_fld;
+procedure AfterFightDraw(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
+  d1_luck = builtin rem gen_battle1 ten2;
+  d2_luck = builtin rem gen_battle2 ten2;
 
-
-в случае если по итогам 2х раундов вышла ничья сравниваем ген удачи
-выигрывает тот у кого ген удачи больше
-
-но в AfterFightWinLose надо дать возможность програвшему дракону избежать наказания учитывая его ген удачи
-наказание проигравшему снимается но награда выигравшему остается
-
-
-  (* 0.8 luck *)
-
-надо добавит только 2 параметра для
-(* first_token_id *)
-(* some_token1_gen_battle *)
-(* number1 of gen who played *)
-(* number2 of gen who played *)
-(* add 20% - control field *)
-
-  luck_res_bool = builtin lt loser_luck winner_luck
-  match luck_res_bool with
-  | True =>
-    new_loser_gen_attack = get_downgraded_genschain loser_gen_attack loser_random_attack;
-    new_loser_gen_defence = get_downgraded_genschain loser_gen_defence loser_random_defence
-  | False =>
+  luck_res_bool_eq = builtin eq d1_luck d2_luck
+  luck_res_bool_lt = builtin lt d1_luck d2_luck
+  match luck_res_bool_eq with
+  | True
+    SendFightsResultsDraw
+  | False
+    match luck_res_bool_lt with
+    | True =>
+      AfterFightWinLose two token_id2 gen_battle2 token_id1 gen_battle1
+    | False =>
+      AfterFightWinLose one token_id1 gen_battle1 token_id2 gen_battle2
+    end
   end
-
-
-        AfterFightWinLose one token_id1 gen_battle1 token_id2 gen_battle2
-      | False =>
-        (* d2 win *)
-        AfterFightWinLose two token_id2 gen_battle2 token_id1 gen_battle1
-
-  (* SendFightsResultsDraw token_id1 token_id2
-  or call AfterFightWinLose *)
 end
 
 procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_battle_winner: Uint256, token_id_loser: Uint256, gen_battle_loser: Uint256)
@@ -279,7 +260,6 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   (* preparing for assemble *)
   gen_battle_loser = builtin sub gen_battle_loser loser_gen_defence;
 
-
   (* upgrade winner gen *)
   new_winner_gen_attack = get_upgraded_genschain winner_gen_attack winner_random_attack;
   new_winner_gen_defence = get_upgraded_genschain winner_gen_defence winner_random_defence;
@@ -290,7 +270,7 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   loser_luck08 = builtin div loser_luck08 ten;
   loser_avoid_downgrade = builtin lt random_luck loser_luck08;
   new_loser_gen_attack = get_downgraded_genschain loser_avoid_downgrade loser_gen_attack loser_random_attack;
-  new_loser_gen_defence = get_downgraded_genschain loser_avoid_downgrade loser_gen_defence loser_random_defence
+  new_loser_gen_defence = get_downgraded_genschain loser_avoid_downgrade loser_gen_defence loser_random_defence;
 
   (* assemble new gens for loser and winner *)
   gen_battle_winner = builtin add gen_battle_winner new_winner_gen_defence;
@@ -399,7 +379,7 @@ procedure GensMatch(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256
       match luck_bool_eq with
       | True =>
         (* draw *)
-        AfterFightDraw token_id1 token_id2
+        AfterFightDraw token_id1 gen_battle1 token_id2 gen_battle2
       | False =>
         match luck_bool_neg with
         | True =>
@@ -435,7 +415,7 @@ procedure GensMatch(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256
           match luck_bool_eq with
           | True =>
             (* draw *)
-            AfterFightDraw token_id1 token_id2
+            AfterFightDraw token_id1 gen_battle1 token_id2 gen_battle2
           | False =>
             match luck_bool_neg with
             | True =>
@@ -467,7 +447,7 @@ procedure GensMatch(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256
           match luck_bool_eq with
           | True =>
             (* draw *)
-            AfterFightDraw token_id1 token_id2
+            AfterFightDraw token_id1 gen_battle1 token_id2 gen_battle2
           | False =>
             match luck_bool_neg with
             | True =>
