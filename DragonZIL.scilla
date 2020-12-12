@@ -1068,6 +1068,8 @@ transition GetStage(token_id: Uint256)
 end
 
 procedure GetDragon(token_id: Uint256)
+  IsTokenExists token_id;
+
   some_token_owner <- token_owners[token_id];
   some_token_uri <- token_uris[token_id];
   some_token_gen_battle <- token_gen_battle[token_id];
