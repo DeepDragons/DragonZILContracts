@@ -1085,8 +1085,8 @@ transition GetDragons(ids: List Uint256)
 
   dragons <- tmp;
 
-  emnty = Nil {Dragon};
-  tmp := emnty;
+  empty = Nil {Dragon};
+  tmp := empty;
 
   msg_to_sender = {
     _tag: "GetDragonsCallBack";
