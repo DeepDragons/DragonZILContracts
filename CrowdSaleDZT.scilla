@@ -17,8 +17,8 @@ let one_msg =
     Cons {Message} msg nil_msg
 
 let iota =
-  fun (m : Uint32) => (* from *)
-  fun (n : Uint32) => (* to *)
+  fun (m : Uint32) =>
+  fun (n : Uint32) =>
   fun (value : ByStr20) =>
     let m_lt_n = builtin lt m n in
     match m_lt_n with
