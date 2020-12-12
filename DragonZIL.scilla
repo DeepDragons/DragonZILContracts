@@ -821,34 +821,31 @@ procedure Birth(token: Dragon)
   current_supply <- total_supply;
   current_count <- token_id_count;
   new_supply = builtin add current_supply one;
-  new_count = builtin add current_count one;
-  (* Initiate token_id *)
-  new_token_id = new_count;
+  (* Add to total_supply *)
+  total_supply := new_supply;
 
   match token with
   | Dragon token_id owner stage token_uri gen_battle gen_image =>
     is_zero = builtin eq token_id zero;
     match is_zero with
     | True =>
+      (* Initiate new_token_id *)
+      new_token_id = builtin add current_count one;
       (* Add address stage. *)
-      tokens_owner_stage[owner][new_token_id] := stage;
-      token_stage[new_token_id] := stage;
+      tokens_owner_stage[owner][new_token_id] := default_stage;
+      token_stage[new_token_id] := default_stage;
       (* Mint new non-fungible token *)
       token_owners[new_token_id] := owner;
       (* Add to owner count *)
       UpdateTokenCount add_operation owner;
-      (* Add token_uri for new_token_id *)
-      token_uris[new_token_id] := token_uri;
+      (* Create token_uri for new_token_id *)
+      ChangeTokenURI new_token_id default_stage;
       (* Add token gens battle *)
       token_gen_battle[new_token_id] := gen_battle;
       (* Add token gen image *)
       token_gen_image[new_token_id] := gen_image;
-      
-      (* Add to total_supply *)
-      total_supply := new_supply;
       (* Add to total_count *)
-      token_id_count := new_count;
-      
+      token_id_count := new_token_id;
       e = {
         _eventname: "BirthSuccess";
         by: _sender;
@@ -858,8 +855,35 @@ procedure Birth(token: Dragon)
       };
       event e
     | False =>
-      err = CodeNotFound;
-      ThrowError err
+      IsTokenExists token_id;
+      (* Add address stage. *)
+      tokens_owner_stage[owner][token_id] := stage;
+      token_stage[token_id] := stage;
+      (* Mint new non-fungible token *)
+      token_owners[token_id] := owner;
+      (* Add to owner count *)
+      UpdateTokenCount add_operation owner;
+      (* Add token_uri for token_id *)
+      token_uris[token_id] := token_uri;
+      (* Add token gens battle *)
+      token_gen_battle[token_id] := gen_battle;
+      (* Add token gen image *)
+      token_gen_image[token_id] := gen_image;
+      (* Change token_id_count *)
+      is_biger = builtin lt current_count token_id;
+      match is_biger with
+      | True =>
+        token_id_count := token_id
+      | False =>
+      end;
+      e = {
+        _eventname: "BirthSuccess";
+        by: _sender;
+        recipient: owner;
+        token_id: token_id;
+        token_uri: token_uri
+      };
+      event e
     end
   end
 end
