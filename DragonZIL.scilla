@@ -122,6 +122,7 @@ type Error =
   | CodeNotApprovedSpenderOrOperator
   | CodeNotOwnerOrOperatorOrApprovedSpender
   | CodeStageError
+  | CodeListEmpty
 
 let make_error =
   fun (result : Error) =>
@@ -139,6 +140,7 @@ let make_error =
       | CodeNotApprovedSpenderOrOperator => Int32 -10
       | CodeNotOwnerOrOperatorOrApprovedSpender => Int32 -11
       | CodeStageError                   => Int32 -12
+      | CodeListEmpty                    => Int32 -13
       
       end
     in
@@ -1187,14 +1189,38 @@ end
 (* @param:  to        - Address of the token recipient        *)
 transition Mint(to: ByStr20)
   IsMinter _sender;
-
-  MintFor to
+  
+  MintFor to;
+  
+  msg_to_recipient = {
+    _tag : "RecipientAcceptMint";
+    _recipient : to;
+    _amount : Uint128 0
+  };
+  msgs = one_msg msg_to_recipient;
+  send msgs
 end
 
 transition BatchMint(onwers: List ByStr20)
   IsMinter _sender;
 
-  forall onwers MintFor
+  forall onwers MintFor;
+  
+  own_head = @list_head ByStr20;
+  option_to = own_head onwers;
+  match option_to with
+  | Some to =>
+    msg_to_recipient = {
+      _tag : "RecipientAcceptMint";
+      _recipient : to;
+      _amount : Uint128 0
+    };
+    msgs = one_msg msg_to_recipient;
+    send msgs
+  | None =>
+    err = CodeListEmpty;
+    ThrowError err
+  end
 end
 (* @dev:    Burn existing tokens. Only token_owner or an operator can burn a NFT. *)
 (* @param:  token_id - Unique ID of the NFT to be destroyed                       *)
