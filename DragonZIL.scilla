@@ -885,6 +885,8 @@ procedure Birth(token: Dragon)
       token_gen_image[new_token_id] := gen_image;
       (* Add to total_count *)
       token_id_count := new_token_id;
+      some_token_uri <- token_uris[new_token_id];
+      token_uri = option_str dummy_str some_token_uri;
       e = {
         _eventname: "BirthSuccess";
         by: _sender;
