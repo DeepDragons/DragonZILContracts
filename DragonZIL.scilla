@@ -1156,8 +1156,9 @@ transition UpStage(token_id: Uint256)
 
   (* Check if token exists *)
   max_stage_of_token <- max_stage;
-
-  some_token_stage <- tokens_owner_stage[_sender][token_id];
+  some_owner <- token_owners[token_id];
+  token_owner = option_address zero_address some_owner;
+  some_token_stage <- tokens_owner_stage[token_owner][token_id];
   match some_token_stage with
     | Some stage => 
       one32 = Uint32 1;
@@ -1183,7 +1184,7 @@ transition UpStage(token_id: Uint256)
           event e
       end
     | None =>
-      err = CodeStageError;
+      err = CodeNotFound;
       ThrowError err
   end
 end
