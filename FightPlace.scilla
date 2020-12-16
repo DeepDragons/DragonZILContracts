@@ -29,6 +29,81 @@ type Error =
   | CodeVerificationFailed
   | CodeUint32Overflow
 
+let random =
+  fun (entropy: Uint256) =>
+  fun (block_number: BNum) =>
+    let entropy_hash = builtin keccak256hash entropy in
+    let blockhash = builtin keccak256hash block_number in
+    let ehash = builtin concat entropy_hash blockhash in
+    let hash = builtin keccak256hash ehash in
+      builtin to_uint256 hash
+
+let get_gen_val =
+  fun (genschain: Uint256) =>
+  fun (num: Uint256) =>
+    let pow_num2 = builtin mul two num in
+    let pow_num1 = builtin add two pow_num2 in
+    let divider1 = builtin pow ten pow_num1 in
+    let divider2 = builtin pow ten pow_num2 in
+    let rem_num1 = builtin rem genschain divider1 in
+    let rem_num2 = builtin rem genschain divider2 in
+    let genzeros = builtin sub rem_num1 rem_num2 in
+      builtin div genzeros divider2
+
+let get_upgraded_gen =
+  fun (gen: Uint256) =>
+  fun (gen_upgrade_prc: Uint256) =>
+    let gen_prc = builtin div gen gen_upgrade_prc in
+    let new_gen = builtin add gen gen_prc in
+    let ninetynine_bool = builtin lt new_gen ninetynine in
+    match ninetynine_bool with
+    | True => new_gen
+    | False => ninetynine
+    end
+
+let get_upgraded_genschain =
+  fun (genschain: Uint256) =>
+  fun (num: Uint256) =>
+  fun (gen_upgrade_prc: Uint256) =>
+    let pow_num2 = builtin mul two num in
+    let pow_num1 = builtin add two pow_num2 in
+    let divider1 = builtin pow ten pow_num1 in
+    let divider2 = builtin pow ten pow_num2 in
+    let rem_num1 = builtin rem genschain pow_num1 in
+    let rem_num2 = builtin rem genschain pow_num2 in
+    let genzeros = builtin sub rem_num1 rem_num2 in
+    let gen = builtin div genzeros divider2 in
+    let genchain_pre = builtin sub genschain rem_num1 in
+    let genchain_pre2 = builtin add genschain rem_num2 in
+    let new_gen = get_upgraded_gen gen gen_upgrade_prc in
+    let new_genzeros = builtin mul new_gen pow_num1 in
+      builtin add genchain_pre2 new_genzeros
+
+(* maybe better to have 1 function with match? *)
+let get_downgraded_genschain =
+  fun (need_downgrade: Bool) =>
+  fun (genschain: Uint256) =>
+  fun (num: Uint256) =>
+  fun (gen_downgrade_prc: Uint256) =>
+    match need_downgrade with
+    | False =>
+      let pow_num2 = builtin mul two num in
+      let pow_num1 = builtin add two pow_num2 in
+      let divider1 = builtin pow ten pow_num1 in
+      let divider2 = builtin pow ten pow_num2 in
+      let rem_num1 = builtin rem genschain pow_num1 in
+      let rem_num2 = builtin rem genschain pow_num2 in
+      let genzeros = builtin sub rem_num1 rem_num2 in
+      let gen = builtin div genzeros divider2 in
+      let genchain_pre = builtin sub genschain rem_num1 in
+      let genchain_pre2 = builtin add genschain rem_num2 in
+      let new_gen = div gen gen_downgrade_prc in
+      let new_genzeros = builtin mul new_gen pow_num1 in
+        builtin add genchain_pre2 new_genzeros
+    | True =>
+        builtin mul genschain one
+    end
+
 (* todo *)
 let make_error =
   fun (result : Error) =>
@@ -71,97 +146,6 @@ field loser_random_defence_fld : Uint256 = Uint256 0
 field gen_upgrade_prc_fld : Uint256 = Uint256 5
 field gen_downgrade_prc_fld : Uint256 = Uint256 10
 
-let random =
-  fun (entropy: Uint256) =>
-  fun (block_number: BNum) =>
-    let entropy_hash = builtin keccak256hash entropy in
-    let blockhash = builtin keccak256hash block_number in
-    let ehash = builtin concat entropy_hash blockhash in
-    let hash = builtin keccak256hash ehash in
-      builtin to_uint256 hash
-
-(* let get_gen_val =
-  fun (gen: Uint256) =>
-  fun (num: Uint256) =>
-    let gen_str = builtin to_string gen in
-    let num32 = builtin to_uint32 num in
-    let idx = pow_num1 mul num32 two in
-    let val = substr gen_str idx two in
-      builtin to_uint256 val *)
-
-let get_gen_val =
-  fun (genschain: Uint256) =>
-  fun (num: Uint256) =>
-    let pow_num2 = builtin mul two num in
-    let pow_num1 = builtin add two pow_num2 in
-    let divider1 = builtin pow ten pow_num1 in
-    let divider2 = builtin pow ten pow_num2 in
-    let rem_num1 = builtin rem genschain divider1 in
-    let rem_num2 = builtin rem genschain divider2 in
-    let genzeros = builtin sub rem_num1 rem_num2 in
-      builtin div genzeros divider2
-
-let get_upgraded_genschain =
-  fun (genschain: Uint256) =>
-  fun (num: Uint256) =>
-    let pow_num2 = builtin mul two num in
-    let pow_num1 = builtin add two pow_num2 in
-    let divider1 = builtin pow ten pow_num1 in
-    let divider2 = builtin pow ten pow_num2 in
-    let rem_num1 = builtin rem genschain pow_num1 in
-    let rem_num2 = builtin rem genschain pow_num2 in
-    let genzeros = builtin sub rem_num1 rem_num2 in
-    let gen = builtin div genzeros divider2 in
-    let genchain_pre = builtin sub genschain rem_num1 in
-    let genchain_pre2 = builtin add genschain rem_num2 in
-    let new_gen = get_upgraded_gen gen in
-    let new_genzeros = builtin mul new_gen pow_num1 in
-      builtin add genchain_pre2 new_genzeros
-
-(* maybe better to have 1 function with match? *)
-let get_downgraded_genschain =
-  fun (need_downgrade: Bool) =>
-  fun (genschain: Uint256) =>
-  fun (num: Uint256) =>
-    match need_downgrade with in
-    | False => need_downgrade
-      let pow_num2 = builtin mul two num in
-      let pow_num1 = builtin add two pow_num2 in
-      let divider1 = builtin pow ten pow_num1 in
-      let divider2 = builtin pow ten pow_num2 in
-      let rem_num1 = builtin rem genschain pow_num1 in
-      let rem_num2 = builtin rem genschain pow_num2 in
-      let genzeros = builtin sub rem_num1 rem_num2 in
-      let gen = builtin div genzeros divider2 in
-      let genchain_pre = builtin sub genschain rem_num1 in
-      let genchain_pre2 = builtin add genschain rem_num2 in
-      let new_gen = get_downgraded_gen gen in
-      let new_genzeros = builtin mul new_gen pow_num1 in
-        builtin add genchain_pre2 new_genzeros
-    | True =>
-        builtin mul genschain one
-    end
-
-
-
-let get_upgraded_gen =
-  fun (gen: Uint256) =>
-    let gen_upgrade_prc <- gen_upgrade_prc_fld in
-    let gen_prc = builtin div gen gen_upgrade_prc in
-    let new_gen = builtin add gen gen_prc in
-    let ninetynine_bool = builtin lt new_gen ninetynine in
-    match ninetynine_bool with
-    | True => new_gen
-    | False => ninetynine
-    end
-
-let get_downgraded_gen =
-  fun (gen: Uint256) =>
-    let gen_downgrade_prc <- gen_downgrade_prc_fld in
-      builtin div gen gen_downgrade_prc
-
-
-
 (* Emit Errors *)
 procedure ThrowError(err : Error)
   e = make_error err;
@@ -181,7 +165,7 @@ end
 procedure SetFldsRandWinLose (num_winner: Uint256)
 (* DO WE NEED TMP VAR HERE??? *)
   match num_winner with
-  | one
+  | one =>
     d1ra <- d1_random_attack_fld;
     winner_random_attack_fld := d1ra;
     d1rd <- d1_random_defence_fld;
@@ -190,7 +174,7 @@ procedure SetFldsRandWinLose (num_winner: Uint256)
     loser_random_attack_fld := d2ra;
     d2rd <- d2_random_defence_fld;
     loser_random_defence_fld := d2rd
-  | two
+  | two =>
     d2ra <- d2_random_attack_fld;
     winner_random_attack_fld := d2ra;
     d2rd <- d2_random_defence_fld;
@@ -202,23 +186,12 @@ procedure SetFldsRandWinLose (num_winner: Uint256)
   end
 end
 
-procedure AfterFightDraw(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
-  d1_luck = builtin rem gen_battle1 ten2;
-  d2_luck = builtin rem gen_battle2 ten2;
+procedure SendFightsResultsDraw(token_id1: Uint256, token_id2: Uint256)
+ (* event *)
+end
 
-  luck_res_bool_eq = builtin eq d1_luck d2_luck
-  luck_res_bool_lt = builtin lt d1_luck d2_luck
-  match luck_res_bool_eq with
-  | True
-    SendFightsResultsDraw
-  | False
-    match luck_res_bool_lt with
-    | True =>
-      AfterFightWinLose two token_id2 gen_battle2 token_id1 gen_battle1
-    | False =>
-      AfterFightWinLose one token_id1 gen_battle1 token_id2 gen_battle2
-    end
-  end
+procedure SendFightsResultsWinLose(token_id_winner: Uint256, gen_battle_winner: Uint256, token_id_loser: Uint256, gen_battle_loser: Uint256)
+ (* message new gens to tokens and event *)
 end
 
 procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_battle_winner: Uint256, token_id_loser: Uint256, gen_battle_loser: Uint256)
@@ -230,6 +203,8 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   loser_random_attack <- loser_random_attack_fld;
   loser_random_defence <- loser_random_defence_fld;
   random_luck <- random_luck_fld;
+  gen_upgrade_prc <- gen_upgrade_prc_fld;
+  gen_downgrade_prc <- gen_downgrade_prc_fld;
 
   (* calculating gens *)
   (* last 2 digits - gen luck *)
@@ -261,16 +236,16 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   gen_battle_loser = builtin sub gen_battle_loser loser_gen_defence;
 
   (* upgrade winner gen *)
-  new_winner_gen_attack = get_upgraded_genschain winner_gen_attack winner_random_attack;
-  new_winner_gen_defence = get_upgraded_genschain winner_gen_defence winner_random_defence;
+  new_winner_gen_attack = get_upgraded_genschain winner_gen_attack winner_random_attack gen_upgrade_prc;
+  new_winner_gen_defence = get_upgraded_genschain winner_gen_defence winner_random_defence gen_upgrade_prc;
 
   (* downgrade loser gen *)
   (* if loser have big luck gen he will avoid downgrade, we taking 80% of loser luck only *)
   loser_luck08 = builtin mul loser_luck eight;
   loser_luck08 = builtin div loser_luck08 ten;
   loser_avoid_downgrade = builtin lt random_luck loser_luck08;
-  new_loser_gen_attack = get_downgraded_genschain loser_avoid_downgrade loser_gen_attack loser_random_attack;
-  new_loser_gen_defence = get_downgraded_genschain loser_avoid_downgrade loser_gen_defence loser_random_defence;
+  new_loser_gen_attack = get_downgraded_genschain loser_avoid_downgrade loser_gen_attack loser_random_attack gen_downgrade_prc;
+  new_loser_gen_defence = get_downgraded_genschain loser_avoid_downgrade loser_gen_defence loser_random_defence gen_downgrade_prc;
 
   (* assemble new gens for loser and winner *)
   gen_battle_winner = builtin add gen_battle_winner new_winner_gen_defence;
@@ -288,22 +263,30 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   SendFightsResultsWinLose token_id_winner gen_battle_winner token_id_loser gen_battle_loser
 end
 
-procedure SendFightsResultsDraw(token_id1: Uint256, token_id2: Uint256)
- (* event *)
+procedure AfterFightDraw(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
+  d1_luck = builtin rem gen_battle1 ten2;
+  d2_luck = builtin rem gen_battle2 ten2;
+
+  luck_res_bool_eq = builtin eq d1_luck d2_luck;
+  luck_res_bool_lt = builtin lt d1_luck d2_luck;
+  match luck_res_bool_eq with
+  | True =>
+    SendFightsResultsDraw token_id1 token_id2
+  | False =>
+    match luck_res_bool_lt with
+    | True =>
+      AfterFightWinLose two token_id2 gen_battle2 token_id1 gen_battle1
+    | False =>
+      AfterFightWinLose one token_id1 gen_battle1 token_id2 gen_battle2
+    end
+  end
 end
-
-procedure SendFightsResultsWinLose(token_id_winner: Uint256, gen_battle_winner: Uint256, token_id_loser: Uint256, gen_battle_loser: Uint256)
- (* message new gens to tokens and event *)
-end
-
-
 
 procedure GensMatch(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
   (* generating random values *)
   entropyNumber <- entropy;
   current_block <- & BLOCKNUMBER;
   random = random entropyNumber current_block;
-  entropy := random;
 
   d1_random_attack = builtin rem random ten;
   d1_random_attack_fld := d1_random_attack;
@@ -325,7 +308,8 @@ procedure GensMatch(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256
   random = builtin sub random d2_random_defence;
   random = builtin div random ten;
 
-  random_luck_fld := builtin rem random ten2;
+  random_luck = builtin rem random ten2;
+  random_luck_fld := random_luck;
 
   (* calculating gens *)
   (* last 2 digits - gen luck *)
@@ -370,6 +354,8 @@ procedure GensMatch(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256
   res2_bool_eq = builtin eq d2_defence d1_attack;
   (* true - win d1, false - win d2 *)
   res2_bool_neg = builtin lt d2_defence d1_attack;
+  
+  entropy := random;
 
   match res1_bool_eq with
   | True =>
@@ -464,36 +450,21 @@ procedure GensMatch(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256
   end
 end
 
-
 transition GetGens2CallBack(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
   GensMatch token_id1 gen_battle1 token_id2 gen_battle2
 end
 
-
-transition Start(token_id: Uint256)
-  (* check only main contract can place to wait list *)
-
-  tokens_owner_stage[to][token_id] := default_stage;
-  (* Mint new non-fungible token *)
-  token_owners[token_id] := to;
-end
-
 transition Fight(who_token_id: Uint256, with_token_id: Uint256)
-
-
-  e = {
+  (* e = {
     _eventname : "ReturnFundSuccessful";
     returned_amount: bal
   };
   event e;
-
   msg = {
     _tag: "";
     _recipient: contract_owner;
     _amount: bal
   };
-
   msgs = one_msg msg;
-  send msgs
-
+  send msgs *)
 end
