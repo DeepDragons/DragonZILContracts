@@ -16,6 +16,17 @@ let ninetynine = Uint256 99
 let ten2 = Uint256 100
 let ten20 = Uint256 100000000000000000000
 
+let option_value =
+  tfun 'A =>
+  fun (default: 'A) =>
+  fun (opt_val: Option 'A) =>
+    match opt_val with
+    | Some v => v
+    | None => default
+    end
+
+let option_uint32 = @option_value Uint32
+
 let one_msg =
   fun (msg : Message) =>
   let nil_msg = Nil {Message} in
@@ -43,8 +54,12 @@ let get_gen_val =
   fun (num: Uint256) =>
     let pow_num2 = builtin mul two num in
     let pow_num1 = builtin add two pow_num2 in
-    let divider1 = builtin pow ten pow_num1 in
-    let divider2 = builtin pow ten pow_num2 in
+    let pow_num2_32opt = builtin to_uint32 pow_num2 in
+    let pow_num1_32opt = builtin to_uint32 pow_num1 in
+    let pow_num2_32 = option_uint32 pow_num2_32opt in
+    let pow_num1_32 = option_uint32 pow_num1_32opt in
+    let divider1 = builtin pow ten pow_num1_32 in
+    let divider2 = builtin pow ten pow_num2_32 in
     let rem_num1 = builtin rem genschain divider1 in
     let rem_num2 = builtin rem genschain divider2 in
     let genzeros = builtin sub rem_num1 rem_num2 in
@@ -67,8 +82,12 @@ let get_upgraded_genschain =
   fun (gen_upgrade_prc: Uint256) =>
     let pow_num2 = builtin mul two num in
     let pow_num1 = builtin add two pow_num2 in
-    let divider1 = builtin pow ten pow_num1 in
-    let divider2 = builtin pow ten pow_num2 in
+    let pow_num2_32opt = builtin to_uint32 pow_num2 in
+    let pow_num1_32opt = builtin to_uint32 pow_num1 in
+    let pow_num2_32 = option_uint32 pow_num2_32opt in
+    let pow_num1_32 = option_uint32 pow_num1_32opt in
+    let divider1 = builtin pow ten pow_num1_32 in
+    let divider2 = builtin pow ten pow_num2_32 in
     let rem_num1 = builtin rem genschain pow_num1 in
     let rem_num2 = builtin rem genschain pow_num2 in
     let genzeros = builtin sub rem_num1 rem_num2 in
@@ -89,8 +108,12 @@ let get_downgraded_genschain =
     | False =>
       let pow_num2 = builtin mul two num in
       let pow_num1 = builtin add two pow_num2 in
-      let divider1 = builtin pow ten pow_num1 in
-      let divider2 = builtin pow ten pow_num2 in
+      let pow_num2_32opt = builtin to_uint32 pow_num2 in
+      let pow_num1_32opt = builtin to_uint32 pow_num1 in
+      let pow_num2_32 = option_uint32 pow_num2_32opt in
+      let pow_num1_32 = option_uint32 pow_num1_32opt in
+      let divider1 = builtin pow ten pow_num1_32 in
+      let divider2 = builtin pow ten pow_num2_32 in
       let rem_num1 = builtin rem genschain pow_num1 in
       let rem_num2 = builtin rem genschain pow_num2 in
       let genzeros = builtin sub rem_num1 rem_num2 in
@@ -354,7 +377,7 @@ procedure GensMatch(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256
   res2_bool_eq = builtin eq d2_defence d1_attack;
   (* true - win d1, false - win d2 *)
   res2_bool_neg = builtin lt d2_defence d1_attack;
-  
+
   entropy := random;
 
   match res1_bool_eq with
