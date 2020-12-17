@@ -7,6 +7,7 @@ import PairUtils ListUtils
 library FightPlace
 
 let zero = Uint256 0
+let zero32 = Uint32 0
 let one = Uint256 1
 let two = Uint256 2
 let eight = Uint256 8
@@ -56,8 +57,8 @@ let get_gen_val =
     let pow_num1 = builtin add two pow_num2 in
     let pow_num2_32opt = builtin to_uint32 pow_num2 in
     let pow_num1_32opt = builtin to_uint32 pow_num1 in
-    let pow_num2_32 = option_uint32 pow_num2_32opt in
-    let pow_num1_32 = option_uint32 pow_num1_32opt in
+    let pow_num2_32 = option_uint32 zero32 pow_num2_32opt in
+    let pow_num1_32 = option_uint32 zero32 pow_num1_32opt in
     let divider1 = builtin pow ten pow_num1_32 in
     let divider2 = builtin pow ten pow_num2_32 in
     let rem_num1 = builtin rem genschain divider1 in
@@ -84,8 +85,8 @@ let get_upgraded_genschain =
     let pow_num1 = builtin add two pow_num2 in
     let pow_num2_32opt = builtin to_uint32 pow_num2 in
     let pow_num1_32opt = builtin to_uint32 pow_num1 in
-    let pow_num2_32 = option_uint32 pow_num2_32opt in
-    let pow_num1_32 = option_uint32 pow_num1_32opt in
+    let pow_num2_32 = option_uint32 zero32 pow_num2_32opt in
+    let pow_num1_32 = option_uint32 zero32 pow_num1_32opt in
     let divider1 = builtin pow ten pow_num1_32 in
     let divider2 = builtin pow ten pow_num2_32 in
     let rem_num1 = builtin rem genschain pow_num1 in
@@ -110,8 +111,8 @@ let get_downgraded_genschain =
       let pow_num1 = builtin add two pow_num2 in
       let pow_num2_32opt = builtin to_uint32 pow_num2 in
       let pow_num1_32opt = builtin to_uint32 pow_num1 in
-      let pow_num2_32 = option_uint32 pow_num2_32opt in
-      let pow_num1_32 = option_uint32 pow_num1_32opt in
+      let pow_num2_32 = option_uint32 zero32 pow_num2_32opt in
+      let pow_num1_32 = option_uint32 zero32 pow_num1_32opt in
       let divider1 = builtin pow ten pow_num1_32 in
       let divider2 = builtin pow ten pow_num2_32 in
       let rem_num1 = builtin rem genschain pow_num1 in
@@ -120,7 +121,7 @@ let get_downgraded_genschain =
       let gen = builtin div genzeros divider2 in
       let genchain_pre = builtin sub genschain rem_num1 in
       let genchain_pre2 = builtin add genschain rem_num2 in
-      let new_gen = div gen gen_downgrade_prc in
+      let new_gen = builtin div gen gen_downgrade_prc in
       let new_genzeros = builtin mul new_gen pow_num1 in
         builtin add genchain_pre2 new_genzeros
     | True =>
@@ -186,26 +187,25 @@ procedure IsContractOwner()
 end
 
 procedure SetFldsRandWinLose (num_winner: Uint256)
-(* DO WE NEED TMP VAR HERE??? *)
+  d2ra <- d2_random_attack_fld;
+  winner_random_attack_fld := d2ra;
+  d2rd <- d2_random_defence_fld;
+  winner_random_defence_fld := d2rd;
+  d1ra <- d1_random_attack_fld;
+  loser_random_attack_fld := d1ra;
+  d1rd <- d1_random_defence_fld;
+  loser_random_defence_fld := d1rd;
+
   match num_winner with
   | one =>
-    d1ra <- d1_random_attack_fld;
-    winner_random_attack_fld := d1ra;
-    d1rd <- d1_random_defence_fld;
-    winner_random_defence_fld := d1rd;
-    d2ra <- d2_random_attack_fld;
-    loser_random_attack_fld := d2ra;
-    d2rd <- d2_random_defence_fld;
-    loser_random_defence_fld := d2rd
-  | two =>
-    d2ra <- d2_random_attack_fld;
-    winner_random_attack_fld := d2ra;
-    d2rd <- d2_random_defence_fld;
-    winner_random_defence_fld := d2rd;
-    d1ra <- d1_random_attack_fld;
-    loser_random_attack_fld := d1ra;
-    d1rd <- d1_random_defence_fld;
-    loser_random_defence_fld := d1rd
+    od1ra <- d1_random_attack_fld;
+    winner_random_attack_fld := od1ra;
+    od1rd <- d1_random_defence_fld;
+    winner_random_defence_fld := od1rd;
+    od2ra <- d2_random_attack_fld;
+    loser_random_attack_fld := od2ra;
+    od2rd <- d2_random_defence_fld;
+    loser_random_defence_fld := od2rd
   end
 end
 
@@ -217,7 +217,7 @@ procedure SendFightsResultsWinLose(token_id_winner: Uint256, gen_battle_winner: 
  (* message new gens to tokens and event *)
 end
 
-procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_battle_winner: Uint256, token_id_loser: Uint256, gen_battle_loser: Uint256)
+procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_battle_winner_param: Uint256, token_id_loser: Uint256, gen_battle_loser_param: Uint256)
   (* call procedure to set winner and loser *)
   SetFldsRandWinLose num_winner;
 
@@ -234,6 +234,7 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   (* next 20 digits - gen attack *)
   (* next 20 digits - gen defence *)
   (* other are reserved *)
+  gen_battle_winner = gen_battle_winner_param;
   winner_luck = builtin rem gen_battle_winner ten2;
   gen_battle_winner = builtin sub gen_battle_winner winner_luck;
   gen_battle_winner = builtin div gen_battle_winner ten2;
@@ -246,6 +247,7 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   (* preparing for assemble *)
   gen_battle_winner = builtin sub gen_battle_winner winner_gen_defence;
 
+  gen_battle_loser = gen_battle_loser_param;
   loser_luck = builtin rem gen_battle_loser ten2;
   gen_battle_loser = builtin sub gen_battle_loser loser_luck;
   gen_battle_loser = builtin div gen_battle_loser ten2;
@@ -305,7 +307,7 @@ procedure AfterFightDraw(token_id1: Uint256, gen_battle1: Uint256, token_id2: Ui
   end
 end
 
-procedure GensMatch(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
+procedure GensMatch(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uint256, gen_battle2_param: Uint256)
   (* generating random values *)
   entropyNumber <- entropy;
   current_block <- & BLOCKNUMBER;
@@ -339,6 +341,7 @@ procedure GensMatch(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256
   (* next 20 digits - gen attack *)
   (* next 20 digits - gen defence *)
   (* other are reserved *)
+  gen_battle1 = gen_battle1_param;
   d1_luck = builtin rem gen_battle1 ten2;
   gen_battle1 = builtin sub gen_battle1 d1_luck;
   gen_battle1 = builtin div gen_battle1 ten2;
@@ -349,6 +352,7 @@ procedure GensMatch(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256
 
   d1_gen_defence = builtin rem gen_battle1 ten20;
 
+  gen_battle2 = gen_battle2_param;
   d2_luck = builtin rem gen_battle2 ten2;
   gen_battle2 = builtin sub gen_battle2 d2_luck;
   gen_battle2 = builtin div gen_battle2 ten2;
