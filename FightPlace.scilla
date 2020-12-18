@@ -6,6 +6,29 @@ import PairUtils ListUtils
 (***************************************************)
 library FightPlace
 
+(* User-defined ADTs *)
+type Dummy =
+| Dummy
+
+type Operation =
+| Add
+| Sub
+
+(* DragonZIL types *)
+(* Custom ADT storing - token_id, owner, stage, token_uri, token_gen_battle, token_gen_image *)
+type Dragon =
+| Dragon of Uint256 ByStr20 Uint32 String Uint256 Uint256
+
+(* Custom ADT storing - token_id, token_gen_battle *)
+type IdBattleGenPair =
+| IdBattleGenPair of Uint256 Uint256
+(* DragonZIL types *)
+
+let one_drgnpair =
+  fun (drgnpair : IdBattleGenPair) =>
+    let nil_drgnpair = Nil {IdBattleGenPair} in
+    Cons {IdBattleGenPair} drgnpair nil_drgnpair
+
 let zero = Uint256 0
 let zero32 = Uint32 0
 let one = Uint256 1
@@ -17,6 +40,16 @@ let ninetynine = Uint256 99
 let ten2 = Uint256 100
 let ten20 = Uint256 100000000000000000000
 
+let verdad = Dummy
+let add_operation = Add
+let sub_operation = Sub
+
+let zero_address = 0x0000000000000000000000000000000000000000
+let dummy_str = ""
+let default_stage = Uint32 0
+
+let default_dragon = Dragon zero zero_address default_stage dummy_str zero zero
+
 let option_value =
   tfun 'A =>
   fun (default: 'A) =>
@@ -26,7 +59,26 @@ let option_value =
     | None => default
     end
 
+let option_address = @option_value ByStr20
+let option_str = @option_value String
 let option_uint32 = @option_value Uint32
+let option_uint256 = @option_value Uint256
+let option_uint128 = @option_value Uint128
+let option_dragon = @option_value Dragon
+
+let build_dragon =
+  fun (token_id: Uint256) =>
+  fun (some_token_owner: Option ByStr20) =>
+  fun (some_token_uri: Option String) =>
+  fun (some_token_gen_battle: Option Uint256) =>
+  fun (some_token_gen_image: Option Uint256) =>
+  fun (some_token_stage: Option Uint32) =>
+    let owner = option_address zero_address some_token_owner in
+    let uri = option_str dummy_str some_token_uri in
+    let gen_battle = option_uint256 zero some_token_gen_battle in
+    let gen_image = option_uint256 zero some_token_gen_image in
+    let stage = option_uint32 default_stage some_token_stage in
+      Dragon token_id owner stage uri gen_battle gen_image
 
 let one_msg =
   fun (msg : Message) =>
@@ -477,21 +529,104 @@ procedure GensMatch(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: U
   end
 end
 
-transition GetGens2CallBack(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
+(* transition GetGens2CallBack(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
   GensMatch token_id1 gen_battle1 token_id2 gen_battle2
-end
+end *)
 
-transition Fight(who_token_id: Uint256, with_token_id: Uint256)
-  (* e = {
-    _eventname : "ReturnFundSuccessful";
-    returned_amount: bal
+transition GetDragonsCallBack(dragons: List Dragon)
+(* need to check is this transition called from main contract *)
+(* need to check we really have such dragons in waiting list *)
+(* and here we have a problem 1st dragon will be in waiting list, and second is not *)
+(* right now we will have only simple fights between 2 dragons, because of that we have assupmtion what list have 2 elements *)
+
+(* list_head for 1st dragon *)
+  dragons_head1 = @list_head Dragon;
+  dragon_1_opt = dragons_head1 dragons;
+(* list_tail for 2nd dragon *)
+  dragons_tail = @list_tail Dragon;
+  dragon_2_opt_list = dragons_tail dragons;
+
+  (* dragons_head2 = @list_head Dragon; *)
+  dragon_2_opt = dragons_head1 dragon_2_opt_list;
+
+  e = {
+    _eventname : "DragonsOpt";
+    dragon_1_opt: dragon_1_opt;
+    dragon_2_opt: dragon_2_opt
   };
   event e;
-  msg = {
-    _tag: "";
-    _recipient: contract_owner;
-    _amount: bal
+
+  dragon_1 = option_dragon default_dragon dragon_1_opt;
+  dragon_2 = option_dragon default_dragon dragon_2_opt;
+  e = {
+    _eventname : "Dragons";
+    dragon_1: dragon_1;
+    dragon_2: dragon_2
   };
-  msgs = one_msg msg;
+  event e
+
+
+
+  (* start fight with this 2 dragons *)
+
+  (* update gens manually *)
+  (* send message to update gens *)
+  (* new_gen = Uint256 123123123;
+  token_id = Uint256 3;
+  id_gen = IdBattleGenPair token_id new_gen;
+
+  id_gen_list = one_drgnpair id_gen;
+
+  e = {
+    _eventname : "GetDragonsCallBack";
+    dragons: dragons;
+    id_gen_list: id_gen_list
+  };
+  event e *)
+
+  (* changegens_call = {
+    _tag: "ChangeBattleGens";
+    _recipient: main_dzt;
+    _amount: Uint128 0;
+    id_gen_list: id_gen_list
+  };
+  msgs = one_msg changegens_call;
   send msgs *)
+
+end
+
+transition FightInit (ids: List Uint256)
+  (* get gens from 2 dragons *)
+
+  e = {
+    _eventname : "FightSuccessful";
+    ids: ids
+  };
+  event e;
+
+  getdragons_call = {
+    _tag: "GetDragons";
+    _recipient: main_dzt;
+    _amount: Uint128 0;
+    ids: ids
+  };
+  msgs = one_msg getdragons_call;
+  send msgs
+end
+
+transition FightStart (who_id: Uint256, with_id: Uint256)
+(* check is with_id dragon in waiting list, *)
+(* check is owner of who_id wanted to send dragon to fight *)
+
+(* if all is ok, need to start fight - call FightInit *)
+end
+
+transition WaitingListAddDel ()
+(* total_supply *)
+
+(* do as for Minting, use counter and all other things *)
+
+(* add if it is not in list *)
+(* remove if it is already in list *)
+
 end
