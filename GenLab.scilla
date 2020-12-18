@@ -1,0 +1,100 @@
+scilla_version 0
+
+library GenLab
+
+(* User-defined ADTs *)
+type Operation =
+| Add
+| Sub
+
+(* Global variables *)
+let zero = Uint128 0
+let add_operation = Add
+let sub_operation = Sub
+
+(* Library functions *)
+let get_bal =
+  fun (some_bal: Option Uint128) =>
+    match some_bal with
+    | Some bal => bal
+    | None => zero
+    end
+
+(* Error events *)
+type Error =
+  | CodeInsufficientZLPAmount
+  | CodeIsNotZLPContract
+
+let make_error =
+  fun (result : Error) =>
+    let result_code =
+      match result with
+      | CodeInsufficientZLPAmount => Int32 -1
+      | CodeIsNotZLPContract      => Int32 -2
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
+contract GenLab
+
+(*  Parameters *)
+(
+  contract_owner: ByStr20,
+  main_dzt : ByStr20,
+  zlp : ByStr20
+)
+
+(* Mutable fields *)
+field price: Uint128 = Uint128 1
+field free_ZLP_balance: Uint128 = Uint128 0
+field dragon_applay_counter: Map Uint256 Uint32 = Emp Uint256 Uint32
+field address_ZLP_balance: Map ByStr20 Uint128 = Emp ByStr20 Uint128
+
+(* Emit Errors *)
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+procedure IsZLPContract()
+  is_zlp_sender = builtin eq zlp _sender;
+  match is_zlp_sender with
+  | True =>
+  | False =>
+    err = CodeIsNotZLPContract;
+    ThrowError err
+  end
+end
+
+procedure UpdateTokenCount(operation: Operation, address: ByStr20, amount: Uint128)
+  some_to_count <- address_ZLP_balance[address];
+  current_count = get_bal some_to_count;
+  match operation with
+  | Add =>
+    new_to_count = builtin add current_count amount;
+    address_ZLP_balance[address] := new_to_count
+  | Sub =>
+    is_insufficient = builtin lt current_count amount;
+    match is_insufficient with
+      | False => 
+        new_to_count = builtin sub current_count amount;
+        address_ZLP_balance[address] := new_to_count
+      | True =>
+        err = CodeInsufficientZLPAmount;
+        ThrowError err
+      end
+  end
+end
+
+procedure acceptZLP(from: ByStr20, amount: Uint128)
+  IsZLPContract;
+  UpdateTokenCount add_operation from amount
+  
+end
+transition RecipientAcceptTransfer(sender: ByStr20, recipient: ByStr20, amount: Uint128)
+  acceptZLP sender amount
+end
+transition RecipientAcceptTransferFrom(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
+  acceptZLP sender amount
+end
+
