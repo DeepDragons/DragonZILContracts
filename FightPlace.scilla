@@ -542,8 +542,11 @@ transition GetDragonsCallBack(dragons: List Dragon)
 
 (* list_nth : Uint32 -> List 'A -> Option 'A. *)
   dragons_nth = @list_nth Dragon;
-  dragon_one = dragons_nth zero32 dragons;
-  dragon_two = dragons_nth one32 dragons;
+  dragon_one_opt = dragons_nth zero32 dragons;
+  dragon_two_opt = dragons_nth one32 dragons;
+
+  dragon_one = option_dragon default_dragon dragon_one_opt;
+  dragon_two = option_dragon default_dragon dragon_two_opt;
 
   e = {
     _eventname : "DragonsNth";
@@ -552,33 +555,19 @@ transition GetDragonsCallBack(dragons: List Dragon)
   };
   event e;
 
-(* list_reverse *)
-
-  dragons_head = @list_head Dragon;
-  dragon_1_opt = dragons_head dragons;
-
-  dragons_tail = @list_tail Dragon;
-  dragon_2_opt = dragons_tail dragons;
-(*
-  dragons_head2 = @list_head Dragon;
-  dragon_2_opt = dragons_head1 dragon_2_opt_list; *)
-
-  e = {
-    _eventname : "DragonsOpt";
-    dragon_1_opt: dragon_1_opt;
-    dragon_2_opt: dragon_2_opt
-  };
-  event e;
-
-  dragon_1 = option_dragon default_dragon dragon_1_opt;
-  (* dragon_2 = option_dragon default_dragon dragon_2_opt; *)
-  e = {
-    _eventname : "Dragons";
-    dragon_1: dragon_1
-    (* dragon_2: dragon_2 *)
-  };
-  event e;
-
+  match dragon_one with
+  | Dragon token_id owner stage token_uri token_gen_battle token_gen_image =>
+    e = {
+      _eventname: "dragonOneData";
+      token_id: token_id;
+      owner: owner;
+      stage: stage;
+      token_uri: token_uri;
+      token_gen_battle: token_gen_battle;
+      token_gen_image: token_gen_image
+    };
+    event e
+  end;
 
 
   (* start fight with this 2 dragons *)
