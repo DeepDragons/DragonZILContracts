@@ -181,14 +181,33 @@ let get_downgraded_genschain =
         builtin mul genschain one
     end
 
+let get_dragon_token_id =
+  fun (dragon: Dragon) =>
+    match dragon with
+    | Dragon token_id owner stage token_uri token_gen_battle token_gen_image =>
+      token_id
+    end
+
+let get_dragon_owner =
+  fun (dragon: Dragon) =>
+    match dragon with
+    | Dragon token_id owner stage token_uri token_gen_battle token_gen_image =>
+      owner
+    end
+
+let get_dragon_stage =
+  fun (dragon: Dragon) =>
+    match dragon with
+    | Dragon token_id owner stage token_uri token_gen_battle token_gen_image =>
+      stage
+    end
+
 let get_dragon_gen_battle =
   fun (dragon: Dragon) =>
     match dragon with
     | Dragon token_id owner stage token_uri token_gen_battle token_gen_image =>
       token_gen_battle
     end
-
-
 
 (* todo *)
 let make_error =
@@ -277,6 +296,20 @@ end
 
 procedure SendFightsResultsWinLose(token_id_winner: Uint256, gen_battle_winner: Uint256, token_id_loser: Uint256, gen_battle_loser: Uint256)
  (* message new gens to tokens and event *)
+  (* send message to update gens *)
+  new_gen = Uint256 123123123;
+  token_id = Uint256 3;
+  id_gen = IdBattleGenPair token_id new_gen;
+  id_gen_list = one_drgnpair id_gen;
+
+  changegens_call = {
+    _tag: "ChangeBattleGens";
+    _recipient: main_dzt;
+    _amount: Uint128 0;
+    id_gen_list: id_gen_list
+  };
+  msgs = one_msg changegens_call;
+  send msgs
 end
 
 procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_battle_winner_param: Uint256, token_id_loser: Uint256, gen_battle_loser_param: Uint256)
@@ -549,8 +582,11 @@ transition GetDragonsCallBack(dragons: List Dragon)
 (* and here we have a problem 1st dragon will be in waiting list, and second is not *)
 (* right now we will have only simple fights between 2 dragons, because of that we have assupmtion what list have 2 elements *)
 
+(* create procedure to check *)
+(* todo field as initiator of fights *)
 (* todo: check owner of the dragon - check is first or second dragons owner is who starting this fight *)
 (* dragon1_owner = sender of dragon2 = sender *)
+(* todo: check token_id don't fight with same dragon *)
 
   dragons_nth = @list_nth Dragon;
   dragon_one_opt = dragons_nth zero32 dragons;
@@ -559,56 +595,37 @@ transition GetDragonsCallBack(dragons: List Dragon)
   dragon_one = option_dragon default_dragon dragon_one_opt;
   dragon_two = option_dragon default_dragon dragon_two_opt;
 
+  dragon1_gen_token_id = get_dragon_token_id dragon_one;
+  dragon1_gen_owner = get_dragon_owner dragon_one;
+  dragon1_gen_stage = get_dragon_stage dragon_one;
   dragon1_gen_battle = get_dragon_gen_battle dragon_one;
+
+  dragon2_gen_token_id = get_dragon_token_id dragon_two;
+  dragon2_gen_owner = get_dragon_owner dragon_two;
+  dragon2_gen_stage = get_dragon_stage dragon_two;
+  dragon2_gen_battle = get_dragon_gen_battle dragon_two;
 
   e = {
     _eventname : "DragonsNth";
     dragon_one: dragon_one;
     dragon_two: dragon_two;
-    dragon1_gen_battle: dragon1_gen_battle
-  };
-  event e;
-
-  match dragon_one with
-  | Dragon token_id owner stage token_uri token_gen_battle token_gen_image =>
-    e = {
-      _eventname: "dragonOneData";
-      token_id: token_id;
-      owner: owner;
-      stage: stage;
-      token_uri: token_uri;
-      token_gen_battle: token_gen_battle;
-      token_gen_image: token_gen_image
-    };
-    event e
-  end;
-
-
-  (* start fight with this 2 dragons *)
-
-  (* update gens manually *)
-  (* send message to update gens *)
-  new_gen = Uint256 123123123;
-  token_id = Uint256 3;
-  id_gen = IdBattleGenPair token_id new_gen;
-
-  id_gen_list = one_drgnpair id_gen;
-
-  e = {
-    _eventname : "GetDragonsCallBack";
-    dragons: dragons;
-    id_gen_list: id_gen_list
+    dragon1_gen_token_id: dragon1_gen_token_id;
+    dragon1_gen_owner: dragon1_gen_owner;
+    dragon1_gen_stage: dragon1_gen_stage;
+    dragon1_gen_battle: dragon1_gen_battle;
+    dragon2_gen_token_id: dragon2_gen_token_id;
+    dragon2_gen_owner: dragon2_gen_owner;
+    dragon2_gen_stage: dragon2_gen_stage;
+    dragon2_gen_battle: dragon2_gen_battle
   };
   event e
 
-  (* changegens_call = {
-    _tag: "ChangeBattleGens";
-    _recipient: main_dzt;
-    _amount: Uint128 0;
-    id_gen_list: id_gen_list
-  };
-  msgs = one_msg changegens_call;
-  send msgs *)
+
+
+  (* start fight with this 2 dragons *)
+  (* GensMatch *)
+
+  (* update gens manually *)
 
 end
 
