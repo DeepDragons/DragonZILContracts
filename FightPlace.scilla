@@ -32,6 +32,7 @@ let one_drgnpair =
 let zero = Uint256 0
 let zero32 = Uint32 0
 let one = Uint256 1
+let one32 = Uint32 1
 let two = Uint256 2
 let eight = Uint256 8
 let ten = Uint256 10
@@ -539,15 +540,28 @@ transition GetDragonsCallBack(dragons: List Dragon)
 (* and here we have a problem 1st dragon will be in waiting list, and second is not *)
 (* right now we will have only simple fights between 2 dragons, because of that we have assupmtion what list have 2 elements *)
 
-(* list_head for 1st dragon *)
-  dragons_head1 = @list_head Dragon;
-  dragon_1_opt = dragons_head1 dragons;
-(* list_tail for 2nd dragon *)
-  dragons_tail = @list_tail Dragon;
-  dragon_2_opt_list = dragons_tail dragons;
+(* list_nth : Uint32 -> List 'A -> Option 'A. *)
+  dragons_nth = @list_nth Dragon;
+  dragon_one = dragons_nth zero32 dragons;
+  dragon_two = dragons_nth one32 dragons;
 
-  (* dragons_head2 = @list_head Dragon; *)
-  dragon_2_opt = dragons_head1 dragon_2_opt_list;
+  e = {
+    _eventname : "DragonsNth";
+    dragon_one: dragon_one;
+    dragon_two: dragon_two
+  };
+  event e;
+
+(* list_reverse *)
+
+  dragons_head = @list_head Dragon;
+  dragon_1_opt = dragons_head dragons;
+
+  dragons_tail = @list_tail Dragon;
+  dragon_2_opt = dragons_tail dragons;
+(*
+  dragons_head2 = @list_head Dragon;
+  dragon_2_opt = dragons_head1 dragon_2_opt_list; *)
 
   e = {
     _eventname : "DragonsOpt";
@@ -557,13 +571,13 @@ transition GetDragonsCallBack(dragons: List Dragon)
   event e;
 
   dragon_1 = option_dragon default_dragon dragon_1_opt;
-  dragon_2 = option_dragon default_dragon dragon_2_opt;
+  (* dragon_2 = option_dragon default_dragon dragon_2_opt; *)
   e = {
     _eventname : "Dragons";
-    dragon_1: dragon_1;
-    dragon_2: dragon_2
+    dragon_1: dragon_1
+    (* dragon_2: dragon_2 *)
   };
-  event e
+  event e;
 
 
 
@@ -571,7 +585,7 @@ transition GetDragonsCallBack(dragons: List Dragon)
 
   (* update gens manually *)
   (* send message to update gens *)
-  (* new_gen = Uint256 123123123;
+  new_gen = Uint256 123123123;
   token_id = Uint256 3;
   id_gen = IdBattleGenPair token_id new_gen;
 
@@ -582,7 +596,7 @@ transition GetDragonsCallBack(dragons: List Dragon)
     dragons: dragons;
     id_gen_list: id_gen_list
   };
-  event e *)
+  event e
 
   (* changegens_call = {
     _tag: "ChangeBattleGens";
