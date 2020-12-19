@@ -181,6 +181,15 @@ let get_downgraded_genschain =
         builtin mul genschain one
     end
 
+let get_dragon_gen_battle =
+  fun (dragon: Dragon) =>
+    match dragon with
+    | Dragon token_id owner stage token_uri token_gen_battle token_gen_image =>
+      token_gen_battle
+    end
+
+
+
 (* todo *)
 let make_error =
   fun (result : Error) =>
@@ -540,7 +549,9 @@ transition GetDragonsCallBack(dragons: List Dragon)
 (* and here we have a problem 1st dragon will be in waiting list, and second is not *)
 (* right now we will have only simple fights between 2 dragons, because of that we have assupmtion what list have 2 elements *)
 
-(* list_nth : Uint32 -> List 'A -> Option 'A. *)
+(* todo: check owner of the dragon - check is first or second dragons owner is who starting this fight *)
+(* dragon1_owner = sender of dragon2 = sender *)
+
   dragons_nth = @list_nth Dragon;
   dragon_one_opt = dragons_nth zero32 dragons;
   dragon_two_opt = dragons_nth one32 dragons;
@@ -548,10 +559,13 @@ transition GetDragonsCallBack(dragons: List Dragon)
   dragon_one = option_dragon default_dragon dragon_one_opt;
   dragon_two = option_dragon default_dragon dragon_two_opt;
 
+  dragon1_gen_battle = get_dragon_gen_battle dragon_one;
+
   e = {
     _eventname : "DragonsNth";
     dragon_one: dragon_one;
-    dragon_two: dragon_two
+    dragon_two: dragon_two;
+    dragon1_gen_battle: dragon1_gen_battle
   };
   event e;
 
