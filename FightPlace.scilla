@@ -402,7 +402,7 @@ procedure AfterFightDraw(token_id1: Uint256, gen_battle1: Uint256, token_id2: Ui
   end
 end
 
-procedure GensMatch(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uint256, gen_battle2_param: Uint256)
+procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uint256, gen_battle2_param: Uint256)
   (* generating random values *)
   entropyNumber <- entropy;
   current_block <- & BLOCKNUMBER;
@@ -573,7 +573,7 @@ procedure GensMatch(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: U
 end
 
 (* transition GetGens2CallBack(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
-  GensMatch token_id1 gen_battle1 token_id2 gen_battle2
+  FightDo token_id1 gen_battle1 token_id2 gen_battle2
 end *)
 
 transition GetDragonsCallBack(dragons: List Dragon)
@@ -595,38 +595,33 @@ transition GetDragonsCallBack(dragons: List Dragon)
   dragon_one = option_dragon default_dragon dragon_one_opt;
   dragon_two = option_dragon default_dragon dragon_two_opt;
 
-  dragon1_gen_token_id = get_dragon_token_id dragon_one;
-  dragon1_gen_owner = get_dragon_owner dragon_one;
-  dragon1_gen_stage = get_dragon_stage dragon_one;
+  dragon1_token_id = get_dragon_token_id dragon_one;
+  dragon1_owner = get_dragon_owner dragon_one;
+  dragon1_stage = get_dragon_stage dragon_one;
   dragon1_gen_battle = get_dragon_gen_battle dragon_one;
 
-  dragon2_gen_token_id = get_dragon_token_id dragon_two;
-  dragon2_gen_owner = get_dragon_owner dragon_two;
-  dragon2_gen_stage = get_dragon_stage dragon_two;
+  dragon2_token_id = get_dragon_token_id dragon_two;
+  dragon2_owner = get_dragon_owner dragon_two;
+  dragon2_stage = get_dragon_stage dragon_two;
   dragon2_gen_battle = get_dragon_gen_battle dragon_two;
 
   e = {
     _eventname : "DragonsNth";
     dragon_one: dragon_one;
     dragon_two: dragon_two;
-    dragon1_gen_token_id: dragon1_gen_token_id;
-    dragon1_gen_owner: dragon1_gen_owner;
-    dragon1_gen_stage: dragon1_gen_stage;
+    dragon1_token_id: dragon1_token_id;
+    dragon1_owner: dragon1_owner;
+    dragon1_stage: dragon1_stage;
     dragon1_gen_battle: dragon1_gen_battle;
-    dragon2_gen_token_id: dragon2_gen_token_id;
-    dragon2_gen_owner: dragon2_gen_owner;
-    dragon2_gen_stage: dragon2_gen_stage;
+    dragon2_token_id: dragon2_token_id;
+    dragon2_owner: dragon2_owner;
+    dragon2_stage: dragon2_stage;
     dragon2_gen_battle: dragon2_gen_battle
   };
-  event e
+  event e;
 
-
-
-  (* start fight with this 2 dragons *)
-  (* GensMatch *)
-
-  (* update gens manually *)
-
+  (* start fight process with gens matching with this 2 dragons *)
+  FightDo dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
 end
 
 transition FightInit (ids: List Uint256)
