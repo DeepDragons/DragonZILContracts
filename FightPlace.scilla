@@ -572,17 +572,11 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
   end
 end
 
-(* transition GetGens2CallBack(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
-  FightDo token_id1 gen_battle1 token_id2 gen_battle2
-end *)
-
 transition GetDragonsCallBack(dragons: List Dragon)
-(* need to check is this transition called from main contract *)
-(* need to check we really have such dragons in waiting list *)
-(* and here we have a problem 1st dragon will be in waiting list, and second is not *)
-(* right now we will have only simple fights between 2 dragons, because of that we have assupmtion what list have 2 elements *)
+(* todo: create procedure to check *)
 
-(* create procedure to check *)
+(* todo: need to check is this transition called from main contract *)
+(* todo: need to check we really have such dragons in waiting list *)
 (* todo field as initiator of fights *)
 (* todo: check owner of the dragon - check is first or second dragons owner is who starting this fight *)
 (* dragon1_owner = sender of dragon2 = sender *)
@@ -628,7 +622,7 @@ transition FightInit (ids: List Uint256)
   (* get gens from 2 dragons *)
 
   e = {
-    _eventname : "FightSuccessful";
+    _eventname : "FightInit";
     ids: ids
   };
   event e;
@@ -644,13 +638,37 @@ transition FightInit (ids: List Uint256)
 end
 
 transition FightStart (who_id: Uint256, with_id: Uint256)
-(* check is with_id dragon in waiting list, *)
-(* check is owner of who_id wanted to send dragon to fight *)
+(* todo: check who_id != with_id *)
+(* todo: check is with_id dragon in waiting list, *)
+(* todo: check is owner of who_id wanted to send dragon to fight *)
 
 (* if all is ok, need to start fight - call FightInit *)
+  e = {
+    _eventname : "FightStart";
+    who_id: who_id,
+    with_id: with_id
+  };
+  event e;
 end
 
-transition WaitingListAddDel ()
+transition IsTokenOwnerCallBack()
+end
+
+transition FightListAddDel (token_id: Uint256)
+(* todo: create temp field with initiator address *)
+
+  checktokenowner_call = {
+    _tag: "CheckTokenOwner";
+    _recipient: main_dzt;
+    _amount: Uint128 0;
+    token_id: token_id;
+    address: _sender
+  };
+  msgs = one_msg checktokenowner_call;
+  send msgs
+
+(* IsTokenOwnerCallBack *)
+
 (* total_supply *)
 
 (* do as for Minting, use counter and all other things *)
