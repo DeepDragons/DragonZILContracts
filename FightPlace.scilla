@@ -29,6 +29,12 @@ let one_drgnpair =
     let nil_drgnpair = Nil {IdBattleGenPair} in
     Cons {IdBattleGenPair} drgnpair nil_drgnpair
 
+let two_drgnpairs =
+  fun (drgnpair1 : IdBattleGenPair) =>
+  fun (drgnpair2 : IdBattleGenPair) =>
+    let drgnpair_tmp = one_drgnpair drgnpair2 in
+    Cons {IdBattleGenPair} drgnpair1 drgnpair_tmp
+
 let zero = Uint256 0
 let zero32 = Uint32 0
 let one = Uint256 1
@@ -253,6 +259,8 @@ field loser_random_defence_fld : Uint256 = Uint256 0
 field gen_upgrade_prc_fld : Uint256 = Uint256 5
 field gen_downgrade_prc_fld : Uint256 = Uint256 10
 
+field tmp_initiator_adr : ByStr20 = 0x0000000000000000000000000000000000000000
+
 (* Emit Errors *)
 procedure ThrowError(err : Error)
   e = make_error err;
@@ -293,16 +301,31 @@ procedure SetFldsRandWinLose (num_winner: Uint256)
 end
 
 procedure SendFightsResultsDraw(token_id1: Uint256, token_id2: Uint256)
- (* event *)
+  e = {
+    _eventname : "SendFightsResultsDraw";
+    token_id1: token_id1;
+    token_id2: token_id2
+  };
+  event e
 end
 
 procedure SendFightsResultsWinLose(token_id_winner: Uint256, gen_battle_winner: Uint256, token_id_loser: Uint256, gen_battle_loser: Uint256)
- (* message new gens to tokens and event *)
-  (* send message to update gens *)
-  (* new_gen = Uint256 123123123;
-  token_id = Uint256 3;
-  id_gen = IdBattleGenPair token_id new_gen;
-  id_gen_list = one_drgnpair id_gen;
+  e = {
+    _eventname : "SendFightsResultsWinLose";
+    token_id_winner: token_id_winner;
+    gen_battle_winner: gen_battle_winner;
+    token_id_loser: token_id_loser;
+    gen_battle_loser: gen_battle_loser
+  };
+  event e;
+
+  new_gen1 = gen_battle_winner;
+  token_id1 = token_id_winner;
+  new_gen2 = gen_battle_loser;
+  token_id2 = token_id_loser;
+  id_gen1 = IdBattleGenPair token_id1 new_gen1;
+  id_gen2 = IdBattleGenPair token_id2 new_gen2;
+  id_gen_list = two_drgnpairs id_gen1 id_gen2;
 
   changegens_call = {
     _tag: "ChangeBattleGens";
@@ -311,13 +334,15 @@ procedure SendFightsResultsWinLose(token_id_winner: Uint256, gen_battle_winner: 
     id_gen_list: id_gen_list
   };
   msgs = one_msg changegens_call;
-  send msgs *)
+  send msgs
 end
 
 procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_battle_winner_param: Uint256, token_id_loser: Uint256, gen_battle_loser_param: Uint256)
   e = {
     _eventname : "AfterFightWinLose";
-    num_winner: num_winner
+    num_winner: num_winner;
+    gen_battle_winner_param: gen_battle_winner_param;
+    gen_battle_loser_param: gen_battle_loser_param
   };
   event e;
 
@@ -365,46 +390,78 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
 
 (* upgrade winner gen *)
   new_winner_gen_attack = get_upgraded_genschain winner_gen_attack winner_random_attack gen_upgrade_prc;
-
-
-
   e = {
-    _eventname : "winner_gen_defence";
-    winner_gen_defence: winner_gen_defence;
-    winner_random_defence: winner_random_defence;
+    _eventname : "new_winner_gen_attack";
+    winner_gen_attack: winner_gen_attack;
+    new_winner_gen_attack: new_winner_gen_attack;
+    winner_random_attack: winner_random_attack;
     gen_upgrade_prc: gen_upgrade_prc
   };
   event e;
 
   new_winner_gen_defence = get_upgraded_genschain winner_gen_defence winner_random_defence gen_upgrade_prc;
-
   e = {
     _eventname : "new_winner_gen_defence";
-    new_winner_gen_defence: new_winner_gen_defence
+    winner_gen_defence: winner_gen_defence;
+    new_winner_gen_defence: new_winner_gen_defence;
+    winner_random_defence: winner_random_defence;
+    gen_upgrade_prc: gen_upgrade_prc
   };
-  event e
+  event e;
 (* downgrade loser gen *)
 (* if loser have big luck gen he will avoid downgrade, we taking 80% of loser luck only *)
-  (* loser_luck08 = builtin mul loser_luck eight; *)
-  (* loser_luck08 = builtin div loser_luck08 ten; *)
-  (* loser_avoid_downgrade = builtin lt random_luck loser_luck08; *)
-  (* new_loser_gen_attack = get_downgraded_genschain loser_avoid_downgrade loser_gen_attack loser_random_attack gen_downgrade_prc; *)
-  (* new_loser_gen_defence = get_downgraded_genschain loser_avoid_downgrade loser_gen_defence loser_random_defence gen_downgrade_prc; *)
+  loser_luck08 = builtin mul loser_luck eight;
+  loser_luck08 = builtin div loser_luck08 ten;
+  loser_avoid_downgrade = builtin lt random_luck loser_luck08;
+  new_loser_gen_attack = get_downgraded_genschain loser_avoid_downgrade loser_gen_attack loser_random_attack gen_downgrade_prc;
+  e = {
+    _eventname : "new_loser_gen_attack";
+    loser_avoid_downgrade: loser_avoid_downgrade;
+    loser_gen_attack: loser_gen_attack;
+    new_loser_gen_attack: new_loser_gen_attack;
+    loser_random_attack: loser_random_attack;
+    gen_downgrade_prc: gen_downgrade_prc
+  };
+  event e;
+
+  new_loser_gen_defence = get_downgraded_genschain loser_avoid_downgrade loser_gen_defence loser_random_defence gen_downgrade_prc;
+
+  e = {
+    _eventname : "new_loser_gen_defence";
+    loser_avoid_downgrade: loser_avoid_downgrade;
+    loser_gen_defence: loser_gen_defence;
+    new_loser_gen_defence: new_loser_gen_defence;
+    loser_random_defence: loser_random_defence;
+    gen_downgrade_prc: gen_downgrade_prc
+  };
+  event e;
 
 (* assemble new gens for loser and winner *)
-  (* gen_battle_winner = builtin add gen_battle_winner new_winner_gen_defence; *)
-  (* gen_battle_winner = builtin mul gen_battle_winner ten20; *)
-  (* gen_battle_winner = builtin add gen_battle_winner new_winner_gen_attack; *)
-  (* gen_battle_winner = builtin mul gen_battle_winner ten2; *)
-  (* gen_battle_winner = builtin add gen_battle_winner winner_luck; *)
+  gen_battle_winner = builtin add gen_battle_winner new_winner_gen_defence;
+  gen_battle_winner = builtin mul gen_battle_winner ten20;
+  gen_battle_winner = builtin add gen_battle_winner new_winner_gen_attack;
+  gen_battle_winner = builtin mul gen_battle_winner ten2;
+  gen_battle_winner = builtin add gen_battle_winner winner_luck;
 
-  (* gen_battle_loser = builtin add gen_battle_loser new_loser_gen_defence; *)
-  (* gen_battle_loser = builtin mul gen_battle_loser ten20; *)
-  (* gen_battle_loser = builtin add gen_battle_loser new_loser_gen_attack; *)
-  (* gen_battle_loser = builtin mul gen_battle_loser ten2; *)
-  (* gen_battle_loser = builtin add gen_battle_loser loser_luck; *)
+  e = {
+    _eventname : "gen_battle_winner";
+    gen_battle_winner: gen_battle_winner
+  };
+  event e;
 
-  (* SendFightsResultsWinLose token_id_winner gen_battle_winner token_id_loser gen_battle_loser *)
+  gen_battle_loser = builtin add gen_battle_loser new_loser_gen_defence;
+  gen_battle_loser = builtin mul gen_battle_loser ten20;
+  gen_battle_loser = builtin add gen_battle_loser new_loser_gen_attack;
+  gen_battle_loser = builtin mul gen_battle_loser ten2;
+  gen_battle_loser = builtin add gen_battle_loser loser_luck;
+
+  e = {
+    _eventname : "gen_battle_loser";
+    gen_battle_loser: gen_battle_loser
+  };
+  event e;
+
+  SendFightsResultsWinLose token_id_winner gen_battle_winner token_id_loser gen_battle_loser
 end
 
 procedure AfterFightDraw(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
@@ -437,13 +494,13 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
   (* generating random values *)
   entropyNumber <- entropy;
   current_block <- & BLOCKNUMBER;
-(* uncomment after tests *)
-  (* random = random entropyNumber current_block; *)
 
-  random = Uint256 88888414732297353093892224544004556412855177250281183152294182633944343418460;
+  random = random entropyNumber current_block;
+
 
 
 (* remove random_fld after tests *)
+  (* random = Uint256 88888414732297353093892224544004556412855177250281183152294182633944343418460; *)
   random_fld := random;
 
   e = {
@@ -529,9 +586,6 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
 
   entropy := random;
 
-
-
-
   match res1_bool_eq with
   | True =>
     match res2_bool_eq with
@@ -540,25 +594,25 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
       match luck_bool_eq with
       | True =>
         (* draw *)
-        AfterFightDraw token_id1 gen_battle1 token_id2 gen_battle2
+        AfterFightDraw token_id1 gen_battle1_param token_id2 gen_battle2_param
       | False =>
         match luck_bool_neg with
         | True =>
           (* d2 win *)
-          AfterFightWinLose two token_id2 gen_battle2 token_id1 gen_battle1
+          AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
         | False =>
           (* d1 win *)
-          AfterFightWinLose one token_id1 gen_battle1 token_id2 gen_battle2
+          AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
         end
       end
     | False =>
       match res2_bool_neg with
       | True =>
         (* d1 win *)
-        AfterFightWinLose one token_id1 gen_battle1 token_id2 gen_battle2
+        AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
       | False =>
         (* d2 win *)
-        AfterFightWinLose two token_id2 gen_battle2 token_id1 gen_battle1
+        AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
       end
     end
   | False =>
@@ -568,7 +622,7 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
       match res2_bool_eq with
       | True =>
         (* d2 win  *)
-        AfterFightWinLose two token_id2 gen_battle2 token_id1 gen_battle1
+        AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
       | False =>
         match res2_bool_neg with
         | True =>
@@ -576,20 +630,20 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
           match luck_bool_eq with
           | True =>
             (* draw *)
-            AfterFightDraw token_id1 gen_battle1 token_id2 gen_battle2
+            AfterFightDraw token_id1 gen_battle1_param token_id2 gen_battle2_param
           | False =>
             match luck_bool_neg with
             | True =>
               (* d2 win *)
-              AfterFightWinLose two token_id2 gen_battle2 token_id1 gen_battle1
+              AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
             | False =>
               (* d1 win *)
-              AfterFightWinLose one token_id1 gen_battle1 token_id2 gen_battle2
+              AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
             end
           end
         | False =>
           (* d2 win  *)
-          AfterFightWinLose two token_id2 gen_battle2 token_id1 gen_battle1
+          AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
         end
       end
     | False =>
@@ -597,35 +651,32 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
       match res2_bool_eq with
       | True =>
         (* d1 win  *)
-        AfterFightWinLose one token_id1 gen_battle1 token_id2 gen_battle2
+        AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
       | False =>
         match res2_bool_neg with
         | True =>
           (* d1 win  *)
-          AfterFightWinLose one token_id1 gen_battle1 token_id2 gen_battle2
+          AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
         | False =>
           (* draw need check luck *)
           match luck_bool_eq with
           | True =>
             (* draw *)
-            AfterFightDraw token_id1 gen_battle1 token_id2 gen_battle2
+            AfterFightDraw token_id1 gen_battle1_param token_id2 gen_battle2_param
           | False =>
             match luck_bool_neg with
             | True =>
               (* d2 win *)
-              AfterFightWinLose two token_id2 gen_battle2 token_id1 gen_battle1
+              AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
             | False =>
               (* d1 win *)
-              AfterFightWinLose one token_id1 gen_battle1 token_id2 gen_battle2
+              AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
             end
           end
         end
       end
     end
   end
-
-
-
 end
 
 transition GetDragonsCallBack(dragons: List Dragon)
@@ -655,7 +706,6 @@ transition GetDragonsCallBack(dragons: List Dragon)
   dragon2_stage = get_dragon_stage dragon_two;
   dragon2_gen_battle = get_dragon_gen_battle dragon_two;
 
-(*
   e = {
     _eventname : "DragonsNth";
     dragon_one: dragon_one;
@@ -670,15 +720,14 @@ transition GetDragonsCallBack(dragons: List Dragon)
     dragon2_gen_battle: dragon2_gen_battle
   };
   event e;
- *)
 
   (* start fight process with gens matching with this 2 dragons *)
   FightDo dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
 end
 
 transition FightInit (ids: List Uint256)
+  tmp_initiator_adr := _sender;
   (* get gens from 2 dragons *)
-
   e = {
     _eventname : "FightInit";
     ids: ids
