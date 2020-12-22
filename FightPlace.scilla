@@ -239,7 +239,7 @@ contract FightPlace
 
 (* Mutable fields *)
 (* todo *)
-field waiting_list: Map Uint256 ByStr20 = Emp Uint256 ByStr20
+field waiting_list: Map Uint256 Uint256 = Emp Uint256 Uint256
 
 field entropy : Uint256 = Uint256 0
 
@@ -726,7 +726,6 @@ transition GetDragonsCallBack(dragons: List Dragon)
 end
 
 transition FightInit (ids: List Uint256)
-  tmp_initiator_adr := _sender;
   (* get gens from 2 dragons *)
   e = {
     _eventname : "FightInit";
@@ -745,9 +744,11 @@ transition FightInit (ids: List Uint256)
 end
 
 transition FightStart (who_id: Uint256, with_id: Uint256)
+  tmp_initiator_adr := _sender;
+
 (* todo: check who_id != with_id *)
 (* todo: check is with_id dragon in waiting list, *)
-(* todo: check is owner of who_id wanted to send dragon to fight *)
+(* todo: check is owner of who_id wanted to send dragon to fight here or in callback where we will have owners of the dragons? *)
 
 (* if all is ok, need to start fight - call FightInit *)
   e = {
@@ -758,11 +759,34 @@ transition FightStart (who_id: Uint256, with_id: Uint256)
   event e
 end
 
-transition IsTokenOwnerCallBack()
+transition IsTokenOwnerCallBack(token_id: Uint256)
+  initiator_adr <- tmp_initiator_adr;
+  token_inwatinglist <- exists waiting_list[token_id];
+  match token_inwatinglist with
+  | False =>
+    waiting_list[token_id] := token_id;
+    e = {
+      _eventname: "token_inwatinglist_false";
+      token_id: token_id;
+      initiator_adr: initiator_adr;
+      sender: _sender
+    };
+    event e
+  | True =>
+    delete waiting_list[token_id];
+    e = {
+      _eventname: "token_inwatinglist_true";
+      token_id: token_id;
+      initiator_adr: initiator_adr;
+      sender: _sender
+    };
+    event e
+  end
 end
 
 transition FightListAddDel (token_id: Uint256)
-(* todo: create temp field with initiator address *)
+  (* checking is sender owner of the dragon and adding or removing dragon to list*)
+  tmp_initiator_adr := _sender;
 
   checktokenowner_call = {
     _tag: "CheckTokenOwner";
@@ -773,14 +797,4 @@ transition FightListAddDel (token_id: Uint256)
   };
   msgs = one_msg checktokenowner_call;
   send msgs
-
-(* IsTokenOwnerCallBack *)
-
-(* total_supply *)
-
-(* do as for Minting, use counter and all other things *)
-
-(* add if it is not in list *)
-(* remove if it is already in list *)
-
 end
