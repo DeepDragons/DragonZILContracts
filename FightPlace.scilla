@@ -260,6 +260,7 @@ field gen_upgrade_prc_fld : Uint256 = Uint256 5
 field gen_downgrade_prc_fld : Uint256 = Uint256 10
 
 field tmp_initiator_adr : ByStr20 = 0x0000000000000000000000000000000000000000
+field tmp_token_id : Uint256 = Uint256 0
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
@@ -759,8 +760,9 @@ transition FightStart (who_id: Uint256, with_id: Uint256)
   event e
 end
 
-transition IsTokenOwnerCallBack(token_id: Uint256)
+transition IsTokenOwnerCallBack()
   initiator_adr <- tmp_initiator_adr;
+  token_id <- tmp_token_id;
   token_inwatinglist <- exists waiting_list[token_id];
   match token_inwatinglist with
   | False =>
@@ -784,9 +786,17 @@ transition IsTokenOwnerCallBack(token_id: Uint256)
   end
 end
 
-transition FightListAddDel (token_id: Uint256)
+transition FightListAddDel(token_id: Uint256)
   (* checking is sender owner of the dragon and adding or removing dragon to list*)
   tmp_initiator_adr := _sender;
+  tmp_token_id := token_id;
+
+  e = {
+    _eventname: "FightListAddDel";
+    token_id: token_id;
+    address: _sender
+  };
+  event e;
 
   checktokenowner_call = {
     _tag: "CheckTokenOwner";
