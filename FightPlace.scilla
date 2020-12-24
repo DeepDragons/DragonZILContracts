@@ -92,6 +92,17 @@ let one_msg =
   let nil_msg = Nil {Message} in
     Cons {Message} msg nil_msg
 
+let one_listid =
+  fun (id : Uint256) =>
+    let nil_listid = Nil {Uint256} in
+    Cons {Uint256} id nil_listid
+
+let two_listid =
+  fun (id1 : Uint256) =>
+  fun (id2 : Uint256) =>
+    let listid_tmp = one_listid id2 in
+    Cons {Uint256} id1 listid_tmp
+
 (* todo *)
 (* Error events *)
 type Error =
@@ -726,41 +737,45 @@ transition GetDragonsCallBack(dragons: List Dragon)
   FightDo dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
 end
 
-transition FightInit (ids: List Uint256)
-  (* get gens from 2 dragons *)
-  e = {
-    _eventname : "FightInit";
-    ids: ids
-  };
-  event e;
-
-  getdragons_call = {
-    _tag: "GetDragons";
-    _recipient: main_dzt;
-    _amount: Uint128 0;
-    ids: ids
-  };
-  msgs = one_msg getdragons_call;
-  send msgs
-end
-
-transition FightStart (who_id: Uint256, with_id: Uint256)
+transition FightStart(who_id: Uint256, with_id: Uint256)
   tmp_initiator_adr := _sender;
+  tmp_token_id := who_id;
 
 (* todo: check who_id != with_id *)
 (* todo: check is with_id dragon in waiting list, *)
-(* todo: check is owner of who_id wanted to send dragon to fight here or in callback where we will have owners of the dragons? *)
+(* todo: check is owner of who_id wanted to send dragon to fight in callback where we will have owners of the dragons *)
 
-(* if all is ok, need to start fight - call FightInit *)
-  e = {
-    _eventname : "FightStart";
-    who_id: who_id;
-    with_id: with_id
-  };
-  event e
+  token_inwatinglist <- exists waiting_list[with_id];
+  match token_inwatinglist with
+  | False =>
+    e = {
+      _eventname: "with_id_false";
+      with_id: with_id;
+      sender: _sender
+    };
+    event e
+  | True =>
+    ids = two_listid who_id with_id;
+    e = {
+      _eventname: "FightStart_with_ids";
+      sender: _sender;
+      ids: ids
+    };
+    event e;
+
+    getdragons_call = {
+      _tag: "GetDragons";
+      _recipient: main_dzt;
+      _amount: Uint128 0;
+      ids: ids
+    };
+    msgs = one_msg getdragons_call;
+    send msgs
+  end
 end
 
 transition IsTokenOwnerCallBack()
+  (* If we here, it means someone trying to put dragon to waiting list *)
   initiator_adr <- tmp_initiator_adr;
   token_id <- tmp_token_id;
   token_inwatinglist <- exists waiting_list[token_id];
@@ -768,7 +783,7 @@ transition IsTokenOwnerCallBack()
   | False =>
     waiting_list[token_id] := token_id;
     e = {
-      _eventname: "token_inwatinglist_false";
+      _eventname: "waiting_list_add";
       token_id: token_id;
       initiator_adr: initiator_adr;
       sender: _sender
@@ -777,7 +792,7 @@ transition IsTokenOwnerCallBack()
   | True =>
     delete waiting_list[token_id];
     e = {
-      _eventname: "token_inwatinglist_true";
+      _eventname: "waiting_list_remove";
       token_id: token_id;
       initiator_adr: initiator_adr;
       sender: _sender
