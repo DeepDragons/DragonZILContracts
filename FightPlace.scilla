@@ -113,6 +113,7 @@ type Error =
   | CodeNotInWaitingList
   | CodeSameDragon
   | CodeNotAnOwner
+  | CodeCallNotMainDzt
 
 let random =
   fun (entropy: Uint256) =>
@@ -241,6 +242,7 @@ let make_error =
       | CodeNotInWaitingList   => Int32 -5
       | CodeSameDragon         => Int32 -6
       | CodeNotAnOwner         => Int32 -7
+      | CodeCallNotMainDzt     => Int32 -8
       end
     in
     { _exception : "Error"; code : result_code }
@@ -721,13 +723,45 @@ procedure CheckInWatingList(token_id: Uint256)
     ThrowError err
   | True =>
   end
-
 end
 
+(* procedure CheckCallMainDzt()
+  is_main_dzt_call = builtin eq _sender main_dzt;
+  match is_main_dzt_call with
+  | False =>
+    e = {
+      _eventname: "CheckCallMainDzt_false";
+      main_dzt: main_dzt;
+      sender: _sender
+    };
+    event e;
+    err = CodeNotInWaitingList;
+    ThrowError err
+  | True =>
+  end
+end *)
+
 transition GetDragonsCallBack(dragons: List Dragon)
+  is_main_dzt_call = builtin eq _sender main_dzt;
+  match is_main_dzt_call with
+  | False =>
+    e = {
+      _eventname: "CheckCallMainDzt_false";
+      main_dzt: main_dzt;
+      sender: _sender
+    };
+    event e;
+    err = CodeCallNotMainDzt;
+    ThrowError err
+  | True =>
+  end;
+
 (* todo: create procedure to check *)
 
 (* todo: need to check is this transition called from main contract *)
+
+
+
 (* todo: need to check we really have such dragons in waiting list *)
 (* todo field as initiator of fights *)
 (* todo: check owner of the dragon - check is first or second dragons owner is who starting this fight *)
@@ -768,22 +802,45 @@ transition GetDragonsCallBack(dragons: List Dragon)
 
   (* todo: Need to check one of the dragons is in waiting list and other dragons owner is starting fight *)
 
-(* dragon1_owner *)
-(* dragon2_owner *)
+  (* dragon1_owner *)
+  (* dragon2_owner *)
+  initiator_adr <- tmp_initiator_adr;
+  dragon1_owner_bool_eq = builtin eq dragon1_owner initiator_adr;
+  dragon2_owner_bool_eq = builtin eq dragon2_owner initiator_adr;
 
+  e = {
+    _eventname: "GetDragonsCallBack";
+    dragon1_owner_bool_eq: dragon1_owner_bool_eq;
+    dragon2_owner_bool_eq: dragon2_owner_bool_eq;
+    initiator_adr: initiator_adr;
+    sender: _sender
+  };
+  event e;
 
   (* removing dragons from waiting list *)
   token1_inwatinglist <- exists waiting_list[dragon1_token_id];
   match token1_inwatinglist with
   | False =>
   | True =>
-    delete waiting_list[dragon1_token_id]
+    match dragon2_owner_bool_eq with
+    | True =>
+      delete waiting_list[dragon1_token_id]
+    | False =>
+      err = CodeNotAnOwner;
+      ThrowError err
+    end
   end;
   token2_inwatinglist <- exists waiting_list[dragon2_token_id];
   match token2_inwatinglist with
   | False =>
   | True =>
-    delete waiting_list[dragon2_token_id]
+    match dragon2_owner_bool_eq with
+    | True =>
+      delete waiting_list[dragon2_token_id]
+    | False =>
+      err = CodeNotAnOwner;
+      ThrowError err
+    end
   end;
 
   (* start fight process with gens matching with this 2 dragons *)
