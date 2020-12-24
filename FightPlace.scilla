@@ -110,6 +110,9 @@ type Error =
   | CodeNoPubKey
   | CodeVerificationFailed
   | CodeUint32Overflow
+  | CodeNotInWaitingList
+  | CodeSameDragon
+  | CodeNotAnOwner
 
 let random =
   fun (entropy: Uint256) =>
@@ -235,6 +238,9 @@ let make_error =
       | CodeNoPubKey           => Int32 -2
       | CodeVerificationFailed => Int32 -3
       | CodeUint32Overflow     => Int32 -4
+      | CodeNotInWaitingList   => Int32 -5
+      | CodeSameDragon         => Int32 -6
+      | CodeNotAnOwner         => Int32 -7
       end
     in
     { _exception : "Error"; code : result_code }
@@ -314,7 +320,7 @@ end
 
 procedure SendFightsResultsDraw(token_id1: Uint256, token_id2: Uint256)
   e = {
-    _eventname : "SendFightsResultsDraw";
+    _eventname : "FightsResultsDraw";
     token_id1: token_id1;
     token_id2: token_id2
   };
@@ -323,7 +329,7 @@ end
 
 procedure SendFightsResultsWinLose(token_id_winner: Uint256, gen_battle_winner: Uint256, token_id_loser: Uint256, gen_battle_loser: Uint256)
   e = {
-    _eventname : "SendFightsResultsWinLose";
+    _eventname : "FightsResultsWinLose";
     token_id_winner: token_id_winner;
     gen_battle_winner: gen_battle_winner;
     token_id_loser: token_id_loser;
@@ -400,7 +406,7 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   (* preparing for assemble *)
   gen_battle_loser = builtin sub gen_battle_loser loser_gen_defence;
 
-(* upgrade winner gen *)
+  (* upgrade winner gen *)
   new_winner_gen_attack = get_upgraded_genschain winner_gen_attack winner_random_attack gen_upgrade_prc;
   e = {
     _eventname : "new_winner_gen_attack";
@@ -420,8 +426,8 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
     gen_upgrade_prc: gen_upgrade_prc
   };
   event e;
-(* downgrade loser gen *)
-(* if loser have big luck gen he will avoid downgrade, we taking 80% of loser luck only *)
+  (* downgrade loser gen *)
+  (* if loser have big luck gen he will avoid downgrade, we taking 80% of loser luck only *)
   loser_luck08 = builtin mul loser_luck eight;
   loser_luck08 = builtin div loser_luck08 ten;
   loser_avoid_downgrade = builtin lt random_luck loser_luck08;
@@ -448,7 +454,7 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   };
   event e;
 
-(* assemble new gens for loser and winner *)
+  (* assemble new gens for loser and winner *)
   gen_battle_winner = builtin add gen_battle_winner new_winner_gen_defence;
   gen_battle_winner = builtin mul gen_battle_winner ten20;
   gen_battle_winner = builtin add gen_battle_winner new_winner_gen_attack;
@@ -691,6 +697,33 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
   end
 end
 
+procedure CheckIsSameDragon(token_id1: Uint256, token_id2: Uint256)
+  is_same_dragon = builtin eq token_id1 token_id2;
+  match is_same_dragon with
+  | True =>
+  | False =>
+    err = CodeSameDragon;
+    ThrowError err
+  end
+end
+
+procedure CheckInWatingList(token_id: Uint256)
+  token_inwatinglist <- exists waiting_list[token_id];
+  match token_inwatinglist with
+  | False =>
+    e = {
+      _eventname: "CheckInWatingList_false";
+      token_id: token_id;
+      sender: _sender
+    };
+    event e;
+    err = CodeNotInWaitingList;
+    ThrowError err
+  | True =>
+  end
+
+end
+
 transition GetDragonsCallBack(dragons: List Dragon)
 (* todo: create procedure to check *)
 
@@ -733,49 +766,57 @@ transition GetDragonsCallBack(dragons: List Dragon)
   };
   event e;
 
+  (* todo: Need to check one of the dragons is in waiting list and other dragons owner is starting fight *)
+
+(* dragon1_owner *)
+(* dragon2_owner *)
+
+
+  (* removing dragons from waiting list *)
+  token1_inwatinglist <- exists waiting_list[dragon1_token_id];
+  match token1_inwatinglist with
+  | False =>
+  | True =>
+    delete waiting_list[dragon1_token_id]
+  end;
+  token2_inwatinglist <- exists waiting_list[dragon2_token_id];
+  match token2_inwatinglist with
+  | False =>
+  | True =>
+    delete waiting_list[dragon2_token_id]
+  end;
+
   (* start fight process with gens matching with this 2 dragons *)
   FightDo dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
 end
 
 transition FightStart(who_id: Uint256, with_id: Uint256)
   tmp_initiator_adr := _sender;
-  tmp_token_id := who_id;
+  tmp_token_id := with_id;
 
-(* todo: check who_id != with_id *)
-(* todo: check is with_id dragon in waiting list, *)
-(* todo: check is owner of who_id wanted to send dragon to fight in callback where we will have owners of the dragons *)
+  CheckIsSameDragon who_id with_id;
+  CheckInWatingList with_id;
 
-  token_inwatinglist <- exists waiting_list[with_id];
-  match token_inwatinglist with
-  | False =>
-    e = {
-      _eventname: "with_id_false";
-      with_id: with_id;
-      sender: _sender
-    };
-    event e
-  | True =>
-    ids = two_listid who_id with_id;
-    e = {
-      _eventname: "FightStart_with_ids";
-      sender: _sender;
-      ids: ids
-    };
-    event e;
+  ids = two_listid who_id with_id;
+  e = {
+    _eventname: "FightStart_with_ids";
+    sender: _sender;
+    ids: ids
+  };
+  event e;
 
-    getdragons_call = {
-      _tag: "GetDragons";
-      _recipient: main_dzt;
-      _amount: Uint128 0;
-      ids: ids
-    };
-    msgs = one_msg getdragons_call;
-    send msgs
-  end
+  getdragons_call = {
+    _tag: "GetDragons";
+    _recipient: main_dzt;
+    _amount: Uint128 0;
+    ids: ids
+  };
+  msgs = one_msg getdragons_call;
+  send msgs
 end
 
 transition IsTokenOwnerCallBack()
-  (* If we here, it means someone trying to put dragon to waiting list *)
+  (* Owner wanted to put dragon to waiting list *)
   initiator_adr <- tmp_initiator_adr;
   token_id <- tmp_token_id;
   token_inwatinglist <- exists waiting_list[token_id];
