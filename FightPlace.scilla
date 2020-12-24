@@ -703,9 +703,9 @@ procedure CheckIsSameDragon(token_id1: Uint256, token_id2: Uint256)
   is_same_dragon = builtin eq token_id1 token_id2;
   match is_same_dragon with
   | True =>
-  | False =>
     err = CodeSameDragon;
     ThrowError err
+  | False =>
   end
 end
 
