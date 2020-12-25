@@ -662,10 +662,11 @@ procedure CheckIsInitiatorOwner(dragon_owner: ByStr20)
   end
 end
 
-
-(* transition GetDragonsCallBack(dragons: List Dragon) *)
 procedure FightPrepare(dragons: List Dragon)
-(* todo: check stage *)
+
+
+
+(* todo: check stage for dragons not in waiting list *)
 
 
 
@@ -685,21 +686,6 @@ procedure FightPrepare(dragons: List Dragon)
   dragon2_owner = get_dragon_owner dragon_two;
   dragon2_stage = get_dragon_stage dragon_two;
   dragon2_gen_battle = get_dragon_gen_battle dragon_two;
-
-  e = {
-    _eventname : "DragonsNth";
-    dragon_one: dragon_one;
-    dragon_two: dragon_two;
-    dragon1_token_id: dragon1_token_id;
-    dragon1_owner: dragon1_owner;
-    dragon1_stage: dragon1_stage;
-    dragon1_gen_battle: dragon1_gen_battle;
-    dragon2_token_id: dragon2_token_id;
-    dragon2_owner: dragon2_owner;
-    dragon2_stage: dragon2_stage;
-    dragon2_gen_battle: dragon2_gen_battle
-  };
-  event e;
 
   (* Need to check one of the dragons is in waiting list and other dragons owner is starting fight *)
   initiator_adr <- tmp_initiator_adr;
@@ -736,14 +722,7 @@ procedure FightPrepare(dragons: List Dragon)
   FightDo dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
 end
 
-(* transition IsTokenOwnerCallBack() *)
 procedure PlaceToWaitlist(dragons: List Dragon)
-
-
-
-(* todo: need to check is it a dragon owner *)
-
-
   dragons_nth = @list_nth Dragon;
   dragon_one_opt = dragons_nth zero32 dragons;
   dragon_one = option_dragon default_dragon dragon_one_opt;
@@ -753,31 +732,15 @@ procedure PlaceToWaitlist(dragons: List Dragon)
   CheckStage dragon1_stage;
   CheckIsInitiatorOwner dragon1_owner;
 
-
-
   (* Owner wanted to put dragon to waiting list *)
   initiator_adr <- tmp_initiator_adr;
   token_id <- tmp_token_id;
   token_inwatinglist <- exists waiting_list[token_id];
   match token_inwatinglist with
   | False =>
-    waiting_list[token_id] := token_id;
-    e = {
-      _eventname: "waiting_list_add";
-      token_id: token_id;
-      initiator_adr: initiator_adr;
-      sender: _sender
-    };
-    event e
+    waiting_list[token_id] := token_id
   | True =>
-    delete waiting_list[token_id];
-    e = {
-      _eventname: "waiting_list_remove";
-      token_id: token_id;
-      initiator_adr: initiator_adr;
-      sender: _sender
-    };
-    event e
+    delete waiting_list[token_id]
   end
 end
 
@@ -798,25 +761,11 @@ transition GetDragonsCallBack(dragons: List Dragon)
   match action_waitlist with
   | False =>
   | True =>
-    e = {
-      _eventname: "GetDragonsCallBack_action_waitlist";
-      action_waitlist: action_waitlist;
-      action_fight: action_fight;
-      dragons_num: dragons_num
-    };
-    event e;
     PlaceToWaitlist dragons
   end;
   match action_fight with
   | False =>
   | True =>
-    e = {
-      _eventname: "GetDragonsCallBack_action_fight";
-      action_waitlist: action_waitlist;
-      action_fight: action_fight;
-      dragons_num: dragons_num
-    };
-    event e;
     FightPrepare dragons
   end
 end
@@ -853,15 +802,4 @@ transition WaitListAddDel(token_id: Uint256)
   };
   msgs = one_msg getdragons_call;
   send msgs
-
-(*
-  checktokenowner_call = {
-    _tag: "CheckTokenOwner";
-    _recipient: main_dzt;
-    _amount: Uint128 0;
-    token_id: token_id;
-    address: _sender
-  };
-  msgs = one_msg checktokenowner_call;
-  send msgs *)
 end
