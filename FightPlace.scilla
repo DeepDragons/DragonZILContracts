@@ -663,13 +663,6 @@ procedure CheckIsInitiatorOwner(dragon_owner: ByStr20)
 end
 
 procedure FightPrepare(dragons: List Dragon)
-
-
-
-(* todo: check stage for dragons not in waiting list *)
-
-
-
   dragons_nth = @list_nth Dragon;
   dragon_one_opt = dragons_nth zero32 dragons;
   dragon_two_opt = dragons_nth one32 dragons;
@@ -686,6 +679,10 @@ procedure FightPrepare(dragons: List Dragon)
   dragon2_owner = get_dragon_owner dragon_two;
   dragon2_stage = get_dragon_stage dragon_two;
   dragon2_gen_battle = get_dragon_gen_battle dragon_two;
+
+  (* check stage of dragons *)
+  CheckStage dragon1_stage;
+  CheckStage dragon2_stage;
 
   (* Need to check one of the dragons is in waiting list and other dragons owner is starting fight *)
   initiator_adr <- tmp_initiator_adr;
