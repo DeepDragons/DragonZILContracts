@@ -207,12 +207,13 @@ transition AcceptZLP(from: ByStr20, amount: Uint128)
 end
 
 transition WithdrawZLP(to: ByStr20)
-  IsOwnerOrOperator to;
-  withdrawZLP to
-end
-
-transition WithdrawZLPOnPause(to: ByStr20)
-  checkPause on_pause;
+  curent_pause <- pause;
+  is_pause = builtin eq curent_pause on_pause;
+  match is_pause with
+  | False =>
+    IsOwnerOrOperator to
+  | True =>
+  end;
   withdrawZLP to
 end
 
