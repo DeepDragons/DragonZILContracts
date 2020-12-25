@@ -202,7 +202,7 @@ transition AcceptZLP(from: ByStr20, amount: Uint128)
   balance <- free_ZLP_balance;
   new_balance = builtin add balance amount;
   free_ZLP_balance := new_balance;
-  e = {_eventname : "AceptZLP"; initiator: _sender; from : from; amount : amount};
+  e = {_eventname : "AcceptZLP"; initiator: _sender; from : from; amount : amount};
   event e
 end
 
