@@ -1,0 +1,282 @@
+scilla_version 0
+
+import BoolUtils
+library StoreZLP
+
+(* User-defined ADTs *)
+type Operation =
+| Add
+| Sub
+
+type Dummy =
+| Dummy
+
+(* Global variables *)
+let zero = Uint128 0
+let two = Uint128 2
+let add_operation = Add
+let sub_operation = Sub
+let not_pause = Uint32 0
+let on_pause = Uint32 1
+let verdad = Dummy
+
+(* Library functions *)
+let get_bal =
+  fun (some_bal: Option Uint128) =>
+    match some_bal with
+    | Some bal => bal
+    | None => zero
+    end
+
+let one_msg =
+  fun (msg: Message) =>
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+(* Error events *)
+type Error =
+  | CodeInsufficientZLPAmount
+  | CodeIsNotZLPContract
+  | CodeIsNotDragonContract
+  | CodeNotContractOwner
+  | CodePauseNotPause
+  | CodeIsNotOwnerOrOperator
+
+let make_error =
+  fun (result : Error) =>
+    let result_code =
+      match result with
+      | CodeInsufficientZLPAmount => Int32 -1
+      | CodeIsNotZLPContract      => Int32 -2
+      | CodeIsNotDragonContract   => Int32 -3
+      | CodeNotContractOwner      => Int32 -4
+      | CodePauseNotPause         => Int32 -5
+      | CodeIsNotOwnerOrOperator  => Int32 -6
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
+contract StoreZLP
+
+(*  Parameters *)
+(
+  contract_owner: ByStr20,
+  zlp: ByStr20
+)
+
+(* Mutable fields *)
+field free_ZLP_balance: Uint128 = Uint128 0
+field zlp_half:  Uint128 = Uint128 0
+field dragon_half: Uint128 = Uint128 0
+field zlp_reward: ByStr20 = contract_owner
+field dragon_reward: ByStr20 = 0x1b466bc731a94242Ddcf6F7768f519C6a491E041
+field dragon_contracts: Map ByStr20 Dummy = Emp ByStr20 Dummy
+field pause: Uint32 = not_pause
+field address_ZLP_balance: Map ByStr20 Uint128 = Emp ByStr20 Uint128
+field address_operator: Map ByStr20 ByStr20 = Emp ByStr20 ByStr20
+
+(* Emit Errors *)
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+procedure checkPause(expected: Uint32)
+  curent_pause <- pause;
+  is_eq = builtin eq expected curent_pause;
+  match is_eq with
+  | True =>
+  | False =>
+    err = CodePauseNotPause;
+    ThrowError err
+  end
+end
+
+procedure IsContractOwner()
+  is_contract_owner = builtin eq contract_owner _sender;
+  match is_contract_owner with
+  | True => 
+  | False =>
+    err = CodeNotContractOwner;
+    ThrowError err
+  end
+end
+
+procedure IsZLPContract()
+  is_zlp_sender = builtin eq zlp _sender;
+  match is_zlp_sender with
+  | True =>
+  | False =>
+    err = CodeIsNotZLPContract;
+    ThrowError err
+  end
+end
+
+procedure IsDragonContract()
+  is_dragon_contract <- exists dragon_contracts[_sender];
+  match is_dragon_contract with
+  | True =>
+  | False =>
+    err = CodeIsNotDragonContract;
+    ThrowError err
+  end
+end
+
+procedure IsOwnerOrOperator(to: ByStr20)
+  some_operator <- address_operator[to];
+  is_operator = match some_operator with
+    | None => False
+    | Some operator =>
+      builtin eq operator _sender
+    end;
+  is_owner = builtin eq to _sender;
+  is_allow = orb is_operator is_owner;
+  match is_allow with
+  | True =>
+  | False =>
+    err = CodeIsNotOwnerOrOperator;
+    ThrowError err
+  end
+end
+
+procedure UpdateTokenCount(operation: Operation, address: ByStr20, amount: Uint128)
+  some_to_count <- address_ZLP_balance[address];
+  current_count = get_bal some_to_count;
+  match operation with
+  | Add =>
+    new_to_count = builtin add current_count amount;
+    address_ZLP_balance[address] := new_to_count
+  | Sub =>
+    is_insufficient = builtin lt current_count amount;
+    match is_insufficient with
+      | False => 
+        new_to_count = builtin sub current_count amount;
+        address_ZLP_balance[address] := new_to_count
+      | True =>
+        err = CodeInsufficientZLPAmount;
+        ThrowError err
+      end
+  end
+end
+
+procedure addZLP(from: ByStr20, amount: Uint128)
+  checkPause not_pause;
+  IsZLPContract;
+  UpdateTokenCount add_operation from amount
+end
+
+procedure calcHalf()
+  balance <- free_ZLP_balance;
+  free_ZLP_balance := zero;
+  first_half = builtin div balance two;
+  second_half = builtin sub balance first_half;
+  zlp_balance <- zlp_half;
+  new_balance = builtin add zlp_balance first_half;
+  zlp_half := new_balance;
+  dragon_balance <- dragon_half;
+  new_balance = builtin add dragon_balance second_half;
+  dragon_half := new_balance
+end
+
+procedure callTransfer(addres: ByStr20, amount: Uint128)
+  msg_transfer = {_tag: "Transfer"; _recipient: zlp; _amount: zero;
+                      to: addres; amount: amount};
+  msgs = one_msg msg_transfer;
+  send msgs
+end
+
+procedure withdrawZLP(to: ByStr20)
+  some_balance <- address_ZLP_balance[to];
+  match some_balance with
+  | Some balance =>
+    UpdateTokenCount sub_operation to balance;
+    callTransfer to balance
+  | None =>
+  end
+
+end
+
+transition AcceptZLP(from: ByStr20, amount: Uint128)
+  IsDragonContract;
+  UpdateTokenCount sub_operation from amount;
+  balance <- free_ZLP_balance;
+  new_balance = builtin add balance amount;
+  free_ZLP_balance := new_balance;
+  e = {_eventname : "AceptZLP"; initiator: _sender; from : from; amount : amount};
+  event e
+end
+
+transition WithdrawZLP(to: ByStr20)
+  IsOwnerOrOperator to;
+  withdrawZLP to
+end
+
+transition WithdrawZLPOnPause(to: ByStr20)
+  checkPause on_pause;
+  withdrawZLP to
+end
+
+transition RecipientAcceptTransfer(sender: ByStr20, recipient: ByStr20, amount: Uint128)
+  addZLP sender amount
+end
+
+transition RecipientAcceptTransferFrom(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
+  addZLP sender amount;
+  address_operator[sender] := initiator
+end
+
+transition ChangeOperator(operator: ByStr20)
+  some_operator <- address_operator[_sender];
+  match some_operator with
+  | Some old_operator =>
+    is_eq = builtin eq old_operator operator;
+    match is_eq with
+    | True =>
+      delete address_operator[_sender]
+    | False =>
+      address_operator[_sender] := operator
+    end
+  | None =>
+    address_operator[_sender] := operator
+  end
+end
+
+transition ConfigureDragonContracts(contract_address: ByStr20)
+  IsContractOwner;
+  some_dragon_contract <- dragon_contracts[contract_address];
+  match some_dragon_contract with
+  | Some Dummy =>
+    delete dragon_contracts[contract_address]
+  | None =>
+    dragon_contracts[contract_address] := verdad
+  end
+end
+
+transition ChangePause()
+  IsContractOwner;
+  status <- pause;
+  is_pause = builtin eq status on_pause;
+  match is_pause with
+  | True =>
+    pause := not_pause
+  | False =>
+    pause := on_pause
+  end
+end
+
+transition ZLPReward()
+  calcHalf;
+  zlp_balance <- zlp_half;
+  zlp_half := zero;
+  address <- zlp_reward;
+  callTransfer address zlp_balance
+end
+
+transition DragonReward()
+  calcHalf;
+  zlp_balance <- dragon_half;
+  dragon_half := zero;
+  address <- dragon_reward;
+  callTransfer address zlp_balance
+end
+
