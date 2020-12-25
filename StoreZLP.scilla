@@ -265,6 +265,12 @@ transition ChangePause()
   end
 end
 
+transition ChangeZLPwallet(zlp_address: ByStr20, dragon_address: ByStr20)
+  IsContractOwner;
+  zlp_reward := zlp_address;
+  dragon_reward := dragon_address
+end
+
 transition ZLPReward()
   calcHalf;
   zlp_balance <- zlp_half;
