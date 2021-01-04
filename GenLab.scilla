@@ -1,0 +1,229 @@
+scilla_version 0
+import ListUtils
+library GenLab
+
+(* Custom ADT storing - token_id, owner, stage, token_uri, token_gen_battle, token_gen_image *)
+type Dragon =
+| Dragon of Uint256 ByStr20 Uint32 String Uint256 Uint256
+
+(* Custom ADT storing - token_id, token_gen_battle *)
+type IdBattleGenPair =
+| IdBattleGenPair of Uint256 Uint256
+
+let zero = Uint32 0
+let one = Uint32 1
+let two = Uint256 2
+let ten = Uint256 10
+let ten2 = Uint256 100
+
+let zero256 = Uint256 0
+let zero_address = 0x0000000000000000000000000000000000000000
+let dummy_str = ""
+let default_stage = Uint32 0
+let default_dragon = Dragon zero256 zero_address default_stage dummy_str zero256 zero256
+
+let option_value =
+  tfun 'A =>
+  fun (default: 'A) =>
+  fun (opt_val: Option 'A) =>
+    match opt_val with
+    | Some v => v
+    | None => default
+    end
+
+let unpack_dragon = @option_value Dragon
+let unpack_uint32 = @option_value Uint32
+
+(* Error events *)
+type Error =
+  | CodeImproperValue
+  | CodeImproperGenNum
+  | CodeNotAuthorised
+  | CodeStageIncorrect
+  | CodeNotAnOwner
+
+let make_error =
+  fun (result : Error) =>
+    let result_code = 
+      match result with
+      | CodeImproperValue      => Int32 -1
+      | CodeImproperGenNum     => Int32 -2
+      | CodeNotAuthorised      => Int32 -3
+      | CodeStageIncorrect     => Int32 -4
+      | CodeNotAnOwner         => Int32 -5
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
+let one_msg =
+  fun (msg : Message) =>
+  let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+let two_msgs =
+  fun (msg1 : Message) =>
+  fun (msg2 : Message) =>
+    let msgs_tmp = one_msg msg2 in
+    Cons {Message} msg1 msgs_tmp
+
+let one_listid =
+  fun (id : Uint256) =>
+    let nil_listid = Nil {Uint256} in
+    Cons {Uint256} id nil_listid
+
+let get_upgraded_genschain =
+  fun (genschain: Uint256) =>
+  fun (num: Uint256) =>
+  fun (new_gen: Uint256) =>
+    let pow_num = builtin mul two num in
+    let pow_num2 = builtin add two pow_num in
+    let pow_num1 = builtin add two pow_num2 in
+    let pow_num2_32opt = builtin to_uint32 pow_num2 in
+    let pow_num1_32opt = builtin to_uint32 pow_num1 in
+    let pow_num2_32 = unpack_uint32 zero pow_num2_32opt in
+    let pow_num1_32 = unpack_uint32 zero pow_num1_32opt in
+    let divider1 = builtin pow ten pow_num1_32 in
+    let divider2 = builtin pow ten pow_num2_32 in
+    let rem_num1 = builtin rem genschain divider1 in
+    let rem_num2 = builtin rem genschain divider2 in
+    let genzeros = builtin sub rem_num1 rem_num2 in
+    let genchain_pre = builtin sub genschain rem_num1 in
+    let genchain_pre2 = builtin add genchain_pre rem_num2 in
+    let new_genzeros = builtin mul new_gen divider2 in
+      builtin add genchain_pre2 new_genzeros
+
+contract GenLab(main_dzt: ByStr20, store_zlp: ByStr20, owner: ByStr20)
+
+field use_count: Map Uint256 Uint32 = Emp Uint256 Uint32
+field start_price: Uint128 = Uint128 1000000000000000000
+field price_multiplicator: Uint128 = Uint128 2
+field tmp_sender: ByStr20 = 0x0000000000000000000000000000000000000000
+field tmp_gen_num: Uint256 = Uint256 0
+field tmp_new_value: Uint256 = Uint256 0
+
+(* Emit Errors *)
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+procedure checkAddress(address: ByStr20)
+  is_address_call = builtin eq _sender address;
+  match is_address_call with
+  | False =>
+    err = CodeNotAuthorised;
+    ThrowError err
+  | True =>
+  end
+end
+
+procedure checkStage(stage: Uint32)
+  is_stage_egg = builtin lt stage one;
+  match is_stage_egg with
+  | False =>
+  | True =>
+    err = CodeStageIncorrect;
+    ThrowError err
+  end
+end
+
+procedure checkOwner(address: ByStr20)
+  sender <- tmp_sender;
+  is_owner = builtin eq address sender;
+  match is_owner with
+  | True =>
+  | False =>
+    err = CodeNotAnOwner;
+    ThrowError err
+  end
+end
+
+procedure checkValue(new_value: Uint256)
+  is_proper_gen_num = builtin lt new_value ten2;
+  match is_proper_gen_num with
+  | True =>
+  | False =>
+    err = CodeImproperValue;
+    ThrowError err
+  end
+end
+
+procedure checkGenNum(gen_num: Uint256)
+  twenty = Uint256 20;
+  is_proper_gen_num = builtin lt gen_num twenty;
+  match is_proper_gen_num with
+  | True =>
+  | False =>
+    err = CodeImproperGenNum;
+    ThrowError err
+  end
+end
+
+transition ChangeGen(token_id: Uint256, gen_num: Uint256, new_value: Uint256)
+  checkGenNum gen_num;
+  checkValue new_value;
+  
+  tmp_sender := _sender;
+  tmp_gen_num := gen_num;
+  tmp_new_value := new_value;
+  
+  some_use_count <- use_count[token_id];
+  actual_use_count = unpack_uint32 zero some_use_count;
+  new_use_count = builtin add actual_use_count one;
+  use_count[token_id] := new_use_count;
+  actual_multiplicator <- price_multiplicator;
+  multiplicator = builtin pow actual_multiplicator actual_use_count;
+  price <- start_price;
+  amount_zlp = builtin mul price multiplicator;
+  msg = {
+      _tag: "AcceptZLP";
+      _recipient: store_zlp;
+      _amount: Uint128 0;
+      from: _sender;
+      amount: amount_zlp
+    };
+    
+  ids = one_listid token_id;
+  getdragons_call = {
+    _tag: "GetDragons";
+    _recipient: main_dzt;
+    _amount: Uint128 0;
+    ids: ids
+  };
+  msgs = two_msgs getdragons_call msg;
+  send msgs
+end
+
+transition GetDragonsCallBack(dragons: List Dragon)
+  (* need to check is it called from main contract *)
+  checkAddress main_dzt;
+  list_head = @list_head Dragon;
+  some_dragon = list_head dragons;
+  dragon = unpack_dragon default_dragon some_dragon;
+  match dragon with
+    | Dragon token_id dragon_owner stage token_uri token_gen_battle token_gen_image =>
+      checkStage stage;
+      checkOwner dragon_owner;
+      gen_num <- tmp_gen_num;
+      new_value <- tmp_new_value;
+      new_gen = get_upgraded_genschain token_gen_battle gen_num new_value;
+      id_gen = IdBattleGenPair token_id new_gen;
+      nil_drgnpair = Nil {IdBattleGenPair};
+      id_gen_list = Cons {IdBattleGenPair} id_gen nil_drgnpair;
+      changegens_call = {
+      _tag: "ChangeBattleGens";
+      _recipient: main_dzt;
+      _amount: Uint128 0;
+      id_gen_list: id_gen_list
+      };
+      msgs = one_msg changegens_call;
+      send msgs 
+  end
+end
+
+transition ChangePrice(new_price: Uint128, new_multiplicator: Uint128)
+  checkAddress owner;
+  price_multiplicator := new_multiplicator;
+  start_price := new_price
+end
+
