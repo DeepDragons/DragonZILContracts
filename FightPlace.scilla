@@ -1,18 +1,10 @@
 scilla_version 0
 
-import PairUtils ListUtils
+import ListUtils
 (***************************************************)
 (*               Associated library                *)
 (***************************************************)
 library FightPlace
-
-(* User-defined ADTs *)
-type Dummy =
-| Dummy
-
-type Operation =
-| Add
-| Sub
 
 (* DragonZIL types *)
 (* Custom ADT storing - token_id, owner, stage, token_uri, token_gen_battle, token_gen_image *)
@@ -23,6 +15,29 @@ type Dragon =
 type IdBattleGenPair =
 | IdBattleGenPair of Uint256 Uint256
 (* DragonZIL types *)
+
+(* Error events *)
+type Error =
+  | CodeNotAuthorised
+  | CodeNotInWaitingList
+  | CodeSameDragon
+  | CodeNotAnOwner
+  | CodeCallNotMainDzt
+  | CodeStageIncorrect
+
+let make_error =
+  fun (result : Error) =>
+    let result_code =
+      match result with
+      | CodeNotAuthorised      => Int32 -1
+      | CodeNotInWaitingList   => Int32 -2
+      | CodeSameDragon         => Int32 -3
+      | CodeNotAnOwner         => Int32 -4
+      | CodeCallNotMainDzt     => Int32 -5
+      | CodeStageIncorrect     => Int32 -6
+      end
+    in
+    { _exception : "Error"; code : result_code }
 
 let one_drgnpair =
   fun (drgnpair : IdBattleGenPair) =>
@@ -43,14 +58,9 @@ let two = Uint256 2
 let two32 = Uint32 2
 let eight = Uint256 8
 let ten = Uint256 10
-let twenty = Uint256 20
 let ninetynine = Uint256 99
 let ten2 = Uint256 100
 let ten20 = Uint256 100000000000000000000
-
-let verdad = Dummy
-let add_operation = Add
-let sub_operation = Sub
 
 let zero_address = 0x0000000000000000000000000000000000000000
 let dummy_str = ""
@@ -71,22 +81,7 @@ let option_address = @option_value ByStr20
 let option_str = @option_value String
 let option_uint32 = @option_value Uint32
 let option_uint256 = @option_value Uint256
-let option_uint128 = @option_value Uint128
 let option_dragon = @option_value Dragon
-
-let build_dragon =
-  fun (token_id: Uint256) =>
-  fun (some_token_owner: Option ByStr20) =>
-  fun (some_token_uri: Option String) =>
-  fun (some_token_gen_battle: Option Uint256) =>
-  fun (some_token_gen_image: Option Uint256) =>
-  fun (some_token_stage: Option Uint32) =>
-    let owner = option_address zero_address some_token_owner in
-    let uri = option_str dummy_str some_token_uri in
-    let gen_battle = option_uint256 zero some_token_gen_battle in
-    let gen_image = option_uint256 zero some_token_gen_image in
-    let stage = option_uint32 default_stage some_token_stage in
-      Dragon token_id owner stage uri gen_battle gen_image
 
 let one_msg =
   fun (msg : Message) =>
@@ -103,19 +98,6 @@ let two_listid =
   fun (id2 : Uint256) =>
     let listid_tmp = one_listid id2 in
     Cons {Uint256} id1 listid_tmp
-
-(* todo *)
-(* Error events *)
-type Error =
-  | CodeNotAuthorised
-  | CodeNoPubKey
-  | CodeVerificationFailed
-  | CodeUint32Overflow
-  | CodeNotInWaitingList
-  | CodeSameDragon
-  | CodeNotAnOwner
-  | CodeCallNotMainDzt
-  | CodeStageIncorrect
 
 let random =
   fun (entropy: Uint256) =>
@@ -175,13 +157,12 @@ let get_upgraded_genschain =
     let new_genzeros = builtin mul new_gen divider2 in
       builtin add genchain_pre2 new_genzeros
 
-(* maybe better to have 1 function with match? *)
 let get_downgraded_genschain =
-  fun (need_downgrade: Bool) =>
+  fun (no_need_downgrade: Bool) =>
   fun (genschain: Uint256) =>
   fun (num: Uint256) =>
   fun (gen_downgrade_prc: Uint256) =>
-    match need_downgrade with
+    match no_need_downgrade with
     | False =>
       let pow_num2 = builtin mul two num in
       let pow_num1 = builtin add two pow_num2 in
@@ -201,7 +182,7 @@ let get_downgraded_genschain =
       let new_genzeros = builtin mul new_gen divider2 in
         builtin add genchain_pre2 new_genzeros
     | True =>
-        builtin mul genschain one
+        genschain
     end
 
 let get_dragon_token_id =
@@ -232,24 +213,6 @@ let get_dragon_gen_battle =
       token_gen_battle
     end
 
-(* todo *)
-let make_error =
-  fun (result : Error) =>
-    let result_code =
-      match result with
-      | CodeNotAuthorised      => Int32 -1
-      | CodeNoPubKey           => Int32 -2
-      | CodeVerificationFailed => Int32 -3
-      | CodeUint32Overflow     => Int32 -4
-      | CodeNotInWaitingList   => Int32 -5
-      | CodeSameDragon         => Int32 -6
-      | CodeNotAnOwner         => Int32 -7
-      | CodeCallNotMainDzt     => Int32 -8
-      | CodeStageIncorrect     => Int32 -9
-      end
-    in
-    { _exception : "Error"; code : result_code }
-
 (***************************************************)
 (*             The contract definition             *)
 (***************************************************)
@@ -260,13 +223,10 @@ contract FightPlace
  main_dzt : ByStr20)
 
 (* Mutable fields *)
-(* todo *)
 field waiting_list: Map Uint256 Uint256 = Emp Uint256 Uint256
 
-field entropy : Uint256 = Uint256 0
+field entropy : Uint256 = Uint256 42
 
-
-field random_fld : Uint256 = Uint256 0
 field d1_random_attack_fld : Uint256 = Uint256 0
 field d1_random_defence_fld : Uint256 = Uint256 0
 field d2_random_attack_fld : Uint256 = Uint256 0
@@ -288,16 +248,6 @@ field tmp_token_id : Uint256 = Uint256 0
 procedure ThrowError(err : Error)
   e = make_error err;
   throw e
-end
-
-procedure IsContractOwner()
-  is_contract_owner = builtin eq contract_owner _sender;
-  match is_contract_owner with
-  | True =>
-  | False =>
-    err = CodeNotAuthorised;
-    ThrowError err
-  end
 end
 
 procedure SetFldsRandWinLose (num_winner: Uint256)
@@ -342,12 +292,8 @@ procedure SendFightsResultsWinLose(token_id_winner: Uint256, gen_battle_winner: 
   };
   event e;
 
-  new_gen1 = gen_battle_winner;
-  token_id1 = token_id_winner;
-  new_gen2 = gen_battle_loser;
-  token_id2 = token_id_loser;
-  id_gen1 = IdBattleGenPair token_id1 new_gen1;
-  id_gen2 = IdBattleGenPair token_id2 new_gen2;
+  id_gen1 = IdBattleGenPair token_id_winner gen_battle_winner;
+  id_gen2 = IdBattleGenPair token_id_loser gen_battle_loser;
   id_gen_list = two_drgnpairs id_gen1 id_gen2;
 
   changegens_call = {
@@ -379,11 +325,9 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   (* other are reserved *)
   gen_battle_winner = gen_battle_winner_param;
   winner_luck = builtin rem gen_battle_winner ten2;
-  gen_battle_winner = builtin sub gen_battle_winner winner_luck;
   gen_battle_winner = builtin div gen_battle_winner ten2;
 
   winner_gen_attack = builtin rem gen_battle_winner ten20;
-  gen_battle_winner = builtin sub gen_battle_winner winner_gen_attack;
   gen_battle_winner = builtin div gen_battle_winner ten20;
 
   winner_gen_defence = builtin rem gen_battle_winner ten20;
@@ -392,11 +336,9 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
 
   gen_battle_loser = gen_battle_loser_param;
   loser_luck = builtin rem gen_battle_loser ten2;
-  gen_battle_loser = builtin sub gen_battle_loser loser_luck;
   gen_battle_loser = builtin div gen_battle_loser ten2;
 
   loser_gen_attack = builtin rem gen_battle_loser ten20;
-  gen_battle_loser = builtin sub gen_battle_loser loser_gen_attack;
   gen_battle_loser = builtin div gen_battle_loser ten20;
 
   loser_gen_defence = builtin rem gen_battle_loser ten20;
@@ -455,26 +397,22 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
   entropyNumber <- entropy;
   current_block <- & BLOCKNUMBER;
   random = random entropyNumber current_block;
-  random_fld := random;
+  entropy := random;
 
   d1_random_attack = builtin rem random ten;
   d1_random_attack_fld := d1_random_attack;
-  random = builtin sub random d1_random_attack;
   random = builtin div random ten;
 
   d1_random_defence = builtin rem random ten;
   d1_random_defence_fld := d1_random_defence;
-  random = builtin sub random d1_random_defence;
   random = builtin div random ten;
 
   d2_random_attack = builtin rem random ten;
   d2_random_attack_fld := d2_random_attack;
-  random = builtin sub random d2_random_attack;
   random = builtin div random ten;
 
   d2_random_defence = builtin rem random ten;
   d2_random_defence_fld := d2_random_defence;
-  random = builtin sub random d2_random_defence;
   random = builtin div random ten;
 
   random_luck = builtin rem random ten2;
@@ -487,22 +425,18 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
   (* other are reserved *)
   gen_battle1 = gen_battle1_param;
   d1_luck = builtin rem gen_battle1 ten2;
-  gen_battle1 = builtin sub gen_battle1 d1_luck;
   gen_battle1 = builtin div gen_battle1 ten2;
 
   d1_gen_attack = builtin rem gen_battle1 ten20;
-  gen_battle1 = builtin sub gen_battle1 d1_gen_attack;
   gen_battle1 = builtin div gen_battle1 ten20;
 
   d1_gen_defence = builtin rem gen_battle1 ten20;
 
   gen_battle2 = gen_battle2_param;
   d2_luck = builtin rem gen_battle2 ten2;
-  gen_battle2 = builtin sub gen_battle2 d2_luck;
   gen_battle2 = builtin div gen_battle2 ten2;
 
   d2_gen_attack = builtin rem gen_battle2 ten20;
-  gen_battle2 = builtin sub gen_battle2 d2_gen_attack;
   gen_battle2 = builtin div gen_battle2 ten20;
 
   d2_gen_defence = builtin rem gen_battle2 ten20;
@@ -525,8 +459,6 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
   res2_bool_eq = builtin eq d2_defence d1_attack;
   (* true - win d1, false - win d2 *)
   res2_bool_neg = builtin lt d2_defence d1_attack;
-
-  entropy := random;
 
   match res1_bool_eq with
   | True =>
@@ -800,3 +732,4 @@ transition WaitListAddDel(token_id: Uint256)
   msgs = one_msg getdragons_call;
   send msgs
 end
+
