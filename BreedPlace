@@ -804,16 +804,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   };
   event e;
 
-(*
-"1": "777 4 3 0 0 0 1 1 2 2 0 0 0 0 1 1 3 8 0 1 4 171 209",
-"2": "77704000321821114121014024124",
-        100000000000000000000000000
-      10000000000000000000000000000
-"3": "77703421082220121127012162219",
-"4": "77712301462105113125212159041",
-"5": "77731120171623410112114160127"
-*)
-
   (* most of visual gens have 2 parts - type (0-9) and color(0-4) *)
   (* 777 03 03 43 31 14 33 44 11 73 14 110 158 *)
   (* Aura-12   Horns-11   Scales-10   Spots-9   Tail-8   Wings-7 *)
@@ -1197,17 +1187,113 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   d2_gen_defence = builtin rem gen_battle2 ten20;
   gen_battle2 = builtin div gen_battle2 ten20;
 
-
-  gen_battle1_attack = builtin rem gen_battle1_param ten20;
-  gen_battle1_defence = builtin rem gen_battle1_param ten20;
-
   (* taking beginning of the gens from first dragon and adding mix of defence and attack and luck gens from both *)
   new_dragon_gen_battle = gen_battle1;
+
+  d1_gen_attack_half1 = builtin rem d1_gen_attack ten10;
+  d1_gen_attack_half2 = builtin div d1_gen_attack d1_gen_attack_half1;
+  d1_gen_attack_half2 = builtin div d1_gen_attack ten10;
+  d1_gen_defence_half1 = builtin rem d1_gen_defence ten10;
+  d1_gen_defence_half2 = builtin div d1_gen_defence d1_gen_defence_half1;
+  d1_gen_defence_half2 = builtin div d1_gen_defence ten10;
+
+  d2_gen_attack_half1 = builtin rem d2_gen_attack ten10;
+  d2_gen_attack_half2 = builtin div d2_gen_attack d2_gen_attack_half1;
+  d2_gen_attack_half2 = builtin div d2_gen_attack ten10;
+  d2_gen_defence_half1 = builtin rem d2_gen_defence ten10;
+  d2_gen_defence_half2 = builtin div d2_gen_defence d2_gen_defence_half1;
+  d2_gen_defence_half2 = builtin div d2_gen_defence ten10;
+
+
+  e = {
+    _eventname : "gen_battle_halfs";
+    d1_gen_attack_half1: d1_gen_attack_half1;
+    d1_gen_attack_half2: d1_gen_attack_half2;
+    d1_gen_defence_half1: d1_gen_defence_half1;
+    d1_gen_defence_half2: d1_gen_defence_half2;
+    d2_gen_attack_half1: d2_gen_attack_half1;
+    d2_gen_attack_half2: d2_gen_attack_half2;
+    d2_gen_defence_half1: d2_gen_defence_half1;
+    d2_gen_defence_half2: d2_gen_defence_half2;
+    new_dragon_gen_battle: new_dragon_gen_battle
+  };
+  event e;
+
   (* adding defence *)
+  new_dragon_gen_battle = builtin mul new_dragon_gen_battle ten10;
+  e = {
+    _eventname : "new_dragon_gen_battle_step1";
+    new_dragon_gen_battle: new_dragon_gen_battle
+  };
+  event e;
+
+  new_dragon_gen_battle = builtin add new_dragon_gen_battle d1_gen_defence_half1;
+  e = {
+    _eventname : "new_dragon_gen_battle_step2";
+    new_dragon_gen_battle: new_dragon_gen_battle
+  };
+  event e;
+
+  new_dragon_gen_battle = builtin mul new_dragon_gen_battle ten10;
+  e = {
+    _eventname : "new_dragon_gen_battle_step3";
+    new_dragon_gen_battle: new_dragon_gen_battle
+  };
+  event e;
+
+  new_dragon_gen_battle = builtin add new_dragon_gen_battle d2_gen_defence_half2;
+  e = {
+    _eventname : "new_dragon_gen_battle_step4";
+    new_dragon_gen_battle: new_dragon_gen_battle
+  };
+  event e;
+
   (* adding attack *)
+  new_dragon_gen_battle = builtin mul new_dragon_gen_battle ten10;
+  e = {
+    _eventname : "new_dragon_gen_battle_step5";
+    new_dragon_gen_battle: new_dragon_gen_battle
+  };
+  event e;
+
+  new_dragon_gen_battle = builtin add new_dragon_gen_battle d1_gen_attack_half1;
+  e = {
+    _eventname : "new_dragon_gen_battle_step6";
+    new_dragon_gen_battle: new_dragon_gen_battle
+  };
+  event e;
+
+  new_dragon_gen_battle = builtin mul new_dragon_gen_battle ten10;
+  e = {
+    _eventname : "new_dragon_gen_battle_step7";
+    new_dragon_gen_battle: new_dragon_gen_battle
+  };
+  event e;
+
+  new_dragon_gen_battle = builtin add new_dragon_gen_battle d2_gen_attack_half2;
+  e = {
+    _eventname : "new_dragon_gen_battle_step8";
+    new_dragon_gen_battle: new_dragon_gen_battle
+  };
+  event e;
+
   (* adding luck *)
+  new_luck = builtin add d1_luck d2_luck;
+  new_luck = builtin div new_luck two;
+  e = {
+    _eventname : "new_luck";
+    new_luck: new_luck
+  };
+  event e;
 
-
+  new_dragon_gen_battle = builtin mul new_dragon_gen_battle ten2;
+  new_dragon_gen_battle = builtin add new_dragon_gen_battle new_luck;
+  (* not more then 99 !!!!!! *)
+  e = {
+    _eventname : "new_dragon_gen_battle_step8";
+    new_dragon_gen_battle: new_dragon_gen_battle
+  };
+  event e;
 
   SendBreedResults new_dragon_gen_battle new_dragon_gen_image
 end
