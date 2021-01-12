@@ -310,32 +310,45 @@ procedure SendBreedResults(new_dragon_gen_battle: Uint256, new_dragon_gen_image:
   event e
 end
 
-procedure ChangeImageGen(new_gen: Uint256, new_gen_idx: Uint256)
+procedure ChangeImageGen1(new_gen_idx: Uint256, new_gen: Uint256)
   (* first two gens have 3 digits, next two 1 digit, other 2 digits *)
-
-
-
-  (* if gen need to have 3 digits but it is less 10 or less 100 need to add leading zeros??? *)
-
-  (* if gen need to have 2 digits but it is less 10 need to add leading zero??? *)
-(*
-  match bool_group_is_1dig with
-  | True =>
-  | False =>
-  end
-  match bool_group_is_2dig with
-  | True =>
-  | False =>
-  end
-  match bool_group_is_3dig with
-  | True =>
-  | False =>
-  end *)
-
-
-
   genschain <- tmp_gen_image_fld;
-(*
+
+  skipnum = builtin add new_gen_idx four;
+  pow_num2 = builtin mul one skipnum;
+  pow_num1 = builtin add one pow_num2;
+  pow_num2_32opt = builtin to_uint32 pow_num2;
+  pow_num1_32opt = builtin to_uint32 pow_num1;
+  pow_num2_32 = option_uint32 zero32 pow_num2_32opt;
+  pow_num1_32 = option_uint32 zero32 pow_num1_32opt;
+  divider1 = builtin pow ten pow_num1_32;
+  divider2 = builtin pow ten pow_num2_32;
+  rem_num1 = builtin rem genschain divider1;
+  rem_num2 = builtin rem genschain divider2;
+  genchain_pre = builtin sub genschain rem_num1;
+
+  new_genzeros = builtin mul new_gen divider2;
+  new_genschain = builtin add genchain_pre new_genzeros;
+  new_genschain = builtin add new_genschain rem_num2;
+
+  e = {
+    _eventname : "ChangeImageGen1";
+    new_gen_idx: new_gen_idx;
+    new_gen: new_gen;
+    rem_num1: rem_num1;
+    rem_num2: rem_num2;
+    genchain_pre: genchain_pre;
+    genschain: genschain;
+    new_genschain: new_genschain
+  };
+  event e;
+
+  tmp_gen_image_fld := new_genschain
+end
+procedure ChangeImageGen2(new_gen_idx: Uint256, new_gen: Uint256)
+  (* first two gens have 3 digits, next two 1 digit, other 2 digits *)
+  genschain <- tmp_gen_image_fld;
+
   pow_num2 = builtin mul two new_gen_idx;
   pow_num1 = builtin add two pow_num2;
   pow_num2_32opt = builtin to_uint32 pow_num2;
@@ -346,14 +359,59 @@ procedure ChangeImageGen(new_gen: Uint256, new_gen_idx: Uint256)
   divider2 = builtin pow ten pow_num2_32;
   rem_num1 = builtin rem genschain divider1;
   rem_num2 = builtin rem genschain divider2;
-  genzeros = builtin sub rem_num1 rem_num2;
-  gen = builtin div genzeros divider2;
   genchain_pre = builtin sub genschain rem_num1;
-  genchain_pre2 = builtin add genchain_pre rem_num2;
+
   new_genzeros = builtin mul new_gen divider2;
-  genschain = builtin add genchain_pre2 new_genzeros;
-*)
-  tmp_gen_image_fld := genschain
+  new_genschain = builtin add genchain_pre new_genzeros;
+  new_genschain = builtin add new_genschain rem_num2;
+
+  e = {
+    _eventname : "ChangeImageGen2";
+    new_gen_idx: new_gen_idx;
+    new_gen: new_gen;
+    rem_num1: rem_num1;
+    rem_num2: rem_num2;
+    genchain_pre: genchain_pre;
+    genschain: genschain;
+    new_genschain: new_genschain
+  };
+  event e;
+
+  tmp_gen_image_fld := new_genschain
+end
+procedure ChangeImageGen3(new_gen_idx: Uint256, new_gen: Uint256)
+  (* first two gens have 3 digits, next two 1 digit, other 2 digits *)
+  genschain <- tmp_gen_image_fld;
+
+  pow_num2 = builtin mul three new_gen_idx;
+  pow_num1 = builtin add three pow_num2;
+  pow_num2_32opt = builtin to_uint32 pow_num2;
+  pow_num1_32opt = builtin to_uint32 pow_num1;
+  pow_num2_32 = option_uint32 zero32 pow_num2_32opt;
+  pow_num1_32 = option_uint32 zero32 pow_num1_32opt;
+  divider1 = builtin pow ten pow_num1_32;
+  divider2 = builtin pow ten pow_num2_32;
+  rem_num1 = builtin rem genschain divider1;
+  rem_num2 = builtin rem genschain divider2;
+  genchain_pre = builtin sub genschain rem_num1;
+
+  new_genzeros = builtin mul new_gen divider2;
+  new_genschain = builtin add genchain_pre new_genzeros;
+  new_genschain = builtin add new_genschain rem_num2;
+
+  e = {
+    _eventname : "ChangeImageGen3";
+    new_gen_idx: new_gen_idx;
+    new_gen: new_gen;
+    rem_num1: rem_num1;
+    rem_num2: rem_num2;
+    genchain_pre: genchain_pre;
+    genschain: genschain;
+    new_genschain: new_genschain
+  };
+  event e;
+
+  tmp_gen_image_fld := new_genschain
 end
 
 procedure GenerateImageGen(rand: Uint256)
@@ -836,9 +894,9 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   | True =>
     match gen_bool_45 with
     | True =>
-      ChangeImageGen gen_idx dragon1_gen
+      ChangeImageGen2 gen_idx dragon1_gen
     | False =>
-      ChangeImageGen gen_idx dragon2_gen
+      ChangeImageGen2 gen_idx dragon2_gen
     end
   | False =>
     (* no need to change, we already have new random type *)
@@ -870,6 +928,18 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   gen_bool_45 = builtin lt gen_rand fourtyfive;
   random = builtin div random ten;
 
+  match gen_bool_90 with
+  | True =>
+    match gen_bool_45 with
+    | True =>
+      ChangeImageGen2 gen_idx dragon1_gen
+    | False =>
+      ChangeImageGen2 gen_idx dragon2_gen
+    end
+  | False =>
+    (* no need to change, we already have new random type *)
+  end;
+
   e = {
     _eventname : "gen_Horns";
     dragon1_gen: dragon1_gen;
@@ -895,6 +965,18 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   gen_bool_90 = builtin lt gen_rand ninety;
   gen_bool_45 = builtin lt gen_rand fourtyfive;
   random = builtin div random ten;
+
+  match gen_bool_90 with
+  | True =>
+    match gen_bool_45 with
+    | True =>
+      ChangeImageGen2 gen_idx dragon1_gen
+    | False =>
+      ChangeImageGen2 gen_idx dragon2_gen
+    end
+  | False =>
+    (* no need to change, we already have new random type *)
+  end;
 
   e = {
     _eventname : "gen_Scales";
@@ -922,6 +1004,18 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   gen_bool_45 = builtin lt gen_rand fourtyfive;
   random = builtin div random ten;
 
+  match gen_bool_90 with
+  | True =>
+    match gen_bool_45 with
+    | True =>
+      ChangeImageGen2 gen_idx dragon1_gen
+    | False =>
+      ChangeImageGen2 gen_idx dragon2_gen
+    end
+  | False =>
+    (* no need to change, we already have new random type *)
+  end;
+
   e = {
     _eventname : "gen_Spots";
     dragon1_gen: dragon1_gen;
@@ -947,6 +1041,18 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   gen_bool_90 = builtin lt gen_rand ninety;
   gen_bool_45 = builtin lt gen_rand fourtyfive;
   random = builtin div random ten;
+
+  match gen_bool_90 with
+  | True =>
+    match gen_bool_45 with
+    | True =>
+      ChangeImageGen2 gen_idx dragon1_gen
+    | False =>
+      ChangeImageGen2 gen_idx dragon2_gen
+    end
+  | False =>
+    (* no need to change, we already have new random type *)
+  end;
 
   e = {
     _eventname : "gen_Tail";
@@ -974,6 +1080,18 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   gen_bool_45 = builtin lt gen_rand fourtyfive;
   random = builtin div random ten;
 
+  match gen_bool_90 with
+  | True =>
+    match gen_bool_45 with
+    | True =>
+      ChangeImageGen2 gen_idx dragon1_gen
+    | False =>
+      ChangeImageGen2 gen_idx dragon2_gen
+    end
+  | False =>
+    (* no need to change, we already have new random type *)
+  end;
+
   e = {
     _eventname : "gen_Wings";
     dragon1_gen: dragon1_gen;
@@ -999,6 +1117,18 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   gen_bool_90 = builtin lt gen_rand ninety;
   gen_bool_45 = builtin lt gen_rand fourtyfive;
   random = builtin div random ten;
+
+  match gen_bool_90 with
+  | True =>
+    match gen_bool_45 with
+    | True =>
+      ChangeImageGen2 gen_idx dragon1_gen
+    | False =>
+      ChangeImageGen2 gen_idx dragon2_gen
+    end
+  | False =>
+    (* no need to change, we already have new random type *)
+  end;
 
   e = {
     _eventname : "gen_Spins";
@@ -1026,6 +1156,18 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   gen_bool_45 = builtin lt gen_rand fourtyfive;
   random = builtin div random ten;
 
+  match gen_bool_90 with
+  | True =>
+    match gen_bool_45 with
+    | True =>
+      ChangeImageGen2 gen_idx dragon1_gen
+    | False =>
+      ChangeImageGen2 gen_idx dragon2_gen
+    end
+  | False =>
+    (* no need to change, we already have new random type *)
+  end;
+
   e = {
     _eventname : "gen_Body";
     dragon1_gen: dragon1_gen;
@@ -1052,6 +1194,18 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   gen_bool_45 = builtin lt gen_rand fourtyfive;
   random = builtin div random ten;
 
+  match gen_bool_90 with
+  | True =>
+    match gen_bool_45 with
+    | True =>
+      ChangeImageGen2 gen_idx dragon1_gen
+    | False =>
+      ChangeImageGen2 gen_idx dragon2_gen
+    end
+  | False =>
+    (* no need to change, we already have new random type *)
+  end;
+
   e = {
     _eventname : "gen_Eyes";
     dragon1_gen: dragon1_gen;
@@ -1076,6 +1230,19 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   gen_bool_90 = builtin lt gen_rand ninety;
   gen_bool_45 = builtin lt gen_rand fourtyfive;
   random = builtin div random ten;
+
+  match gen_bool_90 with
+  | True =>
+    match gen_bool_45 with
+    | True =>
+      ChangeImageGen1 gen_idx dragon1_gen
+    | False =>
+      ChangeImageGen1 gen_idx dragon2_gen
+    end
+  | False =>
+    (* no need to change, we already have new random type *)
+  end;
+
   e = {
     _eventname : "gen_head";
     dragon1_gen: dragon1_gen;
@@ -1099,6 +1266,19 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   gen_bool_90 = builtin lt gen_rand ninety;
   gen_bool_45 = builtin lt gen_rand fourtyfive;
   random = builtin div random ten;
+
+  match gen_bool_90 with
+  | True =>
+    match gen_bool_45 with
+    | True =>
+      ChangeImageGen1 gen_idx dragon1_gen
+    | False =>
+      ChangeImageGen1 gen_idx dragon2_gen
+    end
+  | False =>
+    (* no need to change, we already have new random type *)
+  end;
+
   e = {
     _eventname : "gen_claws";
     dragon1_gen: dragon1_gen;
@@ -1120,6 +1300,19 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   gen_bool_90 = builtin lt gen_rand ninety;
   gen_bool_45 = builtin lt gen_rand fourtyfive;
   random = builtin div random ten;
+
+  match gen_bool_90 with
+  | True =>
+    match gen_bool_45 with
+    | True =>
+      ChangeImageGen3 gen_idx dragon1_gen
+    | False =>
+      ChangeImageGen3 gen_idx dragon2_gen
+    end
+  | False =>
+    (* no need to change, we already have new random type *)
+  end;
+
   e = {
     _eventname : "gen_color_scheme";
     dragon1_gen: dragon1_gen;
@@ -1141,6 +1334,19 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   gen_bool_90 = builtin lt gen_rand ninety;
   gen_bool_45 = builtin lt gen_rand fourtyfive;
   random = builtin div random ten;
+
+  match gen_bool_90 with
+  | True =>
+    match gen_bool_45 with
+    | True =>
+      ChangeImageGen3 gen_idx dragon1_gen
+    | False =>
+      ChangeImageGen3 gen_idx dragon2_gen
+    end
+  | False =>
+    (* no need to change, we already have new random type *)
+  end;
+
   e = {
     _eventname : "gen_mutagenImutable";
     dragon1_gen: dragon1_gen;
@@ -1151,20 +1357,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
     gen_idx: gen_idx
   };
   event e;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   (* gen_battle - first part of attack gen from first dragons, second part from second, same for defence gen *)
   gen_battle1 = gen_battle1_param;
