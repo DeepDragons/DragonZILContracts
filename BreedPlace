@@ -241,6 +241,20 @@ let get_dragon_gen_image =
       token_gen_image
     end
 
+let build_dragon =
+  fun (token_id: Uint256) =>
+  fun (some_token_owner: ByStr20) =>
+  fun (some_token_uri: String) =>
+  fun (some_token_gen_battle: Uint256) =>
+  fun (some_token_gen_image: Uint256) =>
+  fun (some_token_stage: Uint32) =>
+    let owner = some_token_owner in
+    let uri = some_token_uri in
+    let gen_battle = some_token_gen_battle in
+    let gen_image = some_token_gen_image in
+    let stage = some_token_stage in
+      Dragon token_id owner stage uri gen_battle gen_image
+
 (***************************************************)
 (*             The contract definition             *)
 (***************************************************)
@@ -273,6 +287,8 @@ field tmp_initiator_adr : ByStr20 = 0x0000000000000000000000000000000000000000
 field tmp_token_id : Uint256 = Uint256 0
 field tmp_gen_image_fld : Uint256 = Uint256 0
 
+field tmp: List (Dragon) = Nil {Dragon}
+
 (* Emit Errors *)
 procedure ThrowError(err : Error)
   e = make_error err;
@@ -280,34 +296,38 @@ procedure ThrowError(err : Error)
 end
 
 procedure SendBreedResults(new_dragon_gen_battle: Uint256, new_dragon_gen_image: Uint256)
- (* creating new dragon *)
- (* and send result *)
-
-
-  (* id_gen1 = IdBattleGenPair token_id_winner gen_battle_winner;
-  id_gen2 = IdBattleGenPair token_id_loser gen_battle_loser;
-  id_gen_list = two_drgnpairs id_gen1 id_gen2; *)
-
   (* call Birth, and owner will be the owner of dragon who stored in tmp_token_id *)
 
-  (* birth_call = {
-    _tag: "Birth";
-    _recipient: main_dzt;
-    _amount: Uint128 0;
-    id_gen_list: id_gen_list
-  };
-  msgs = one_msg birth_call;
-  send msgs *)
+  token_owner <- tmp_initiator_adr;
+  some_token_uri = dummy_str;
+  some_token_gen_battle = new_dragon_gen_battle;
+  some_token_gen_image = new_dragon_gen_image;
+  some_token_stage = default_stage;
+  some_tmp <- tmp;
 
-  (* owner is in tmp_initiator_adr *)
+  (* it is new dragon *)
+  token_id = zero;
 
+  dragon = build_dragon token_id token_owner some_token_uri some_token_gen_battle some_token_gen_image some_token_stage;
+  new_tmp = Cons {Dragon} dragon some_tmp;
 
   e = {
     _eventname : "BreedResults";
     new_dragon_gen_battle: new_dragon_gen_battle;
-    new_dragon_gen_image: new_dragon_gen_image
+    new_dragon_gen_image: new_dragon_gen_image;
+    dragon: dragon;
+    new_tmp: new_tmp
   };
-  event e
+  event e;
+
+  birth_call = {
+    _tag: "GiveBirth";
+    _recipient: main_dzt;
+    _amount: Uint128 0;
+    dragons: new_tmp
+  };
+  msgs = one_msg birth_call;
+  send msgs
 end
 
 procedure ChangeImageGen1(new_gen_idx: Uint256, new_gen: Uint256)
@@ -849,8 +869,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
 
   GenerateImageGen random;
 
-
-
   new_dragon_gen_image <- tmp_gen_image_fld;
   e = {
     _eventname : "BreedDo";
@@ -914,8 +932,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   };
   event e;
 
-
-
   (* image gen Horns - 7 types *)
   (* image gen Color Horns *)
   gen_idx = Uint256 11;
@@ -951,8 +967,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
     new_dragon_gen_image: new_dragon_gen_image
   };
   event e;
-
-
 
   (* image gen Scales - 4 types *)
   (* image gen Color Scales *)
@@ -990,8 +1004,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   };
   event e;
 
-
-
   (* image gen Spots - 9 types *)
   (* image gen Color Spots *)
   gen_idx = Uint256 9;
@@ -1027,8 +1039,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
     new_dragon_gen_image: new_dragon_gen_image
   };
   event e;
-
-
 
   (* image gen Tail - 8 types *)
   (* image gen Color Tail *)
@@ -1066,8 +1076,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   };
   event e;
 
-
-
   (* image gen Wings - 5 types *)
   (* image gen Color Wings *)
   gen_idx = Uint256 7;
@@ -1103,8 +1111,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
     new_dragon_gen_image: new_dragon_gen_image
   };
   event e;
-
-
 
   (* image gen Spins - 4 types *)
   (* image gen Color Spins *)
@@ -1142,8 +1148,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   };
   event e;
 
-
-
   (* image gen Body - 3 types *)
   (* image gen Color Body *)
   gen_idx = Uint256 5;
@@ -1179,8 +1183,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
     new_dragon_gen_image: new_dragon_gen_image
   };
   event e;
-
-
 
   (* image gen Eyes - 9 types *)
   (* image gen Color Eyes *)
@@ -1218,8 +1220,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   };
   event e;
 
-
-
   (* image gen Head - 5 types *)
   gen_idx = Uint256 3;
   dragon1_gen = get_gen_val1 gen_image1_param gen_idx;
@@ -1253,8 +1253,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
     gen_idx: gen_idx
   };
   event e;
-
-
 
   (* image gen Color Claws *)
   gen_idx = Uint256 2;
