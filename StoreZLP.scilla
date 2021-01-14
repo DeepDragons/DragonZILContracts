@@ -235,6 +235,19 @@ transition WithdrawZLP(to: ByStr20)
   withdrawZLP to
 end
 
+transition balanceZLPOf(address: ByStr20)
+  some_bal <- address_ZLP_balance[address];
+  balance = 
+    match some_bal with
+    | Some bal => bal
+    | None => Uint128 0
+    end;
+  msg_to_sender = { _tag : "balanceOfCallBack"; _recipient : _sender; 
+                    _amount : Uint128 0; address: address; balance : balance};
+  msgs = one_msg msg_to_sender;
+  send msgs
+end
+
 transition RecipientAcceptTransfer(sender: ByStr20, recipient: ByStr20, amount: Uint128)
   addZLP sender amount
 end
