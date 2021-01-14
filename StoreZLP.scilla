@@ -206,6 +206,24 @@ transition AcceptZLP(from: ByStr20, amount: Uint128)
   event e
 end
 
+transition TransferZLPFrom(from: ByStr20, to: ByStr20, amount: Uint128, commission: Uint128)
+  IsDragonContract;
+  amount_and_commission = builtin add amount commission;
+  UpdateTokenCount sub_operation from amount_and_commission;
+  UpdateTokenCount add_operation to amount;
+  
+  balance <- free_ZLP_balance;
+  new_balance = builtin add balance commission;
+  free_ZLP_balance := new_balance;
+  e = {_eventname : "TransferZLPFrom"; initiator: _sender; from: from; to: to; amount: amount; commission: commission};
+  event e
+end
+
+transition TransferZLP(to: ByStr20, amount: Uint128)
+  UpdateTokenCount sub_operation _sender amount;
+  UpdateTokenCount add_operation to amount
+end
+
 transition WithdrawZLP(to: ByStr20)
   curent_pause <- pause;
   is_pause = builtin eq curent_pause on_pause;
