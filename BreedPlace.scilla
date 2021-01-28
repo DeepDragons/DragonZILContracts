@@ -720,6 +720,37 @@ procedure GenerateImageGen(rand: Uint256)
   tmp_gen_image_fld := gens_image_
 end
 
+
+procedure ChangeImageGenProc(gen_rand: Uint256, gen_idx: Uint256, dragon1_gen: Uint256, dragon2_gen: Uint256, dignumval: Uint256, skipnumval: Uint256)
+  gen_bool_90 = builtin lt gen_rand ninety;
+  gen_bool_45 = builtin lt gen_rand fourtyfive;
+
+  e = {
+    _eventname : "ChangeImageGenProc";
+    dragon1_gen: dragon1_gen;
+    dragon2_gen: dragon2_gen;
+    gen_bool_90: gen_bool_90;
+    gen_bool_45: gen_bool_45;
+    gen_rand: gen_rand;
+    gen_idx: gen_idx;
+    dignumval: dignumval;
+    skipnumval: skipnumval
+  };
+  event e;
+
+  match gen_bool_90 with
+  | True =>
+    match gen_bool_45 with
+    | True =>
+      ChangeImageGen dignumval skipnumval gen_idx dragon1_gen
+    | False =>
+      ChangeImageGen dignumval skipnumval gen_idx dragon2_gen
+    end
+  | False =>
+    (* no need to change, we already have new random type *)
+  end
+end
+
 procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_image2_param: Uint256, gen_battle2_param: Uint256)
   (* generating random values *)
   entropyNumber <- entropy;
@@ -742,16 +773,20 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   event e;
 
   (* most of visual gens have 2 parts - type (0-9) and color(0-4) *)
-  (* 777 03 03 43 31 14 33 44 11 73 14 110 158 *)
-  (* Aura-12   Horns-11   Scales-10   Spots-9   Tail-8   Wings-7 *)
-  (* Spins-6   Body-5   Eyes-4   Head-3   Claws-2   Color Scheme-1   MutagenImutable-0 *)
   (* head have 1 digit *)
   (* claws have 1 digit *)
   (* Color Scheme have 3 digits *)
   (* MutagenImutable have 3 digits *)
+  (* e.g. 777 03 03 43 31 14 33 44 11 73 1 4 110 158 *)
+  (* Aura-12   Horns-11   Scales-10   Spots-9   Tail-8   Wings-7 *)
+  (* Spins-6   Body-5   Eyes-4   Head-3   Claws-2   Color Scheme-1   MutagenImutable-0 *)
 
   (* gens init for current token *)
   gen_tmp = Uint256 0;
+
+  (* we already have new dragons image gens generated *)
+  (* 45% chances - new gen will be from dragon1, 45% chances - new gen will be from dragon2 *)
+  (* 10% chances - will be random *)
 
   (* image gen Aura - 5 types *)
   (* image gen Color Aura *)
@@ -759,15 +794,15 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   dragon1_gen = get_gen_val two zero gen_image1_param gen_idx;
   dragon2_gen = get_gen_val two zero gen_image2_param gen_idx;
 
-  (* we already have new dragons image gens generated *)
-  (* 45% chances - new gen will be from dragon1, 45% chances - new gen will be from dragon2 *)
-  (* 10% chances - will be random *)
-
   random = builtin div random ten2;
   gen_rand = builtin rem random ten2;
+  random = builtin div random ten2;
   gen_bool_90 = builtin lt gen_rand ninety;
   gen_bool_45 = builtin lt gen_rand fourtyfive;
-  random = builtin div random ten;
+
+(*
+  ChangeImageGenProc gen_rand: Uint256, gen_idx: Uint256, dragon1_gen: Uint256, dragon2_gen: Uint256, dignumval: Uint256, skipnumval: Uint256
+ *)
 
   match gen_bool_90 with
   | True =>
@@ -780,6 +815,7 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   | False =>
     (* no need to change, we already have new random type *)
   end;
+
 
   e = {
     _eventname : "gen_aura";
