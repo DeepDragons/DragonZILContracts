@@ -71,6 +71,7 @@ let option_value =
     end
 
 let option_uint32 = @option_value Uint32
+let option_uint256 = @option_value Uint256
 let option_dragon = @option_value Dragon
 
 let one_msg =
@@ -208,7 +209,7 @@ contract BreedPlace
 
 (*  Parameters *)
 (contract_owner: ByStr20,
- main_dzt : ByStr20, store_zlp: ByStr20)
+ main_dzt : ByStr20, proxy_zlp: ByStr20)
 
 (* Mutable fields *)
 field waiting_list: Map Uint256 Uint256 = Emp Uint256 Uint256
@@ -218,6 +219,9 @@ field entropy : Uint256 = Uint256 42
 field tmp_initiator_adr : ByStr20 = 0x0000000000000000000000000000000000000000
 field tmp_token_id : Uint256 = Uint256 0
 field tmp_gen_image_fld : Uint256 = Uint256 0
+field tmp_breed_price_fld : Uint256 = Uint256 0
+field breed_comis_prc_fld : Uint256 = Uint256 10
+field breed_min_price_fld : Uint256 = Uint256 25
 
 field tmp: List (Dragon) = Nil {Dragon}
 
@@ -1244,30 +1248,12 @@ procedure BreedPrepare(dragons: List Dragon)
 
 
 
-
-
-  (* right now we have fixed price for breeding *)
-  (* need to implement functionality for owners to set price for breeding they want *)
-  (* todo!!! *)
-
-
-
-
-
-
   (* Need to check one of the dragons is in waiting list and other dragons owner is starting fight *)
   initiator_adr <- tmp_initiator_adr;
   dragon1_owner_bool_eq = builtin eq dragon1_owner initiator_adr;
   dragon2_owner_bool_eq = builtin eq dragon2_owner initiator_adr;
 
-      (* minimum price 25 zlp for breeding need to add transition *)
-
-
-
-      zlp_toowner = Uint128 180000000000000000000;
-      zlp_comission = Uint128 20000000000000000000;
-
-
+  breed_comis_prc <- breed_comis_prc_fld;
 
 
 
@@ -1279,14 +1265,26 @@ procedure BreedPrepare(dragons: List Dragon)
     match dragon2_owner_bool_eq with
     | True =>
       (* taking comission and send other amount to dragon2_owner *)
+      zlp_price_opt <- waiting_list[dragon1_token_id];
+      zlp_price = option_uint256 zero zlp_price_opt;
+      zlp_comission = builtin mul zlp_price breed_comis_prc;
+      zlp_comission = builtin div zlp_comission ten2;
+      zlp_toowner = builtin sub zlp_price zlp_comission;
 
 
+      e = {
+        _eventname : "BreedPrepare";
+        token1_inwatinglist: token1_inwatinglist;
+        zlp_price: zlp_price;
+        zlp_toowner: zlp_toowner;
+        zlp_comission: zlp_comission
+      };
+      event e;
 
 
-
-      transfer_call = {
+      (* transfer_call = {
         _tag: "TransferZLPFrom";
-        _recipient: store_zlp;
+        _recipient: proxy_zlp;
         _amount: Uint128 0;
         from: dragon1_owner;
         to: dragon2_owner;
@@ -1294,7 +1292,7 @@ procedure BreedPrepare(dragons: List Dragon)
         commission: zlp_comission
       };
       msgs = one_msg transfer_call;
-      send msgs;
+      send msgs; *)
 
       delete waiting_list[dragon1_token_id]
     | False =>
@@ -1309,13 +1307,25 @@ procedure BreedPrepare(dragons: List Dragon)
     match dragon2_owner_bool_eq with
     | True =>
       (* taking comission and send other amount to dragon1_owner *)
+      zlp_price_opt <- waiting_list[dragon2_token_id];
+      zlp_price = option_uint256 zero zlp_price_opt;
+      zlp_comission = builtin mul zlp_price breed_comis_prc;
+      zlp_comission = builtin div zlp_comission ten2;
+      zlp_toowner = builtin sub zlp_price zlp_comission;
+
+      e = {
+        _eventname : "BreedPrepare";
+        token1_inwatinglist: token1_inwatinglist;
+        zlp_price: zlp_price;
+        zlp_toowner: zlp_toowner;
+        zlp_comission: zlp_comission
+      };
+      event e;
 
 
-
-
-      transfer_call = {
+      (* transfer_call = {
         _tag: "TransferZLPFrom";
-        _recipient: store_zlp;
+        _recipient: proxy_zlp;
         _amount: Uint128 0;
         from: dragon1_owner;
         to: dragon2_owner;
@@ -1323,7 +1333,7 @@ procedure BreedPrepare(dragons: List Dragon)
         commission: zlp_comission
       };
       msgs = one_msg transfer_call;
-      send msgs;
+      send msgs; *)
 
       delete waiting_list[dragon2_token_id]
     | False =>
@@ -1347,12 +1357,13 @@ procedure PlaceToWaitlist(dragons: List Dragon)
   CheckIsInitiatorOwner dragon1_owner;
 
   (* Owner wanted to put dragon to waiting list *)
+  breed_price <- tmp_breed_price_fld;
   initiator_adr <- tmp_initiator_adr;
   token_id <- tmp_token_id;
   token_inwatinglist <- exists waiting_list[token_id];
   match token_inwatinglist with
   | False =>
-    waiting_list[token_id] := token_id
+    waiting_list[token_id] := breed_price
   | True =>
     delete waiting_list[token_id]
   end
@@ -1403,10 +1414,17 @@ transition BreedStart(who_id: Uint256, with_id: Uint256)
   send msgs
 end
 
-transition WaitListAddDel(token_id: Uint256)
+transition WaitListAddDel(token_id: Uint256, breed_price: Uint256)
   (* checking is sender owner of the dragon and adding or removing dragon to list*)
   tmp_initiator_adr := _sender;
   tmp_token_id := token_id;
+
+  (* todo: id price lower then minimal - set minimal *)
+  (* breed_min_price_fld *)
+
+  ten18 = Uint256 1000000000000000000;
+  breed_price_full = builtin mul breed_price ten18;
+  tmp_breed_price_fld := breed_price_full;
 
   ids = one_listid token_id;
   getdragons_call = {
