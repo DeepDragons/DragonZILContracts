@@ -1281,8 +1281,7 @@ procedure BreedPrepare(dragons: List Dragon)
       };
       event e;
 
-
-      (* transfer_call = {
+      transfer_call = {
         _tag: "TransferZLPFrom";
         _recipient: proxy_zlp;
         _amount: Uint128 0;
@@ -1292,7 +1291,7 @@ procedure BreedPrepare(dragons: List Dragon)
         commission: zlp_comission
       };
       msgs = one_msg transfer_call;
-      send msgs; *)
+      send msgs;
 
       delete waiting_list[dragon1_token_id]
     | False =>
@@ -1322,8 +1321,7 @@ procedure BreedPrepare(dragons: List Dragon)
       };
       event e;
 
-
-      (* transfer_call = {
+      transfer_call = {
         _tag: "TransferZLPFrom";
         _recipient: proxy_zlp;
         _amount: Uint128 0;
@@ -1333,7 +1331,7 @@ procedure BreedPrepare(dragons: List Dragon)
         commission: zlp_comission
       };
       msgs = one_msg transfer_call;
-      send msgs; *)
+      send msgs;
 
       delete waiting_list[dragon2_token_id]
     | False =>
