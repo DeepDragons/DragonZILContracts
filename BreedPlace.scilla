@@ -243,15 +243,6 @@ procedure SendBreedResults(new_dragon_gen_battle: Uint256, new_dragon_gen_image:
   dragon = build_dragon token_id token_owner dummy_str new_dragon_gen_battle new_dragon_gen_image default_stage;
   new_tmp = Cons {Dragon} dragon some_tmp;
 
-  e = {
-    _eventname : "BreedResults";
-    new_dragon_gen_battle: new_dragon_gen_battle;
-    new_dragon_gen_image: new_dragon_gen_image;
-    dragon: dragon;
-    new_tmp: new_tmp
-  };
-  event e;
-
   birth_call = {
     _tag: "GiveBirth";
     _recipient: main_dzt;
@@ -282,18 +273,6 @@ procedure ChangeImageGen(dignumval: Uint256, skipnumval: Uint256, new_gen_idx: U
   new_genzeros = builtin mul new_gen divider2;
   new_genschain = builtin add genchain_pre new_genzeros;
   new_genschain = builtin add new_genschain rem_num2;
-
-  e = {
-    _eventname : "ChangeImageGen";
-    new_gen_idx: new_gen_idx;
-    new_gen: new_gen;
-    rem_num1: rem_num1;
-    rem_num2: rem_num2;
-    genchain_pre: genchain_pre;
-    genschain: genschain;
-    new_genschain: new_genschain
-  };
-  event e;
 
   tmp_gen_image_fld := new_genschain
 end
@@ -712,14 +691,6 @@ procedure GenerateImageGen(rand: Uint256)
   i2 = builtin add i gen_rand;
   gens_image_ = i2;
 
-  e = {
-    _eventname : "GenerateImageGen";
-    rand: rand;
-    random: random;
-    new_dragon_gen_image: gens_image_
-  };
-  event e;
-
   (* store gens to temp field *)
   tmp_gen_image_fld := gens_image_
 end
@@ -728,19 +699,6 @@ end
 procedure ChangeImageGenProc(gen_rand: Uint256, gen_idx: Uint256, dragon1_gen: Uint256, dragon2_gen: Uint256, dignumval: Uint256, skipnumval: Uint256)
   gen_bool_90 = builtin lt gen_rand ninety;
   gen_bool_45 = builtin lt gen_rand fourtyfive;
-
-  e = {
-    _eventname : "ChangeImageGenProc";
-    dragon1_gen: dragon1_gen;
-    dragon2_gen: dragon2_gen;
-    gen_bool_90: gen_bool_90;
-    gen_bool_45: gen_bool_45;
-    gen_rand: gen_rand;
-    gen_idx: gen_idx;
-    dignumval: dignumval;
-    skipnumval: skipnumval
-  };
-  event e;
 
   match gen_bool_90 with
   | True =>
@@ -766,15 +724,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   GenerateImageGen random_;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "BreedDo";
-    gen_image1_param: gen_image1_param;
-    gen_battle1_param: gen_battle1_param;
-    gen_image2_param: gen_image2_param;
-    gen_battle2_param: gen_battle2_param;
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* most of visual gens have 2 parts - type (0-9) and color(0-4) *)
   (* head have 1 digit *)
@@ -808,11 +757,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   ChangeImageGenProc gen_rand gen_idx dragon1_gen dragon2_gen two zero;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "gen_aura";
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* image gen Horns - 7 types *)
   (* image gen Color Horns *)
@@ -828,11 +772,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   ChangeImageGenProc gen_rand gen_idx dragon1_gen dragon2_gen two zero;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "gen_Horns";
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* image gen Scales - 4 types *)
   (* image gen Color Scales *)
@@ -848,11 +787,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   ChangeImageGenProc gen_rand gen_idx dragon1_gen dragon2_gen two zero;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "gen_Scales";
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* image gen Spots - 9 types *)
   (* image gen Color Spots *)
@@ -868,11 +802,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   ChangeImageGenProc gen_rand gen_idx dragon1_gen dragon2_gen two zero;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "gen_Spots";
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* image gen Tail - 8 types *)
   (* image gen Color Tail *)
@@ -888,11 +817,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   ChangeImageGenProc gen_rand gen_idx dragon1_gen dragon2_gen two zero;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "gen_Tail";
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* image gen Wings - 5 types *)
   (* image gen Color Wings *)
@@ -908,11 +832,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   ChangeImageGenProc gen_rand gen_idx dragon1_gen dragon2_gen two zero;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "gen_Wings";
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* image gen Spins - 4 types *)
   (* image gen Color Spins *)
@@ -928,11 +847,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   ChangeImageGenProc gen_rand gen_idx dragon1_gen dragon2_gen two zero;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "gen_Spins";
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* image gen Body - 3 types *)
   (* image gen Color Body *)
@@ -948,11 +862,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   ChangeImageGenProc gen_rand gen_idx dragon1_gen dragon2_gen two zero;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "gen_Body";
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* image gen Eyes - 9 types *)
   (* image gen Color Eyes *)
@@ -968,11 +877,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   ChangeImageGenProc gen_rand gen_idx dragon1_gen dragon2_gen two zero;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "gen_Eyes";
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* image gen Head - 5 types *)
   gen_idx = Uint256 3;
@@ -987,11 +891,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   ChangeImageGenProc gen_rand gen_idx dragon1_gen dragon2_gen one four;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "gen_head";
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* image gen Color Claws *)
   gen_idx = Uint256 2;
@@ -1006,11 +905,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   ChangeImageGenProc gen_rand gen_idx dragon1_gen dragon2_gen one four;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "gen_claws";
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* color scheme *)
   gen_idx = Uint256 1;
@@ -1025,11 +919,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   ChangeImageGenProc gen_rand gen_idx dragon1_gen dragon2_gen three zero;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "gen_color_scheme";
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* mutagenImutable *)
   gen_idx = Uint256 0;
@@ -1044,11 +933,6 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   ChangeImageGenProc gen_rand gen_idx dragon1_gen dragon2_gen three zero;
 
   new_dragon_gen_image <- tmp_gen_image_fld;
-  e = {
-    _eventname : "gen_mutagenImutable";
-    new_dragon_gen_image: new_dragon_gen_image
-  };
-  event e;
 
   (* gen_battle - first part of attack gen from first dragons, second part from second, same for defence gen *)
   gen_battle1 = gen_battle1_param;
@@ -1088,95 +972,31 @@ procedure BreedDo(gen_image1_param: Uint256, gen_battle1_param: Uint256, gen_ima
   d2_gen_defence_half2 = builtin div d2_gen_defence d2_gen_defence_half1;
   d2_gen_defence_half2 = builtin div d2_gen_defence ten10;
 
-  e = {
-    _eventname : "gen_battle_halfs";
-    d1_gen_attack_half1: d1_gen_attack_half1;
-    d1_gen_attack_half2: d1_gen_attack_half2;
-    d1_gen_defence_half1: d1_gen_defence_half1;
-    d1_gen_defence_half2: d1_gen_defence_half2;
-    d2_gen_attack_half1: d2_gen_attack_half1;
-    d2_gen_attack_half2: d2_gen_attack_half2;
-    d2_gen_defence_half1: d2_gen_defence_half1;
-    d2_gen_defence_half2: d2_gen_defence_half2;
-    new_dragon_gen_battle: new_dragon_gen_battle
-  };
-  event e;
-
   (* adding defence *)
   new_dragon_gen_battle = builtin mul new_dragon_gen_battle ten10;
-  e = {
-    _eventname : "new_dragon_gen_battle_step1";
-    new_dragon_gen_battle: new_dragon_gen_battle
-  };
-  event e;
 
   new_dragon_gen_battle = builtin add new_dragon_gen_battle d1_gen_defence_half1;
-  e = {
-    _eventname : "new_dragon_gen_battle_step2";
-    new_dragon_gen_battle: new_dragon_gen_battle
-  };
-  event e;
 
   new_dragon_gen_battle = builtin mul new_dragon_gen_battle ten10;
-  e = {
-    _eventname : "new_dragon_gen_battle_step3";
-    new_dragon_gen_battle: new_dragon_gen_battle
-  };
-  event e;
 
   new_dragon_gen_battle = builtin add new_dragon_gen_battle d2_gen_defence_half2;
-  e = {
-    _eventname : "new_dragon_gen_battle_step4";
-    new_dragon_gen_battle: new_dragon_gen_battle
-  };
-  event e;
 
   (* adding attack *)
   new_dragon_gen_battle = builtin mul new_dragon_gen_battle ten10;
-  e = {
-    _eventname : "new_dragon_gen_battle_step5";
-    new_dragon_gen_battle: new_dragon_gen_battle
-  };
-  event e;
 
   new_dragon_gen_battle = builtin add new_dragon_gen_battle d1_gen_attack_half1;
-  e = {
-    _eventname : "new_dragon_gen_battle_step6";
-    new_dragon_gen_battle: new_dragon_gen_battle
-  };
-  event e;
 
   new_dragon_gen_battle = builtin mul new_dragon_gen_battle ten10;
-  e = {
-    _eventname : "new_dragon_gen_battle_step7";
-    new_dragon_gen_battle: new_dragon_gen_battle
-  };
-  event e;
 
   new_dragon_gen_battle = builtin add new_dragon_gen_battle d2_gen_attack_half2;
-  e = {
-    _eventname : "new_dragon_gen_battle_step8";
-    new_dragon_gen_battle: new_dragon_gen_battle
-  };
-  event e;
 
   (* adding luck *)
   new_luck = builtin add d1_luck d2_luck;
   new_luck = builtin div new_luck two;
-  e = {
-    _eventname : "new_luck";
-    new_luck: new_luck
-  };
-  event e;
 
   new_dragon_gen_battle = builtin mul new_dragon_gen_battle ten2;
   new_dragon_gen_battle = builtin add new_dragon_gen_battle new_luck;
   (* not more then 99 !!!!!! *)
-  e = {
-    _eventname : "new_dragon_gen_battle_step8";
-    new_dragon_gen_battle: new_dragon_gen_battle
-  };
-  event e;
 
   SendBreedResults new_dragon_gen_battle new_dragon_gen_image
 end
@@ -1271,16 +1091,6 @@ procedure BreedPrepare(dragons: List Dragon)
       zlp_comission = builtin div zlp_comission ten2;
       zlp_toowner = builtin sub zlp_price zlp_comission;
 
-
-      e = {
-        _eventname : "BreedPrepare";
-        token1_inwatinglist: token1_inwatinglist;
-        zlp_price: zlp_price;
-        zlp_toowner: zlp_toowner;
-        zlp_comission: zlp_comission
-      };
-      event e;
-
       transfer_call = {
         _tag: "TransferZLPFrom";
         _recipient: proxy_zlp;
@@ -1311,15 +1121,6 @@ procedure BreedPrepare(dragons: List Dragon)
       zlp_comission = builtin mul zlp_price breed_comis_prc;
       zlp_comission = builtin div zlp_comission ten2;
       zlp_toowner = builtin sub zlp_price zlp_comission;
-
-      e = {
-        _eventname : "BreedPrepare";
-        token1_inwatinglist: token1_inwatinglist;
-        zlp_price: zlp_price;
-        zlp_toowner: zlp_toowner;
-        zlp_comission: zlp_comission
-      };
-      event e;
 
       transfer_call = {
         _tag: "TransferZLPFrom";
