@@ -1095,8 +1095,8 @@ procedure BreedPrepare(dragons: List Dragon)
         _tag: "TransferZLPFrom";
         _recipient: proxy_zlp;
         _amount: Uint128 0;
-        from: dragon1_owner;
-        to: dragon2_owner;
+        from: dragon2_owner;
+        to: dragon1_owner;
         amount: zlp_toowner;
         commission: zlp_comission
       };
@@ -1113,7 +1113,7 @@ procedure BreedPrepare(dragons: List Dragon)
   match token2_inwatinglist with
   | False =>
   | True =>
-    match dragon2_owner_bool_eq with
+    match dragon1_owner_bool_eq with
     | True =>
       (* taking comission and send other amount to dragon1_owner *)
       zlp_price_opt <- waiting_list[dragon2_token_id];
@@ -1220,10 +1220,19 @@ transition WaitListAddDel(token_id: Uint256, breed_price: Uint256)
 
   (* todo: id price lower then minimal - set minimal *)
   (* breed_min_price_fld *)
+  breed_min_price <- breed_min_price_fld;
+  low_price_bool = builtin lt breed_price breed_min_price;
 
-  ten18 = Uint256 1000000000000000000;
-  breed_price_full = builtin mul breed_price ten18;
-  tmp_breed_price_fld := breed_price_full;
+  match low_price_bool with
+  | True =>
+    ten18 = Uint256 1000000000000000000;
+    breed_price_full = builtin mul breed_min_price ten18;
+    tmp_breed_price_fld := breed_price_full;
+  | False =>
+    ten18 = Uint256 1000000000000000000;
+    breed_price_full = builtin mul breed_price ten18;
+    tmp_breed_price_fld := breed_price_full;
+  end;
 
   ids = one_listid token_id;
   getdragons_call = {
