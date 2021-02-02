@@ -1225,9 +1225,9 @@ transition WaitListAddDel(token_id: Uint256, breed_price: Uint256)
 
   match low_price_bool with
   | True =>
-    tmp_breed_price_fld := breed_min_price;
+    tmp_breed_price_fld := breed_min_price
   | False =>
-    tmp_breed_price_fld := breed_price;
+    tmp_breed_price_fld := breed_price
   end;
 
   ids = one_listid token_id;
