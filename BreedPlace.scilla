@@ -221,7 +221,7 @@ field tmp_token_id : Uint256 = Uint256 0
 field tmp_gen_image_fld : Uint256 = Uint256 0
 field tmp_breed_price_fld : Uint256 = Uint256 0
 field breed_comis_prc_fld : Uint256 = Uint256 10
-field breed_min_price_fld : Uint256 = Uint256 25
+field breed_min_price_fld : Uint256 = Uint256 25000000000000000000
 
 field tmp: List (Dragon) = Nil {Dragon}
 
@@ -1225,13 +1225,9 @@ transition WaitListAddDel(token_id: Uint256, breed_price: Uint256)
 
   match low_price_bool with
   | True =>
-    ten18 = Uint256 1000000000000000000;
-    breed_price_full = builtin mul breed_min_price ten18;
-    tmp_breed_price_fld := breed_price_full;
+    tmp_breed_price_fld := breed_min_price;
   | False =>
-    ten18 = Uint256 1000000000000000000;
-    breed_price_full = builtin mul breed_price ten18;
-    tmp_breed_price_fld := breed_price_full;
+    tmp_breed_price_fld := breed_price;
   end;
 
   ids = one_listid token_id;
