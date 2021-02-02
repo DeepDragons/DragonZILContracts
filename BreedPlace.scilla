@@ -35,6 +35,7 @@ let make_error =
     { _exception : "Error"; code : result_code }
 
 let zero = Uint256 0
+let zero128 = Uint128 0
 let zero32 = Uint32 0
 let one = Uint256 1
 let one32 = Uint32 1
@@ -51,6 +52,7 @@ let ten = Uint256 10
 let fourtyfive = Uint256 45
 let ninety = Uint256 90
 let ten2 = Uint256 100
+let ten2_128 = Uint128 100
 let ten3 = Uint256 1000
 let ten10 = Uint256 10000000000
 let ten20 = Uint256 100000000000000000000
@@ -71,7 +73,7 @@ let option_value =
     end
 
 let option_uint32 = @option_value Uint32
-let option_uint256 = @option_value Uint256
+let option_uint128 = @option_value Uint128
 let option_dragon = @option_value Dragon
 
 let one_msg =
@@ -212,16 +214,16 @@ contract BreedPlace
  main_dzt : ByStr20, proxy_zlp: ByStr20)
 
 (* Mutable fields *)
-field waiting_list: Map Uint256 Uint256 = Emp Uint256 Uint256
+field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
 
 field entropy : Uint256 = Uint256 42
 
 field tmp_initiator_adr : ByStr20 = 0x0000000000000000000000000000000000000000
 field tmp_token_id : Uint256 = Uint256 0
 field tmp_gen_image_fld : Uint256 = Uint256 0
-field tmp_breed_price_fld : Uint256 = Uint256 0
-field breed_comis_prc_fld : Uint256 = Uint256 10
-field breed_min_price_fld : Uint256 = Uint256 25000000000000000000
+field tmp_breed_price_fld : Uint128 = Uint128 0
+field breed_comis_prc_fld : Uint128 = Uint128 10
+field breed_min_price_fld : Uint128 = Uint128 25000000000000000000
 
 field tmp: List (Dragon) = Nil {Dragon}
 
@@ -1075,8 +1077,6 @@ procedure BreedPrepare(dragons: List Dragon)
 
   breed_comis_prc <- breed_comis_prc_fld;
 
-
-
   (* removing dragons from waiting list, taking comission, send zlp for dragon owner *)
   token1_inwatinglist <- exists waiting_list[dragon1_token_id];
   match token1_inwatinglist with
@@ -1086,9 +1086,9 @@ procedure BreedPrepare(dragons: List Dragon)
     | True =>
       (* taking comission and send other amount to dragon2_owner *)
       zlp_price_opt <- waiting_list[dragon1_token_id];
-      zlp_price = option_uint256 zero zlp_price_opt;
+      zlp_price = option_uint128 zero128 zlp_price_opt;
       zlp_comission = builtin mul zlp_price breed_comis_prc;
-      zlp_comission = builtin div zlp_comission ten2;
+      zlp_comission = builtin div zlp_comission ten2_128;
       zlp_toowner = builtin sub zlp_price zlp_comission;
 
       transfer_call = {
@@ -1117,9 +1117,9 @@ procedure BreedPrepare(dragons: List Dragon)
     | True =>
       (* taking comission and send other amount to dragon1_owner *)
       zlp_price_opt <- waiting_list[dragon2_token_id];
-      zlp_price = option_uint256 zero zlp_price_opt;
+      zlp_price = option_uint128 zero128 zlp_price_opt;
       zlp_comission = builtin mul zlp_price breed_comis_prc;
-      zlp_comission = builtin div zlp_comission ten2;
+      zlp_comission = builtin div zlp_comission ten2_128;
       zlp_toowner = builtin sub zlp_price zlp_comission;
 
       transfer_call = {
@@ -1213,7 +1213,7 @@ transition BreedStart(who_id: Uint256, with_id: Uint256)
   send msgs
 end
 
-transition WaitListAddDel(token_id: Uint256, breed_price: Uint256)
+transition WaitListAddDel(token_id: Uint256, breed_price: Uint128)
   (* checking is sender owner of the dragon and adding or removing dragon to list*)
   tmp_initiator_adr := _sender;
   tmp_token_id := token_id;
