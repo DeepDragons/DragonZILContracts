@@ -1279,3 +1279,27 @@ transition RemoveFromBreed(token_id: Uint256)
 
   delete waiting_list[token_id]
 end
+
+transition ChnageCommission(value: Uint128)
+  IsContractOwner;
+
+  e = {
+    _eventname: "CommissionChanged";
+    token_id: token_id
+  };
+  event e;
+
+  breed_comis_prc_fld := value
+end
+
+transition ChangeMinPrice(value: Uint128)
+  IsContractOwner;
+
+  e = {
+    _eventname: "ChnagedMinPrice";
+    value: value
+  };
+  event e;
+
+  breed_min_price_fld := value
+end
