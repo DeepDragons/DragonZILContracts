@@ -19,6 +19,7 @@ type Error =
   | CodeNotAnOwner
   | CodeCallNotMainDzt
   | CodeStageIncorrect
+  | CodeNotContractOwner
 
 let make_error =
   fun (result : Error) =>
@@ -30,6 +31,7 @@ let make_error =
       | CodeNotAnOwner         => Int32 -4
       | CodeCallNotMainDzt     => Int32 -5
       | CodeStageIncorrect     => Int32 -6
+      | CodeNotContractOwner   => Int32 -7
       end
     in
     { _exception : "Error"; code : result_code }
@@ -211,8 +213,11 @@ contract BreedPlace
 
 (*  Parameters *)
 (contract_owner: ByStr20,
- main_dzt : ByStr20, proxy_zlp: ByStr20)
+ main_dzt : ByStr20,
+ proxy_zlp: ByStr20)
 
+
+field proxy_zlp_addr: ByStr20 = proxy_zlp
 (* Mutable fields *)
 field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
 
@@ -231,6 +236,16 @@ field tmp: List (Dragon) = Nil {Dragon}
 procedure ThrowError(err : Error)
   e = make_error err;
   throw e
+end
+
+procedure IsContractOwner()
+  is_contract_owner = builtin eq contract_owner _sender;
+  match is_contract_owner with
+  | True => 
+  | False =>
+    err = CodeNotContractOwner;
+    ThrowError err
+  end
 end
 
 procedure SendBreedResults(new_dragon_gen_battle: Uint256, new_dragon_gen_image: Uint256)
@@ -697,7 +712,6 @@ procedure GenerateImageGen(rand: Uint256)
   tmp_gen_image_fld := gens_image_
 end
 
-
 procedure ChangeImageGenProc(gen_rand: Uint256, gen_idx: Uint256, dragon1_gen: Uint256, dragon2_gen: Uint256, dignumval: Uint256, skipnumval: Uint256)
   gen_bool_90 = builtin lt gen_rand ninety;
   gen_bool_45 = builtin lt gen_rand fourtyfive;
@@ -1045,6 +1059,7 @@ procedure CheckIsInitiatorOwner(dragon_owner: ByStr20)
 end
 
 procedure BreedPrepare(dragons: List Dragon)
+  zlp_contract <- proxy_zlp_addr;
   dragons_nth = @list_nth Dragon;
   dragon_one_opt = dragons_nth zero32 dragons;
   dragon_two_opt = dragons_nth one32 dragons;
@@ -1093,7 +1108,7 @@ procedure BreedPrepare(dragons: List Dragon)
 
       transfer_call = {
         _tag: "TransferZLPFrom";
-        _recipient: proxy_zlp;
+        _recipient: zlp_contract;
         _amount: Uint128 0;
         from: dragon2_owner;
         to: dragon1_owner;
@@ -1124,7 +1139,7 @@ procedure BreedPrepare(dragons: List Dragon)
 
       transfer_call = {
         _tag: "TransferZLPFrom";
-        _recipient: proxy_zlp;
+        _recipient: zlp_contract;
         _amount: Uint128 0;
         from: dragon1_owner;
         to: dragon2_owner;
@@ -1239,4 +1254,28 @@ transition WaitListAddDel(token_id: Uint256, breed_price: Uint128)
   };
   msgs = one_msg getdragons_call;
   send msgs
+end
+
+transition ChangeProxyZLP(addr: ByStr20)
+  IsContractOwner;
+
+  e = {
+    _eventname: "ZLPContractChanged";
+    addr: addr
+  };
+  event e;
+
+  proxy_zlp_addr := addr
+end
+
+transition RemoveFromBreed(token_id: Uint256)
+  IsContractOwner;
+
+  e = {
+    _eventname: "RemovedFromWaitList";
+    token_id: token_id
+  };
+  event e;
+
+  delete waiting_list[token_id]
 end
