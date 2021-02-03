@@ -70,12 +70,13 @@ contract CrowdSaleDZTforZLP
 
 (*  Parameters *)
 (contract_owner: ByStr20,
- store_zlp: ByStr20,
+ proxy_zlp: ByStr20,
  main_dzt: ByStr20)
 
 (* Mutable fields *)
 field incrementer: Uint128 = Uint128 0
 field current_price: Uint128 = Uint128 1000000000000
+field proxy_zlp_addr: ByStr20 = proxy_zlp
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
@@ -144,10 +145,10 @@ transition BuyForZLP(amount: Uint32)
     addition = builtin mul inc dragon_count128;
     new_price = builtin add price addition;
     current_price := new_price;
-    
+    proxy_zlp_address <- proxy_zlp_addr;
     msg = {
       _tag: "AcceptZLP";
-      _recipient: store_zlp;
+      _recipient: proxy_zlp_address;
       _amount: Uint128 0;
       from: _sender;
       amount: amount_zlp
@@ -159,5 +160,17 @@ transition BuyForZLP(amount: Uint32)
     err = CodeInsufficientAmount;
     ThrowError err
   end
+end
+
+transition ChangeProxyZLP(addr: ByStr20)
+  IsOwner;
+
+  e = {
+    _eventname: "ZLPContractChanged";
+    addr: addr
+  };
+  event e;
+
+  proxy_zlp_addr := addr
 end
 

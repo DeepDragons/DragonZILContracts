@@ -92,11 +92,12 @@ let get_upgraded_genschain =
     let new_genzeros = builtin mul new_gen divider2 in
       builtin add genchain_pre2 new_genzeros
 
-contract GenLab(main_dzt: ByStr20, store_zlp: ByStr20, owner: ByStr20)
+contract GenLab(main_dzt: ByStr20, proxy_zlp: ByStr20, owner: ByStr20)
 
 field use_count: Map Uint256 Uint32 = Emp Uint256 Uint32
 field start_price: Uint128 = Uint128 1000000000000000000
 field price_multiplicator: Uint128 = Uint128 2
+field proxy_zlp_addr: ByStr20 = proxy_zlp
 field tmp_sender: ByStr20 = 0x0000000000000000000000000000000000000000
 field tmp_gen_num: Uint256 = Uint256 0
 field tmp_new_value: Uint256 = Uint256 0
@@ -175,9 +176,10 @@ transition ChangeGen(token_id: Uint256, gen_num: Uint256, new_value: Uint256)
   multiplicator = builtin pow actual_multiplicator actual_use_count;
   price <- start_price;
   amount_zlp = builtin mul price multiplicator;
+  proxy_zlp_address <- proxy_zlp_addr;
   msg = {
       _tag: "AcceptZLP";
-      _recipient: store_zlp;
+      _recipient: proxy_zlp_address;
       _amount: Uint128 0;
       from: _sender;
       amount: amount_zlp
@@ -225,5 +227,17 @@ transition ChangePrice(new_price: Uint128, new_multiplicator: Uint128)
   checkAddress owner;
   price_multiplicator := new_multiplicator;
   start_price := new_price
+end
+
+transition ChangeProxyZLP(addr: ByStr20)
+  checkAddress owner;
+
+  e = {
+    _eventname: "ZLPContractChanged";
+    addr: addr
+  };
+  event e;
+
+  proxy_zlp_addr := addr
 end
 
