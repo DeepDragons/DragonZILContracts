@@ -24,6 +24,7 @@ type Error =
   | CodeNotAnOwner
   | CodeCallNotMainDzt
   | CodeStageIncorrect
+  | CodeBothInWaitingList
 
 let make_error =
   fun (result : Error) =>
@@ -35,6 +36,7 @@ let make_error =
       | CodeNotAnOwner         => Int32 -4
       | CodeCallNotMainDzt     => Int32 -5
       | CodeStageIncorrect     => Int32 -6
+      | CodeBothInWaitingList  => Int32 -7
       end
     in
     { _exception : "Error"; code : result_code }
@@ -600,6 +602,21 @@ procedure CheckInWatingList(token_id: Uint256)
   end
 end
 
+procedure CheckNotBothInWaitingList(token_id1: Uint256, token_id2: Uint256)
+  token1_inwatinglist <- exists waiting_list[token_id1];
+  token2_inwatinglist <- exists waiting_list[token_id2];
+  match token1_inwatinglist with
+  | False =>
+  | True =>
+    match token2_inwatinglist with
+    | False =>
+    | True =>
+      err = CodeBothInWaitingList;
+      ThrowError err
+    end
+  end
+end
+
 procedure CheckStage(dragon_stage: Uint32)
   is_stage_egg = builtin lt dragon_stage one32;
   match is_stage_egg with
@@ -761,6 +778,8 @@ transition FightStart(who_id: Uint256, with_id: Uint256)
 
   CheckIsSameDragon who_id with_id;
   CheckInWatingList with_id;
+
+  CheckNotBothInWaitingList who_id with_id;
 
   ids = two_listid who_id with_id;
   getdragons_call = {
