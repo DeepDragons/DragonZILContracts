@@ -11,11 +11,6 @@ library FightPlaceBet
 type Dragon =
 | Dragon of Uint256 ByStr20 Uint32 String Uint256 Uint256
 
-(* Custom ADT storing - token_id, token_gen_battle *)
-type IdBattleGenPair =
-| IdBattleGenPair of Uint256 Uint256
-(* DragonZIL types *)
-
 (* Error events *)
 type Error =
   | CodeNotAuthorised
@@ -24,6 +19,7 @@ type Error =
   | CodeNotAnOwner
   | CodeCallNotMainDzt
   | CodeStageIncorrect
+  | CodeNotContractOwner
   | CodeBothInWaitingList
 
 let make_error =
@@ -36,21 +32,13 @@ let make_error =
       | CodeNotAnOwner         => Int32 -4
       | CodeCallNotMainDzt     => Int32 -5
       | CodeStageIncorrect     => Int32 -6
-      | CodeBothInWaitingList  => Int32 -7
+      | CodeNotContractOwner   => Int32 -7
+      | CodeBothInWaitingList  => Int32 -8
       end
     in
     { _exception : "Error"; code : result_code }
 
-let one_drgnpair =
-  fun (drgnpair : IdBattleGenPair) =>
-    let nil_drgnpair = Nil {IdBattleGenPair} in
-    Cons {IdBattleGenPair} drgnpair nil_drgnpair
 
-let two_drgnpairs =
-  fun (drgnpair1 : IdBattleGenPair) =>
-  fun (drgnpair2 : IdBattleGenPair) =>
-    let drgnpair_tmp = one_drgnpair drgnpair2 in
-    Cons {IdBattleGenPair} drgnpair1 drgnpair_tmp
 
 let zero = Uint256 0
 let zero32 = Uint32 0
@@ -128,67 +116,6 @@ let get_gen_val =
     let genzeros = builtin sub rem_num1 rem_num2 in
       builtin div genzeros divider2
 
-let get_upgraded_gen =
-  fun (gen: Uint256) =>
-  fun (gen_upgrade_prc: Uint256) =>
-    let gen_prc = builtin div gen gen_upgrade_prc in
-    let new_gen = builtin add gen gen_prc in
-    let ninetynine_bool = builtin lt new_gen ninetynine in
-    match ninetynine_bool with
-    | True => new_gen
-    | False => ninetynine
-    end
-
-let get_upgraded_genschain =
-  fun (genschain: Uint256) =>
-  fun (num: Uint256) =>
-  fun (gen_upgrade_prc: Uint256) =>
-    let pow_num2 = builtin mul two num in
-    let pow_num1 = builtin add two pow_num2 in
-    let pow_num2_32opt = builtin to_uint32 pow_num2 in
-    let pow_num1_32opt = builtin to_uint32 pow_num1 in
-    let pow_num2_32 = option_uint32 zero32 pow_num2_32opt in
-    let pow_num1_32 = option_uint32 zero32 pow_num1_32opt in
-    let divider1 = builtin pow ten pow_num1_32 in
-    let divider2 = builtin pow ten pow_num2_32 in
-    let rem_num1 = builtin rem genschain divider1 in
-    let rem_num2 = builtin rem genschain divider2 in
-    let genzeros = builtin sub rem_num1 rem_num2 in
-    let gen = builtin div genzeros divider2 in
-    let genchain_pre = builtin sub genschain rem_num1 in
-    let genchain_pre2 = builtin add genchain_pre rem_num2 in
-    let new_gen = get_upgraded_gen gen gen_upgrade_prc in
-    let new_genzeros = builtin mul new_gen divider2 in
-      builtin add genchain_pre2 new_genzeros
-
-let get_downgraded_genschain =
-  fun (no_need_downgrade: Bool) =>
-  fun (genschain: Uint256) =>
-  fun (num: Uint256) =>
-  fun (gen_downgrade_prc: Uint256) =>
-    match no_need_downgrade with
-    | False =>
-      let pow_num2 = builtin mul two num in
-      let pow_num1 = builtin add two pow_num2 in
-      let pow_num2_32opt = builtin to_uint32 pow_num2 in
-      let pow_num1_32opt = builtin to_uint32 pow_num1 in
-      let pow_num2_32 = option_uint32 zero32 pow_num2_32opt in
-      let pow_num1_32 = option_uint32 zero32 pow_num1_32opt in
-      let divider1 = builtin pow ten pow_num1_32 in
-      let divider2 = builtin pow ten pow_num2_32 in
-      let rem_num1 = builtin rem genschain divider1 in
-      let rem_num2 = builtin rem genschain divider2 in
-      let genzeros = builtin sub rem_num1 rem_num2 in
-      let gen = builtin div genzeros divider2 in
-      let genchain_pre = builtin sub genschain rem_num1 in
-      let genchain_pre2 = builtin add genchain_pre rem_num2 in
-      let new_gen = builtin div gen gen_downgrade_prc in
-      let new_genzeros = builtin mul new_gen divider2 in
-        builtin add genchain_pre2 new_genzeros
-    | True =>
-        genschain
-    end
-
 let get_dragon_token_id =
   fun (dragon: Dragon) =>
     match dragon with
@@ -232,28 +159,12 @@ field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
 
 field entropy : Uint256 = Uint256 42
 
-field d1_random_attack_fld : Uint256 = Uint256 0
-field d1_random_defence_fld : Uint256 = Uint256 0
-field d2_random_attack_fld : Uint256 = Uint256 0
-field d2_random_defence_fld : Uint256 = Uint256 0
-field random_luck_fld : Uint256 = Uint256 0
-
-field winner_random_attack_fld : Uint256 = Uint256 0
-field winner_random_defence_fld : Uint256 = Uint256 0
-field loser_random_attack_fld : Uint256 = Uint256 0
-field loser_random_defence_fld : Uint256 = Uint256 0
-
-field gen_upgrade_prc_fld : Uint256 = Uint256 5
-field gen_downgrade_prc_fld : Uint256 = Uint256 10
-
 field tmp_initiator_adr : ByStr20 = 0x0000000000000000000000000000000000000000
 field tmp_token_id : Uint256 = Uint256 0
 
 field tmp_fight_price_fld : Uint128 = Uint128 0
 field tmp_dragon1_owner_adr : ByStr20 = 0x0000000000000000000000000000000000000000
 field tmp_dragon2_owner_adr : ByStr20 = 0x0000000000000000000000000000000000000000
-field tmp_dragon1_token_id : Uint256 = Uint256 0
-field tmp_dragon2_token_id : Uint256 = Uint256 0
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
@@ -262,6 +173,7 @@ procedure ThrowError(err : Error)
 end
 
 procedure SendFightsResultsDraw(token_id1: Uint256, token_id2: Uint256)
+  zlp_contract <- proxy_zlp_addr;
   (* mint zlp for dragon from waiting list *)
 
   (* tmp_token_id is an id of the dragon who is in waiting list, check FightStart *)
@@ -306,6 +218,7 @@ procedure SendFightsResultsDraw(token_id1: Uint256, token_id2: Uint256)
 end
 
 procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_battle_winner_param: Uint256, token_id_loser: Uint256, gen_battle_loser_param: Uint256)
+  zlp_contract <- proxy_zlp_addr;
   (* tmp_token_id is an id of the dragon who is in waiting list, check FightStart *)
   tmp_token_id_val <- tmp_token_id;
   fight_price_opt <- waiting_list[tmp_token_id_val];
@@ -414,9 +327,9 @@ procedure AfterFightDraw(token_id1: Uint256, gen_battle1: Uint256, token_id2: Ui
   | False =>
     match luck_res_bool_lt with
     | True =>
-      SendFightsResultsWinLose two
+      AfterFightWinLose two token_id2 gen_battle2 token_id1 gen_battle1
     | False =>
-      SendFightsResultsWinLose one
+      AfterFightWinLose one token_id1 gen_battle1 token_id2 gen_battle2
     end
   end
 end
@@ -429,23 +342,18 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
   entropy := random;
 
   d1_random_attack = builtin rem random ten;
-  d1_random_attack_fld := d1_random_attack;
   random = builtin div random ten;
 
   d1_random_defence = builtin rem random ten;
-  d1_random_defence_fld := d1_random_defence;
   random = builtin div random ten;
 
   d2_random_attack = builtin rem random ten;
-  d2_random_attack_fld := d2_random_attack;
   random = builtin div random ten;
 
   d2_random_defence = builtin rem random ten;
-  d2_random_defence_fld := d2_random_defence;
   random = builtin div random ten;
 
   random_luck = builtin rem random ten2;
-  random_luck_fld := random_luck;
 
   (* calculating gens *)
   (* last 2 digits - gen luck *)
@@ -582,6 +490,16 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
   end
 end
 
+procedure IsContractOwner()
+  is_contract_owner = builtin eq contract_owner _sender;
+  match is_contract_owner with
+  | True =>
+  | False =>
+    err = CodeNotContractOwner;
+    ThrowError err
+  end
+end
+
 procedure CheckIsSameDragon(token_id1: Uint256, token_id2: Uint256)
   is_same_dragon = builtin eq token_id1 token_id2;
   match is_same_dragon with
@@ -658,8 +576,6 @@ procedure FightPrepare(dragons: List Dragon)
 
   tmp_dragon1_owner_adr := dragon1_owner;
   tmp_dragon2_owner_adr := dragon2_owner;
-  (* tmp_dragon1_token_id := dragon1_token_id; *)
-  (* tmp_dragon2_token_id := dragon2_token_id; *)
 
   (* check stage of dragons *)
   CheckStage dragon1_stage;
