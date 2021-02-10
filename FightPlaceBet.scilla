@@ -4,7 +4,7 @@ import ListUtils
 (***************************************************)
 (*               Associated library                *)
 (***************************************************)
-library FightPlace
+library FightPlaceBet
 
 (* DragonZIL types *)
 (* Custom ADT storing - token_id, owner, stage, token_uri, token_gen_battle, token_gen_image *)
@@ -218,7 +218,7 @@ let get_dragon_gen_battle =
 (***************************************************)
 (*             The contract definition             *)
 (***************************************************)
-contract FightPlace
+contract FightPlaceBet
 
 (*  Parameters *)
 (contract_owner: ByStr20, main_dzt : ByStr20, proxy_zlp: ByStr20)
@@ -250,6 +250,8 @@ field tmp_token_id : Uint256 = Uint256 0
 field tmp_fight_price_fld : Uint128 = Uint128 0
 field tmp_dragon1_owner_adr : ByStr20 = 0x0000000000000000000000000000000000000000
 field tmp_dragon2_owner_adr : ByStr20 = 0x0000000000000000000000000000000000000000
+field tmp_dragon1_token_id : Uint256 = Uint256 0
+field tmp_dragon2_token_id : Uint256 = Uint256 0
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
@@ -301,67 +303,101 @@ procedure SendFightsResultsDraw(token_id1: Uint256, token_id2: Uint256)
   event e
 end
 
-procedure SendFightsResultsWinLose(num_winner: Uint256)
-
-  e = {
-    _eventname : "SendFightsResultsWinLose";
-    token_id_winner: token_id_winner;
-    gen_battle_winner: gen_battle_winner;
-    token_id_loser: token_id_loser;
-    gen_battle_loser: gen_battle_loser
-  };
-  event e;
-
-  dragon1_win_bool = builtin eq num_winner one;
-  dragon2_win_bool = builtin eq num_winner two;
-
+procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_battle_winner_param: Uint256, token_id_loser: Uint256, gen_battle_loser_param: Uint256)
   (* tmp_token_id is an id of the dragon who is in waiting list, check FightStart *)
   tmp_token_id_val <- tmp_token_id;
-
-  (* token_id1_in_waitlist_bool = builtin eq tmp_token_id_val token_id1; *)
-
   fight_price_opt <- waiting_list[tmp_token_id_val];
   fight_price = option_uint128 zero128 fight_price_opt;
 
   dragon1_owner_adr <- tmp_dragon1_owner_adr;
   dragon2_owner_adr <- tmp_dragon2_owner_adr;
 
-  match dragon1_win_bool with
-  | False =>
+(*
+  e = {
+    _eventname : "AfterFightWinLose";
+    token_id_winner: token_id_winner;
+    gen_battle_winner: gen_battle_winner;
+    token_id_loser: token_id_loser;
+    gen_battle_loser: gen_battle_loser
+  };
+  event e;
+*)
+
+(*
+1 - winner in waiting list:
+burn 1x price to not winner
+mint 2x price to winner
+
+2 - winner not in wating list:
+mint 1x price to winner
+*)
+
+  token_winner_in_waitlist_bool = builtin eq tmp_token_id_val token_id_winner;
+  dragon1_win_bool = builtin eq num_winner one;
+  match token_winner_in_waitlist_bool with
   | True =>
-    transfer_call = {
-      _tag: "Mint";
-      _recipient: zlp_contract;
-      _amount: fight_price;
-      recipient: dragon1_owner_adr
-    };
-    msgs = one_msg transfer_call;
-    send msgs
-  end
-
-  match dragon2_win_bool with
+    match dragon1_win_bool with
+    | True =>
+      two128 = Uint128 2;
+      fight_pricex2 = builtin mul fight_price two128;
+      transfer_call = {
+        _tag: "Mint";
+        _recipient: zlp_contract;
+        _amount: fight_pricex2;
+        recipient: dragon1_owner_adr
+      };
+      msgs = one_msg transfer_call;
+      send msgs;
+      transfer_call = {
+        _tag: "Burn";
+        _recipient: zlp_contract;
+        _amount: fight_price;
+        burn_account: dragon2_owner_adr
+      };
+      msgs = one_msg transfer_call;
+      send msgs
+    | False =>
+      two128 = Uint128 2;
+      fight_pricex2 = builtin mul fight_price two128;
+      transfer_call = {
+        _tag: "Mint";
+        _recipient: zlp_contract;
+        _amount: fight_pricex2;
+        recipient: dragon2_owner_adr
+      };
+      msgs = one_msg transfer_call;
+      send msgs;
+      transfer_call = {
+        _tag: "Burn";
+        _recipient: zlp_contract;
+        _amount: fight_price;
+        burn_account: dragon1_owner_adr
+      };
+      msgs = one_msg transfer_call;
+      send msgs
+    end
   | False =>
-  | True =>
-    transfer_call = {
-      _tag: "Mint";
-      _recipient: zlp_contract;
-      _amount: fight_price;
-      recipient: dragon2_owner_adr
-    };
-    msgs = one_msg transfer_call;
-    send msgs
-    transfer_call = {
-      _tag: "Burn";
-      _recipient: zlp_contract;
-      _amount: fight_price;
-      burn_account: dragon2_owner_adr
-    };
-    msgs = one_msg transfer_call;
-    send msgs
-
+    match dragon1_win_bool with
+    | True =>
+      transfer_call = {
+        _tag: "Mint";
+        _recipient: zlp_contract;
+        _amount: fight_price;
+        recipient: dragon1_owner_adr
+      };
+      msgs = one_msg transfer_call;
+      send msgs
+    | False =>
+      transfer_call = {
+        _tag: "Mint";
+        _recipient: zlp_contract;
+        _amount: fight_price;
+        recipient: dragon2_owner_adr
+      };
+      msgs = one_msg transfer_call;
+      send msgs
+    end
   end
-
-
 end
 
 procedure AfterFightDraw(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
@@ -464,20 +500,20 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
         match luck_bool_neg with
         | True =>
           (* d2 win *)
-          SendFightsResultsWinLose two
+          AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
         | False =>
           (* d1 win *)
-          SendFightsResultsWinLose one
+          AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
         end
       end
     | False =>
       match res2_bool_neg with
       | True =>
         (* d1 win *)
-        SendFightsResultsWinLose one
+        AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
       | False =>
         (* d2 win *)
-        SendFightsResultsWinLose two
+        AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
       end
     end
   | False =>
@@ -487,7 +523,7 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
       match res2_bool_eq with
       | True =>
         (* d2 win  *)
-        SendFightsResultsWinLose two
+        AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
       | False =>
         match res2_bool_neg with
         | True =>
@@ -500,15 +536,15 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
             match luck_bool_neg with
             | True =>
               (* d2 win *)
-              SendFightsResultsWinLose two
+              AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
             | False =>
               (* d1 win *)
-              SendFightsResultsWinLose one
+              AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
             end
           end
         | False =>
           (* d2 win  *)
-          SendFightsResultsWinLose two
+          AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
         end
       end
     | False =>
@@ -516,12 +552,12 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
       match res2_bool_eq with
       | True =>
         (* d1 win  *)
-        SendFightsResultsWinLose one
+        AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
       | False =>
         match res2_bool_neg with
         | True =>
           (* d1 win  *)
-          SendFightsResultsWinLose one
+          AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
         | False =>
           (* draw need check luck *)
           match luck_bool_eq with
@@ -532,10 +568,10 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
             match luck_bool_neg with
             | True =>
               (* d2 win *)
-              SendFightsResultsWinLose two
+              AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
             | False =>
               (* d1 win *)
-              SendFightsResultsWinLose one
+              AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
             end
           end
         end
@@ -605,6 +641,8 @@ procedure FightPrepare(dragons: List Dragon)
 
   tmp_dragon1_owner_adr := dragon1_owner;
   tmp_dragon2_owner_adr := dragon2_owner;
+  (* tmp_dragon1_token_id := dragon1_token_id; *)
+  (* tmp_dragon2_token_id := dragon2_token_id; *)
 
   (* check stage of dragons *)
   CheckStage dragon1_stage;
