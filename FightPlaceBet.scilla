@@ -47,6 +47,7 @@ let one = Uint256 1
 let one32 = Uint32 1
 let two = Uint256 2
 let two32 = Uint32 2
+let five = Uint256 5
 let eight = Uint256 8
 let ten = Uint256 10
 let ninetynine = Uint256 99
@@ -79,6 +80,12 @@ let one_msg =
   fun (msg : Message) =>
   let nil_msg = Nil {Message} in
     Cons {Message} msg nil_msg
+
+let two_msgs =
+  fun (msg1 : Message) =>
+  fun (msg2 : Message) =>
+    let msgs_tmp = one_msg msg2 in
+    Cons {Message} msg1 msgs_tmp
 
 let one_listid =
   fun (id : Uint256) =>
@@ -172,53 +179,6 @@ procedure ThrowError(err : Error)
   throw e
 end
 
-procedure SendFightsResultsDraw(token_id1: Uint256, token_id2: Uint256)
-  zlp_contract <- proxy_zlp_addr;
-  (* mint zlp for dragon from waiting list *)
-
-  (* tmp_token_id is an id of the dragon who is in waiting list, check FightStart *)
-  tmp_token_id_val <- tmp_token_id;
-
-  token_id1_in_waitlist_bool = builtin eq tmp_token_id_val token_id1;
-  match token_id1_in_waitlist_bool with
-  | True =>
-    (* need to return ZLP for owner1 *)
-    fight_price_opt <- waiting_list[token_id1];
-    fight_price = option_uint128 zero128 fight_price_opt;
-    dragon1_owner_adr <- tmp_dragon1_owner_adr;
-    transfer_call = {
-      _tag: "Mint";
-      _recipient: zlp_contract;
-      _amount: Uint128 0;
-      recipient: dragon1_owner_adr;
-      amount: fight_price
-    };
-    msgs = one_msg transfer_call;
-    send msgs
-  | False =>
-    (* need to return ZLP for owner2 *)
-    fight_price_opt <- waiting_list[token_id2];
-    fight_price = option_uint128 zero128 fight_price_opt;
-    dragon2_owner_adr <- tmp_dragon2_owner_adr;
-    transfer_call = {
-      _tag: "Mint";
-      _recipient: zlp_contract;
-      _amount: Uint128 0;
-      recipient: dragon2_owner_adr;
-      amount: fight_price
-    };
-    msgs = one_msg transfer_call;
-    send msgs
-  end;
-
-  e = {
-    _eventname : "FightsResultsDraw";
-    token_id1: token_id1;
-    token_id2: token_id2
-  };
-  event e
-end
-
 procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_battle_winner_param: Uint256, token_id_loser: Uint256, gen_battle_loser_param: Uint256)
   zlp_contract <- proxy_zlp_addr;
   (* tmp_token_id is an id of the dragon who is in waiting list, check FightStart *)
@@ -232,19 +192,16 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   e = {
     _eventname : "AfterFightWinLose";
     token_id_winner: token_id_winner;
-    gen_battle_winner: gen_battle_winner;
-    token_id_loser: token_id_loser;
-    gen_battle_loser: gen_battle_loser
+    token_id_loser: token_id_loser
   };
   event e;
 
 (*
 1 - winner in waiting list:
-burn 1x price to not winner
 mint 2x price to winner
 
 2 - winner not in wating list:
-mint 1x price to winner
+mint 2x price to winner
 *)
 
   token_winner_in_waitlist_bool = builtin eq tmp_token_id_val token_id_winner;
@@ -263,15 +220,6 @@ mint 1x price to winner
         amount: fight_pricex2
       };
       msgs = one_msg transfer_call;
-      send msgs;
-      transfer_call = {
-        _tag: "Burn";
-        _recipient: zlp_contract;
-        _amount: Uint128 0;
-        burn_account: dragon2_owner_adr;
-        amount: fight_price
-      };
-      msgs = one_msg transfer_call;
       send msgs
     | False =>
       two128 = Uint128 2;
@@ -284,36 +232,31 @@ mint 1x price to winner
         amount: fight_pricex2
       };
       msgs = one_msg transfer_call;
-      send msgs;
-      transfer_call = {
-        _tag: "Burn";
-        _recipient: zlp_contract;
-        _amount: Uint128 0;
-        burn_account: dragon1_owner_adr;
-        amount: fight_price
-      };
-      msgs = one_msg transfer_call;
       send msgs
     end
   | False =>
     match dragon1_win_bool with
     | True =>
+      two128 = Uint128 2;
+      fight_pricex2 = builtin mul fight_price two128;
       transfer_call = {
         _tag: "Mint";
         _recipient: zlp_contract;
         _amount: Uint128 0;
         recipient: dragon1_owner_adr;
-        amount: fight_price
+        amount: fight_pricex2
       };
       msgs = one_msg transfer_call;
       send msgs
     | False =>
+      two128 = Uint128 2;
+      fight_pricex2 = builtin mul fight_price two128;
       transfer_call = {
         _tag: "Mint";
         _recipient: zlp_contract;
         _amount: Uint128 0;
         recipient: dragon2_owner_adr;
-        amount: fight_price
+        amount: fight_pricex2
       };
       msgs = one_msg transfer_call;
       send msgs
@@ -329,7 +272,17 @@ procedure AfterFightDraw(token_id1: Uint256, gen_battle1: Uint256, token_id2: Ui
   luck_res_bool_lt = builtin lt d1_luck d2_luck;
   match luck_res_bool_eq with
   | True =>
-    SendFightsResultsDraw token_id1 token_id2
+    (* SendFightsResultsDraw token_id1 token_id2 *)
+    random <- entropy;
+    random_draw = builtin div random ten20;
+    random_draw = builtin rem random_draw ten;
+    luck_draw = builtin lt random_draw five;
+    match luck_draw with
+    | True =>
+      AfterFightWinLose two token_id2 gen_battle2 token_id1 gen_battle1
+    | False =>
+      AfterFightWinLose one token_id1 gen_battle1 token_id2 gen_battle2
+    end
   | False =>
     match luck_res_bool_lt with
     | True =>
@@ -705,6 +658,17 @@ transition FightStart(who_id: Uint256, with_id: Uint256)
 
   CheckNotBothInWaitingList who_id with_id;
 
+  zlp_contract <- proxy_zlp_addr;
+  fight_price_opt <- waiting_list[with_id];
+  fight_price = option_uint128 zero128 fight_price_opt;
+  transfer_call = {
+    _tag: "Burn";
+    _recipient: zlp_contract;
+    _amount: Uint128 0;
+    amount: fight_price;
+    burn_account: _sender
+  };
+
   ids = two_listid who_id with_id;
   getdragons_call = {
     _tag: "GetDragons";
@@ -712,7 +676,8 @@ transition FightStart(who_id: Uint256, with_id: Uint256)
     _amount: Uint128 0;
     ids: ids
   };
-  msgs = one_msg getdragons_call;
+
+  msgs = two_msgs transfer_call getdragons_call;
   send msgs
 end
 
