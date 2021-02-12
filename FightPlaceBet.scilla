@@ -189,8 +189,9 @@ procedure SendFightsResultsDraw(token_id1: Uint256, token_id2: Uint256)
     transfer_call = {
       _tag: "Mint";
       _recipient: zlp_contract;
-      _amount: fight_price;
-      recipient: dragon1_owner_adr
+      _amount: Uint128 0;
+      recipient: dragon1_owner_adr;
+      amount: fight_price
     };
     msgs = one_msg transfer_call;
     send msgs
@@ -202,8 +203,9 @@ procedure SendFightsResultsDraw(token_id1: Uint256, token_id2: Uint256)
     transfer_call = {
       _tag: "Mint";
       _recipient: zlp_contract;
-      _amount: fight_price;
-      recipient: dragon2_owner_adr
+      _amount: Uint128 0;
+      recipient: dragon2_owner_adr;
+      amount: fight_price
     };
     msgs = one_msg transfer_call;
     send msgs
@@ -258,16 +260,18 @@ mint 1x price to winner
       transfer_call = {
         _tag: "Mint";
         _recipient: zlp_contract;
-        _amount: fight_pricex2;
-        recipient: dragon1_owner_adr
+        _amount: Uint128 0;
+        recipient: dragon1_owner_adr;
+        amount: fight_pricex2
       };
       msgs = one_msg transfer_call;
       send msgs;
       transfer_call = {
         _tag: "Burn";
         _recipient: zlp_contract;
-        _amount: fight_price;
-        burn_account: dragon2_owner_adr
+        _amount: Uint128 0;
+        burn_account: dragon2_owner_adr;
+        amount: fight_price
       };
       msgs = one_msg transfer_call;
       send msgs
@@ -277,16 +281,18 @@ mint 1x price to winner
       transfer_call = {
         _tag: "Mint";
         _recipient: zlp_contract;
-        _amount: fight_pricex2;
-        recipient: dragon2_owner_adr
+        _amount: Uint128 0;
+        recipient: dragon2_owner_adr;
+        amount: fight_pricex2
       };
       msgs = one_msg transfer_call;
       send msgs;
       transfer_call = {
         _tag: "Burn";
         _recipient: zlp_contract;
-        _amount: fight_price;
-        burn_account: dragon1_owner_adr
+        _amount: Uint128 0;
+        burn_account: dragon1_owner_adr;
+        amount: fight_price
       };
       msgs = one_msg transfer_call;
       send msgs
@@ -297,8 +303,9 @@ mint 1x price to winner
       transfer_call = {
         _tag: "Mint";
         _recipient: zlp_contract;
-        _amount: fight_price;
-        recipient: dragon1_owner_adr
+        _amount: Uint128 0;
+        recipient: dragon1_owner_adr;
+        amount: fight_price
       };
       msgs = one_msg transfer_call;
       send msgs
@@ -306,8 +313,9 @@ mint 1x price to winner
       transfer_call = {
         _tag: "Mint";
         _recipient: zlp_contract;
-        _amount: fight_price;
-        recipient: dragon2_owner_adr
+        _amount: Uint128 0;
+        recipient: dragon2_owner_adr;
+        amount: fight_price
       };
       msgs = one_msg transfer_call;
       send msgs
@@ -638,7 +646,8 @@ procedure PlaceToWaitlist(dragons: List Dragon)
     transfer_call = {
       _tag: "Burn";
       _recipient: zlp_contract;
-      _amount: fight_price;
+      _amount: Uint128 0;
+      amount: fight_price;
       burn_account: initiator_adr
     };
     msgs = one_msg transfer_call;
@@ -652,7 +661,8 @@ procedure PlaceToWaitlist(dragons: List Dragon)
     transfer_call = {
       _tag: "Mint";
       _recipient: zlp_contract;
-      _amount: fight_price;
+      _amount: Uint128 0;
+      amount: fight_price;
       recipient: initiator_adr
     };
     msgs = one_msg transfer_call;
