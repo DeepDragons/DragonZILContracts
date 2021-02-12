@@ -229,7 +229,6 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
   dragon1_owner_adr <- tmp_dragon1_owner_adr;
   dragon2_owner_adr <- tmp_dragon2_owner_adr;
 
-(*
   e = {
     _eventname : "AfterFightWinLose";
     token_id_winner: token_id_winner;
@@ -238,7 +237,6 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
     gen_battle_loser: gen_battle_loser
   };
   event e;
-*)
 
 (*
 1 - winner in waiting list:
