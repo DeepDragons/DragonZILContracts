@@ -48,7 +48,6 @@ let one = Uint256 1
 let one32 = Uint32 1
 let two = Uint256 2
 let two32 = Uint32 2
-let three = Uint256 3
 let five = Uint256 5
 let ten = Uint256 10
 let ten2 = Uint256 100
@@ -172,7 +171,7 @@ field tmp_dragon1_owner_adr : ByStr20 = zero_address
 field tmp_dragon2_owner_adr : ByStr20 = zero_address
 
 (* 0 - waitlist place, 1 - fight start, 2 - waitlist remove, 3 - pause contract*)
-field tmp_action : Uint128 = Uint128 0
+field tmp_action : Uint256 = Uint256 0
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
@@ -680,7 +679,6 @@ transition GetDragonsCallBack(dragons: List Dragon)
   action_waitlist_place = builtin eq action zero;
   action_fight = builtin eq action one;
   action_waitlist_remove = builtin eq action two;
-  action_pause = builtin eq action three;
 
   (* dragons_length = @list_length Dragon; *)
   (* dragons_num = dragons_length dragons; *)
@@ -698,11 +696,6 @@ transition GetDragonsCallBack(dragons: List Dragon)
   | False =>
   | True =>
     RemoveFromWaitlist dragons
-  end;
-  match action_pause with
-  | False =>
-  | True =>
-    PauseContract dragons
   end
 end
 
@@ -804,7 +797,7 @@ transition ChangePause()
     event e
   | False =>
     pause := on_pause;
-    tmp_action := three;
+
 
     (* todo: get list of all dragons in the list and mint zlp for all owners *)
 (*
