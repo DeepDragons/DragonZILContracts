@@ -13,7 +13,6 @@ type Dragon =
 
 (* Error events *)
 type Error =
-  | CodeNotAuthorised
   | CodeNotInWaitingList
   | CodeSameDragon
   | CodeNotAnOwner
@@ -26,18 +25,16 @@ let make_error =
   fun (result : Error) =>
     let result_code =
       match result with
-      | CodeNotAuthorised      => Int32 -1
-      | CodeNotInWaitingList   => Int32 -2
-      | CodeSameDragon         => Int32 -3
-      | CodeNotAnOwner         => Int32 -4
-      | CodeCallNotMainDzt     => Int32 -5
-      | CodeStageIncorrect     => Int32 -6
-      | CodeNotContractOwner   => Int32 -7
-      | CodeBothInWaitingList  => Int32 -8
+      | CodeNotInWaitingList   => Int32 -1
+      | CodeSameDragon         => Int32 -2
+      | CodeNotAnOwner         => Int32 -3
+      | CodeCallNotMainDzt     => Int32 -4
+      | CodeStageIncorrect     => Int32 -5
+      | CodeNotContractOwner   => Int32 -6
+      | CodeBothInWaitingList  => Int32 -7
       end
     in
     { _exception : "Error"; code : result_code }
-
 
 
 let zero = Uint256 0
@@ -69,11 +66,8 @@ let option_value =
     | None => default
     end
 
-let option_address = @option_value ByStr20
-let option_str = @option_value String
 let option_uint32 = @option_value Uint32
 let option_uint128 = @option_value Uint128
-let option_uint256 = @option_value Uint256
 let option_dragon = @option_value Dragon
 
 let one_msg =
@@ -166,12 +160,12 @@ field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
 
 field entropy : Uint256 = Uint256 42
 
-field tmp_initiator_adr : ByStr20 = 0x0000000000000000000000000000000000000000
+field tmp_initiator_adr : ByStr20 = zero_address
 field tmp_token_id : Uint256 = Uint256 0
 
 field tmp_fight_price_fld : Uint128 = Uint128 0
-field tmp_dragon1_owner_adr : ByStr20 = 0x0000000000000000000000000000000000000000
-field tmp_dragon2_owner_adr : ByStr20 = 0x0000000000000000000000000000000000000000
+field tmp_dragon1_owner_adr : ByStr20 = zero_address
+field tmp_dragon2_owner_adr : ByStr20 = zero_address
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
@@ -181,12 +175,7 @@ end
 
 procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_battle_winner_param: Uint256, token_id_loser: Uint256, gen_battle_loser_param: Uint256)
   zlp_contract <- proxy_zlp_addr;
-  (* tmp_token_id is an id of the dragon who is in waiting list, check FightStart *)
   tmp_token_id_val <- tmp_token_id;
-
-  (* waiting list already cleared, we can't take price from where *)
-  (* fight_price_opt <- waiting_list[tmp_token_id_val]; *)
-  (* fight_price = option_uint128 zero128 fight_price_opt; *)
 
   fight_price <- tmp_fight_price_fld;
 
@@ -199,14 +188,6 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
     token_id_loser: token_id_loser
   };
   event e;
-
-(*
-1 - winner in waiting list:
-mint 2x price to winner
-
-2 - winner not in wating list:
-mint 2x price to winner
-*)
 
   token_winner_in_waitlist_bool = builtin eq tmp_token_id_val token_id_winner;
   dragon1_win_bool = builtin eq num_winner one;
