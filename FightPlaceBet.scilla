@@ -45,9 +45,7 @@ let one32 = Uint32 1
 let two = Uint256 2
 let two32 = Uint32 2
 let five = Uint256 5
-let eight = Uint256 8
 let ten = Uint256 10
-let ninetynine = Uint256 99
 let ten2 = Uint256 100
 let ten20 = Uint256 100000000000000000000
 
