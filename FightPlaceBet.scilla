@@ -147,6 +147,76 @@ let get_dragon_gen_battle =
       token_gen_battle
     end
 
+
+let get_avg_atc_battle_gen =
+  fun (genschain: Uint256) =>
+    let genschain_val = genschain in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a1 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a2 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a3 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a4 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a5 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a6 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a7 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a8 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a9 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a10 = builtin rem genschain_val ten2 in
+    let sum = builtin add a1 a2 in
+    let sum = builtin add sum a3 in
+    let sum = builtin add sum a4 in
+    let sum = builtin add sum a5 in
+    let sum = builtin add sum a6 in
+    let sum = builtin add sum a7 in
+    let sum = builtin add sum a8 in
+    let sum = builtin add sum a9 in
+    let sum = builtin add sum a10 in
+    builtin div sum ten
+
+let get_avg_def_battle_gen =
+  fun (genschain: Uint256) =>
+    let genschain_val = genschain in
+    let genschain_val = builtin div genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten20 in
+    let a1 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a2 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a3 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a4 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a5 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a6 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a7 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a8 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a9 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a10 = builtin rem genschain_val ten2 in
+    let sum = builtin add a1 a2 in
+    let sum = builtin add sum a3 in
+    let sum = builtin add sum a4 in
+    let sum = builtin add sum a5 in
+    let sum = builtin add sum a6 in
+    let sum = builtin add sum a7 in
+    let sum = builtin add sum a8 in
+    let sum = builtin add sum a9 in
+    let sum = builtin add sum a10 in
+    builtin div sum ten
+
 (***************************************************)
 (*             The contract definition             *)
 (***************************************************)
@@ -172,6 +242,8 @@ field tmp_dragon2_owner_adr : ByStr20 = zero_address
 
 (* 0 - waitlist place, 1 - fight start, 2 - waitlist remove, 3 - pause contract*)
 field tmp_action : Uint256 = Uint256 0
+
+field super_dragon_avg_fld : Uint256 = Uint256 70
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
@@ -440,6 +512,25 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
   end
 end
 
+procedure FightDoSuper(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uint256, gen_battle2_param: Uint256)
+  (* generating random values *)
+  entropyNumber <- entropy;
+  current_block <- & BLOCKNUMBER;
+  random = random entropyNumber current_block;
+  entropy := random;
+
+  fithy = Uint256 50;
+
+  random_luck = builtin rem random ten2;
+  luck_bool_eq = builtin lt random_luck fithy;
+  match luck_bool_eq with
+  | True =>
+    AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
+  | False =>
+    AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
+  end
+end
+
 procedure IsContractOwner()
   is_contract_owner = builtin eq contract_owner _sender;
   match is_contract_owner with
@@ -581,8 +672,44 @@ procedure FightPrepare(dragons: List Dragon)
     end
   end;
 
-  (* start fight process with gens matching with this 2 dragons *)
-  FightDo dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
+  super_dragon_avg <- super_dragon_avg_fld;
+
+  avg_def_battle_gen_d1 = get_avg_def_battle_gen dragon1_gen_battle;
+  avg_avg_battle_gen_d1 = get_avg_atc_battle_gen dragon1_gen_battle;
+  avg_def_battle_gen_d2 = get_avg_def_battle_gen dragon2_gen_battle;
+  avg_avg_battle_gen_d2 = get_avg_atc_battle_gen dragon2_gen_battle;
+
+  avg_def_battle_gen_d1_bool = builtin lt avg_def_battle_gen_d1 super_dragon_avg;
+  avg_avg_battle_gen_d1_bool = builtin lt avg_avg_battle_gen_d1 super_dragon_avg;
+  avg_def_battle_gen_d2_bool = builtin lt avg_def_battle_gen_d2 super_dragon_avg;
+  avg_avg_battle_gen_d2_bool = builtin lt avg_avg_battle_gen_d2 super_dragon_avg;
+
+  match avg_def_battle_gen_d1_bool with
+  | False =>
+    (* start fight process with random, because of super dragon in fight *)
+    FightDoSuper dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
+  | True =>
+    match avg_avg_battle_gen_d1_bool with
+    | False =>
+      (* start fight process with random, because of super dragon in fight *)
+      FightDoSuper dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
+    | True =>
+      match avg_def_battle_gen_d2_bool with
+      | False =>
+        (* start fight process with random, because of super dragon in fight *)
+        FightDoSuper dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
+      | True =>
+        match avg_avg_battle_gen_d2_bool with
+        | False =>
+          (* start fight process with random, because of super dragon in fight *)
+          FightDoSuper dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
+        | True =>
+          (* start fight process with gens matching with this 2 dragons *)
+          FightDo dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
+        end
+      end
+    end
+  end
 end
 
 procedure PlaceToWaitlist(dragons: List Dragon)
@@ -797,22 +924,19 @@ transition ChangePause()
     event e
   | False =>
     pause := on_pause;
-
-
-    (* todo: get list of all dragons in the list and mint zlp for all owners *)
-(*
-  ids = one_listid token_id;
-  getdragons_call = {
-    _tag: "GetDragons";
-    _recipient: main_dzt;
-    _amount: Uint128 0;
-    ids: ids
-  };
-  msgs = one_msg getdragons_call;
-  send msgs
-*)
-
     e = {_eventname : "Paused"};
     event e
   end
+end
+
+transition ChangeSuperDragonAvg(value: Uint256)
+  IsContractOwner;
+
+  e = {
+    _eventname: "ChangeSuperDragonAvg";
+    value: value
+  };
+  event e;
+
+  super_dragon_avg_fld := value
 end
