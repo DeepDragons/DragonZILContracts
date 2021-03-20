@@ -223,7 +223,7 @@ field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
 
 field entropy : Uint256 = Uint256 42
 
-field tmp_initiator_adr : ByStr20 = 0x0000000000000000000000000000000000000000
+field tmp_initiator_adr : ByStr20 = zero_address
 field tmp_token_id : Uint256 = Uint256 0
 field tmp_gen_image_fld : Uint256 = Uint256 0
 field tmp_breed_price_fld : Uint128 = Uint128 0
@@ -1232,8 +1232,7 @@ transition ChangeProxyZLP(addr: ByStr20)
   proxy_zlp_addr := addr
 end
 
-transition RemoveFromBreed(token_id: Uint256)
-  IsContractOwner;
+procedure RemoveFromBreed(token_id: Uint256)
 
   e = {
     _eventname: "RemovedFromWaitList";
@@ -1242,6 +1241,12 @@ transition RemoveFromBreed(token_id: Uint256)
   event e;
 
   delete waiting_list[token_id]
+end
+
+transition BatchRemoveFromBreed(token_id_list: List Uint256)
+  IsContractOwner;
+
+  forall token_id_list RemoveFromBreed
 end
 
 transition ChangeCommission(value: Uint128)
