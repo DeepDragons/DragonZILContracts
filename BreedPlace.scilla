@@ -230,8 +230,6 @@ field tmp_breed_price_fld : Uint128 = Uint128 0
 field breed_comis_prc_fld : Uint128 = Uint128 10
 field breed_min_price_fld : Uint128 = Uint128 25000000000000000000
 
-field tmp: List (Dragon) = Nil {Dragon}
-
 (* Emit Errors *)
 procedure ThrowError(err : Error)
   e = make_error err;
@@ -249,16 +247,16 @@ procedure IsContractOwner()
 end
 
 procedure SendBreedResults(new_dragon_gen_battle: Uint256, new_dragon_gen_image: Uint256)
-  (* call Birth, owner of new egg will be the owner of the dragon whos id is stored in tmp_token_id *)
+  (* call Birth, owner of new egg will be the address stored in tmp_initiator_adr *)
 
   token_owner <- tmp_initiator_adr;
-  some_tmp <- tmp;
-
+  empty_list = Nil {Dragon};
+  
   (* it is new dragon *)
   token_id = zero;
 
   dragon = build_dragon token_id token_owner dummy_str new_dragon_gen_battle new_dragon_gen_image default_stage;
-  new_tmp = Cons {Dragon} dragon some_tmp;
+  new_tmp = Cons {Dragon} dragon empty_list;
 
   birth_call = {
     _tag: "GiveBirth";
@@ -1073,7 +1071,6 @@ procedure BreedPrepare(dragons: List Dragon)
   dragon1_gen_image = get_dragon_gen_image dragon_one;
   dragon1_gen_battle = get_dragon_gen_battle dragon_one;
 
-  dragon2_token_id = get_dragon_token_id dragon_two;
   dragon2_owner = get_dragon_owner dragon_two;
   dragon2_stage = get_dragon_stage dragon_two;
   dragon2_gen_image = get_dragon_gen_image dragon_two;
@@ -1085,9 +1082,8 @@ procedure BreedPrepare(dragons: List Dragon)
 
 
 
-  (* Need to check one of the dragons is in waiting list and other dragons owner is starting fight *)
+  (* Need to check one of the dragons is in waiting list and other dragons owner is starting breeding *)
   initiator_adr <- tmp_initiator_adr;
-  dragon1_owner_bool_eq = builtin eq dragon1_owner initiator_adr;
   dragon2_owner_bool_eq = builtin eq dragon2_owner initiator_adr;
 
   breed_comis_prc <- breed_comis_prc_fld;
@@ -1119,37 +1115,7 @@ procedure BreedPrepare(dragons: List Dragon)
       send msgs;
 
       delete waiting_list[dragon1_token_id]
-    | False =>
-      err = CodeNotAnOwner;
-      ThrowError err
-    end
-  end;
-  token2_inwatinglist <- exists waiting_list[dragon2_token_id];
-  match token2_inwatinglist with
-  | False =>
-  | True =>
-    match dragon1_owner_bool_eq with
-    | True =>
-      (* taking comission and send other amount to dragon1_owner *)
-      zlp_price_opt <- waiting_list[dragon2_token_id];
-      zlp_price = option_uint128 zero128 zlp_price_opt;
-      zlp_comission = builtin mul zlp_price breed_comis_prc;
-      zlp_comission = builtin div zlp_comission ten2_128;
-      zlp_toowner = builtin sub zlp_price zlp_comission;
 
-      transfer_call = {
-        _tag: "TransferZLPFrom";
-        _recipient: zlp_contract;
-        _amount: Uint128 0;
-        from: dragon1_owner;
-        to: dragon2_owner;
-        amount: zlp_toowner;
-        commission: zlp_comission
-      };
-      msgs = one_msg transfer_call;
-      send msgs;
-
-      delete waiting_list[dragon2_token_id]
     | False =>
       err = CodeNotAnOwner;
       ThrowError err
@@ -1210,9 +1176,8 @@ transition GetDragonsCallBack(dragons: List Dragon)
 end
 
 transition BreedStart(who_id: Uint256, with_id: Uint256)
+   (* this address will receive an egg *)
   tmp_initiator_adr := _sender;
-  (* this dragon will receive an egg *)
-  tmp_token_id := with_id;
 
   CheckIsSameDragon who_id with_id;
   CheckInWatingList with_id;
@@ -1233,7 +1198,6 @@ transition WaitListAddDel(token_id: Uint256, breed_price: Uint128)
   tmp_initiator_adr := _sender;
   tmp_token_id := token_id;
 
-  (* todo: id price lower then minimal - set minimal *)
   (* breed_min_price_fld *)
   breed_min_price <- breed_min_price_fld;
   low_price_bool = builtin lt breed_price breed_min_price;
