@@ -161,7 +161,18 @@ contract DragonZIL
 (
   contract_owner: ByStr20,
   name : String,
-  symbol: String
+  symbol: String,
+  old: ByStr20 with contract
+    field token_gen_battle: Map Uint256 Uint256,
+    field token_gen_image: Map Uint256 Uint256,
+    field token_id_count: Uint256,
+    field token_stage: Map Uint256 Uint32,
+    field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32),
+    field token_owners: Map Uint256 ByStr20,
+    field owned_token_count: Map ByStr20 Uint256,
+    field token_uris: Map Uint256 String,
+    field total_supply: Uint256
+  end
 )
 
 (* Mutable fields *)
@@ -175,7 +186,7 @@ field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
 
 field token_id_count: Uint256 = Uint256 0
 
-field cloud: String = ""
+field cloud: String = dummy_str
 field format_img: String = ".png"
 field token_stage: Map Uint256 Uint32 = Emp Uint256 Uint32
 field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
@@ -872,7 +883,28 @@ end
 
 (* Interface transitions *)
 
-(* DragonZIL transition *)
+transition Migrate()
+  old_token_gen_battle <-& old.token_gen_battle;
+  old_token_gen_image <-& old.token_gen_image;
+  old_token_id_count <-& old.token_id_count;
+  old_token_stage <-& old.token_stage;
+  old_tokens_owner_stage <-& old.tokens_owner_stage;
+  old_token_owners <-& old.token_owners;
+  old_owned_token_count <-& old.owned_token_count;
+  old_total_supply <-& old.total_supply;
+  old_token_uris <-& old.token_uris;
+
+  token_gen_battle := old_token_gen_battle;
+  token_gen_image := old_token_gen_image;
+  token_id_count := old_token_id_count;
+  token_stage := old_token_stage;
+  tokens_owner_stage := old_tokens_owner_stage;
+  token_owners := old_token_owners;
+  owned_token_count := old_owned_token_count;
+  total_supply := old_total_supply;
+  token_uris := old_token_uris
+end
+
 transition UpStage(token_id: Uint256)
   IsOwnerOrOperatorOrApprovedSpender token_id _sender;
 
