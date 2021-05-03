@@ -24,7 +24,7 @@ let sub_operation = Sub
 
 let zero_address = 0x0000000000000000000000000000000000000000
 let dummy_str = ""
-let default_stage = Uint32 0
+let zero32 = Uint32 0
 let two = Uint256 2
 let three = Uint256 3
 let four = Uint256 4
@@ -813,12 +813,12 @@ end
 
 procedure Minting(token_id: Uint256, to: ByStr20)
   (* Add address stage. *)
-  tokens_owner_stage[to][token_id] := default_stage;
-  token_stage[token_id] := default_stage;
+  tokens_owner_stage[to][token_id] := zero32;
+  token_stage[token_id] := zero32;
   (* Mint new non-fungible token *)
   token_owners[token_id] := to;
   (* Generate some uri for token. *)
-  ChangeTokenURI token_id default_stage;
+  ChangeTokenURI token_id zero32;
   (* Add to owner count *)
   UpdateTokenCount add_operation to;
 
@@ -883,26 +883,54 @@ end
 
 (* Interface transitions *)
 
-transition Migrate()
-  old_token_gen_battle <-& old.token_gen_battle;
-  old_token_gen_image <-& old.token_gen_image;
+transition Migrate0()
+  gens <- token_gen_battle;
+  gens_size = builtin size gens;
+  is_zero = builtin eq gens_size zero32;
+
+  match is_zero with
+  | True =>
+    old_token_gen_battle <-& old.token_gen_battle;
+    token_gen_battle := old_token_gen_battle
+  | False =>
+  end
+end
+transition Migrate1()
+  gens <- token_gen_image;
+  gens_size = builtin size gens;
+  is_zero = builtin eq gens_size zero32;
+
+  match is_zero with
+  | True =>
+    old_token_gen_image <-& old.token_gen_image;
+    token_gen_image := old_token_gen_image
+  | False =>
+  end
+end
+transition Migrate2()
   old_token_id_count <-& old.token_id_count;
   old_token_stage <-& old.token_stage;
-  old_tokens_owner_stage <-& old.tokens_owner_stage;
-  old_token_owners <-& old.token_owners;
-  old_owned_token_count <-& old.owned_token_count;
-  old_total_supply <-& old.total_supply;
-  old_token_uris <-& old.token_uris;
-
-  token_gen_battle := old_token_gen_battle;
-  token_gen_image := old_token_gen_image;
   token_id_count := old_token_id_count;
-  token_stage := old_token_stage;
-  tokens_owner_stage := old_tokens_owner_stage;
-  token_owners := old_token_owners;
-  owned_token_count := old_owned_token_count;
-  total_supply := old_total_supply;
+  token_stage := old_token_stage
+end
+transition Migrate3()
+  old_tokens_owner_stage <-& old.tokens_owner_stage;
+  tokens_owner_stage := old_tokens_owner_stage
+end
+transition Migrate4()
+  old_token_uris <-& old.token_uris;
   token_uris := old_token_uris
+end
+transition Migrate5()
+  old_token_owners <-& old.token_owners;
+  old_total_supply <-& old.total_supply;
+
+  token_owners := old_token_owners;
+  total_supply := old_total_supply
+end
+transition Migrate6()
+  old_owned_token_count <-& old.owned_token_count;
+  owned_token_count := old_owned_token_count
 end
 
 transition UpStage(token_id: Uint256)
