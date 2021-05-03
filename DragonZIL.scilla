@@ -908,29 +908,65 @@ transition Migrate1()
   end
 end
 transition Migrate2()
-  old_token_id_count <-& old.token_id_count;
-  old_token_stage <-& old.token_stage;
-  token_id_count := old_token_id_count;
-  token_stage := old_token_stage
+  count <- token_id_count;
+  is_zero = builtin eq count zero;
+  match is_zero with
+  | True =>
+    old_token_id_count <-& old.token_id_count;
+    old_token_stage <-& old.token_stage;
+    token_id_count := old_token_id_count;
+    token_stage := old_token_stage
+  | False =>
+  end
 end
 transition Migrate3()
-  old_tokens_owner_stage <-& old.tokens_owner_stage;
-  tokens_owner_stage := old_tokens_owner_stage
+  currect <- tokens_owner_stage;
+  gens_size = builtin size currect;
+  is_zero = builtin eq gens_size zero32;
+
+  match is_zero with
+  | True =>
+    old_tokens_owner_stage <-& old.tokens_owner_stage;
+    tokens_owner_stage := old_tokens_owner_stage
+  | False =>
+  end
 end
 transition Migrate4()
-  old_token_uris <-& old.token_uris;
-  token_uris := old_token_uris
+  current <- token_uris;
+  gens_size = builtin size current;
+  is_zero = builtin eq gens_size zero32;
+
+  match is_zero with
+  | True =>
+    old_token_uris <-& old.token_uris;
+    token_uris := old_token_uris
+  | False =>
+  end
 end
 transition Migrate5()
-  old_token_owners <-& old.token_owners;
-  old_total_supply <-& old.total_supply;
+  t_supply <- total_supply;
+  is_zero = builtin eq t_supply zero;
 
-  token_owners := old_token_owners;
-  total_supply := old_total_supply
+  match is_zero with
+  | True =>
+    old_token_owners <-& old.token_owners;
+    old_total_supply <-& old.total_supply;
+
+    token_owners := old_token_owners;
+    total_supply := old_total_supply
+  | False =>
+  end
 end
 transition Migrate6()
-  old_owned_token_count <-& old.owned_token_count;
-  owned_token_count := old_owned_token_count
+  count <- owned_token_count;
+  gens_size = builtin size count;
+  is_zero = builtin eq gens_size zero32;
+  match is_zero with
+  | True =>
+    old_owned_token_count <-& old.owned_token_count;
+    owned_token_count := old_owned_token_count
+  | False =>
+  end
 end
 
 transition UpStage(token_id: Uint256)
