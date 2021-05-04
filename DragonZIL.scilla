@@ -381,10 +381,8 @@ procedure Minting(input: Dragon)
 end
 
 procedure ChangeBattleGen(id_gen: Pair Uint256 Uint256)
-  token_id = let fst_token_id = @fst Uint256 Uint256 in
-    fst_token_id id_gen;
-  gen_battle = let end_gen_battle = @snd Uint256 Uint256 in
-    end_gen_battle id_gen;
+  token_id = first_item id_gen;
+  gen_battle = last_item id_gen;
   token_exist <- exists token_gen_battle[token_id];
   match token_exist with
   | False =>
@@ -829,6 +827,7 @@ transition Migrate()
 end
 
 transition MigrateEvents(ids: List Uint256)
+  IsContractOwner;
   migrator <- migrate_option;
 
   match migrator with
@@ -841,6 +840,6 @@ transition MigrateEvents(ids: List Uint256)
   | OwnedTokenCount =>
   | TokenUris =>
   | Done =>
-    forall ids EventsMigrate
+    forall ids EventsMigrate;
   end
 end
