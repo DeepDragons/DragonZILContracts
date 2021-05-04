@@ -15,26 +15,56 @@ type Operation =
 | Add
 | Sub
 
+type MigrateOption =
+| Battle
+| Image
+| Counters
+| TokenStage
+| TokensOwnerStage
+| TokenOwners
+| OwnedTokenCount
+| TokenUris
+| Done
+
+(* Custom ADT storing - owner, token_gen_battle, token_gen_image *)
+type Dragon =
+| Dragon of  ByStr20 Uint256 Uint256
+
+(* Error exception *)
+type Error =
+  | CodeNotContractOwner
+  | CodeIsSelf
+  | CodeTokenExists
+  | CodeIsNotMinter
+  | CodeNotTokenOwner
+  | CodeNotFound
+  | CodeNotApprovedForAll
+  | CodeNotOwnerOrOperator
+  | CodeNotApprovedSpenderOrOperator
+  | CodeNotOwnerOrOperatorOrApprovedSpender
+  | CodeStageError
+
 (* Global variables *)
-let zero = Uint256 0
-let one = Uint256 1
+let zero   = Uint256 0
+let one    = Uint256 1
 let verdad = Dummy
+
 let add_operation = Add
 let sub_operation = Sub
 
 let zero_address = 0x0000000000000000000000000000000000000000
-let dummy_str = ""
-let zero32 = Uint32 0
-let two = Uint256 2
-let three = Uint256 3
-let four = Uint256 4
-let five = Uint256 5
-let six = Uint256 6
-let seven = Uint256 7
-let eight = Uint256 8
-let nine = Uint256 9
-let ten = Uint256 10
-let ten3 = Uint256 1000
+let dummy_str    = ""
+let zero32       = Uint32 0
+
+let op_battle             = Battle
+let op_image              = Image
+let op_counters           = Counters
+let op_token_stage        = TokenStage
+let op_tokens_owner_stage = TokensOwnerStage
+let op_token_owners       = TokenOwners
+let op_owned_token_count  = OwnedTokenCount
+let op_token_uris         = TokenUris
+let op_done               = Done
 
 (* Library functions *)
 let one_msg = 
@@ -64,90 +94,34 @@ let option_value =
     | None => default
     end
 
-let random =
-  fun (entropy: Uint256) =>
-  fun (block_number: BNum) =>
-  fun (addr: ByStr20) =>
-    let addr_hash = builtin keccak256hash addr in
-    let entropy_hash = builtin keccak256hash entropy in
-    let blockhash = builtin keccak256hash block_number in
-    let ehash = builtin concat entropy_hash blockhash in
-    let ahash = builtin concat ehash addr_hash in
-    let last_hash = builtin concat ehash ahash in
-    let hash = builtin keccak256hash last_hash in
-      builtin to_uint256 hash
-
-let calc_gens_tmp_new =
-  fun (old_val: Uint256) =>
-  fun (gen_num: Uint256) =>
-  fun (check_with: Uint256) =>
-  fun (val: Uint256) =>
-    let gen_bool = builtin eq gen_num check_with in
-    match gen_bool with
-    | True => val
-    | False => old_val
-    end
-
-let calc_gens_2opt_do =
-  fun (gen_num: Uint256) =>
-  fun (val1: Uint256) =>
-  fun (val2: Uint256) =>
-    let gen_bool = builtin lt gen_num five in
-    match gen_bool with
-    | True => val1
-    | False => val2
-    end
-
-let calc_gens_2opt =
-  fun (old_val: Uint256) =>
-  fun (gen_num: Uint256) =>
-  fun (check_with: Uint256) =>
-  fun (gen_num2: Uint256) =>
-  fun (val1: Uint256) =>
-  fun (val2: Uint256) =>
-    let gen_bool = builtin eq gen_num check_with in
-    match gen_bool with
-    | True => calc_gens_2opt_do gen_num2 val1 val2
-    | False => old_val
-    end
-
 let option_address = @option_value ByStr20
-let option_str = @option_value String
 let option_uint256 = @option_value Uint256
+let pair_token_gens_list = @list_map (Pair Uint256 Uint256) Dragon
+let first_item = @fst Uint256 Uint256
+let last_item = @snd Uint256 Uint256
 
-(* Error exception *)
-type Error =
-  | CodeNotContractOwner
-  | CodeIsSelf
-  | CodeTokenExists
-  | CodeIsNotMinter
-  | CodeNotApproved
-  | CodeNotTokenOwner
-  | CodeNotFound
-  | CodeNotApprovedForAll
-  | CodeNotOwnerOrOperator
-  | CodeNotApprovedSpenderOrOperator
-  | CodeNotOwnerOrOperatorOrApprovedSpender
-  | CodeStageError
-  | CodeListEmpty
+let build_dragon =
+  fun (owner: ByStr20) =>
+  fun (input_token_gens: Pair Uint256 Uint256) =>
+    let gen_image = first_item input_token_gens in
+    let gen_battle = last_item input_token_gens in
+      Dragon owner gen_image gen_battle
 
 let make_error =
   fun (result : Error) =>
     let result_code = 
       match result with
-      | CodeNotContractOwner             => Int32 -1
-      | CodeIsSelf                       => Int32 -2
-      | CodeTokenExists                  => Int32 -3
-      | CodeIsNotMinter                  => Int32 -4
-      | CodeNotApproved                  => Int32 -5
-      | CodeNotTokenOwner                => Int32 -6
-      | CodeNotFound                     => Int32 -7
-      | CodeNotApprovedForAll            => Int32 -8
-      | CodeNotOwnerOrOperator           => Int32 -9
-      | CodeNotApprovedSpenderOrOperator => Int32 -10
-      | CodeNotOwnerOrOperatorOrApprovedSpender => Int32 -11
-      | CodeStageError                   => Int32 -12
-      | CodeListEmpty                    => Int32 -13
+      | CodeNotContractOwner                    => Int32 -1
+      | CodeIsSelf                              => Int32 -2
+      | CodeTokenExists                         => Int32 -3
+      | CodeIsNotMinter                         => Int32 -4
+      | CodeNotTokenOwner                       => Int32 -5
+      | CodeNotFound                            => Int32 -6
+      | CodeNotApprovedForAll                   => Int32 -7
+      | CodeNotOwnerOrOperator                  => Int32 -8
+      | CodeNotApprovedSpenderOrOperator        => Int32 -9
+      | CodeNotOwnerOrOperatorOrApprovedSpender => Int32 -10
+      | CodeStageError                          => Int32 -11
       
       end
     in
@@ -175,50 +149,34 @@ contract DragonZIL
   end
 )
 
-(* Mutable fields *)
-
-(* DragonZIL fields *)
-field entropy : Uint256 = Uint256 0
+field entropy : Uint256 = zero
 field max_stage : Uint32 = Uint32 1
-
 field token_gen_battle: Map Uint256 Uint256 = Emp Uint256 Uint256
 field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
-
-field token_id_count: Uint256 = Uint256 0
-
+field token_id_count: Uint256 = zero
 field cloud: String = dummy_str
 field format_img: String = ".png"
 field token_stage: Map Uint256 Uint32 = Emp Uint256 Uint32
 field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
   = Emp ByStr20 (Map Uint256 Uint32)
-(* DragonZIL fields *)
-
-(* Mapping of minters available *)
 field minters: Map ByStr20 Dummy =
     let emp_map = Emp ByStr20 Dummy in
     builtin put emp_map contract_owner verdad
 
-(* Mapping between token_id to token_owner *)
 field token_owners: Map Uint256 ByStr20 = Emp Uint256 ByStr20
-
-(* Mapping from owner to number of owned tokens *)
 field owned_token_count: Map ByStr20 Uint256 = Emp ByStr20 Uint256
-
-(* Mapping between token_id to approved address                              *)
-(* @dev: There can only be one approved address per token at any given time. *)
 field token_approvals: Map Uint256 ByStr20 = Emp Uint256 ByStr20
-
-(* Mapping of token_owner to operator  *)
 field operator_approvals: Map ByStr20 (Map ByStr20 Dummy)
                             = Emp ByStr20 (Map ByStr20 Dummy)
-
-(* Mapping from token_id to token_uri *)
 field token_uris: Map Uint256 String = Emp Uint256 String
+field total_supply: Uint256 = zero
+field migrate_option: MigrateOption = op_battle
 
-(* Total token count *)
-field total_supply: Uint256 = Uint256 0
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
 
-(* DragonZIL procedures *)
 procedure ChangeTokenURI(token_id: Uint256, stage: Uint32)
   cloud_url <- cloud;
   format <- format_img;
@@ -233,446 +191,6 @@ procedure ChangeTokenURI(token_id: Uint256, stage: Uint32)
 
   (* Add token_uri for token_id *)
   token_uris[token_id] := token_uri
-end
-
-procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
-  random = random_val;
-  (* gens init for current token *)
-  gens_image_ = Uint256 777;
-  gen_tmp = Uint256 0;
-
-  (* image gen Aura - 5 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one zero;
-  gen = calc_gens_tmp_new gen gen_rand two zero;
-  gen = calc_gens_tmp_new gen gen_rand three zero;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five one;
-  gen = calc_gens_tmp_new gen gen_rand six one;
-  gen = calc_gens_tmp_new gen gen_rand seven two;
-  gen = calc_gens_tmp_new gen gen_rand eight three;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 four five;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Aura *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Horns - 7 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one zero;
-  gen = calc_gens_tmp_new gen gen_rand two zero;
-  gen = calc_gens_tmp_new gen gen_rand three one;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five two;
-  gen = calc_gens_tmp_new gen gen_rand six three;
-  gen = calc_gens_tmp_new gen gen_rand seven four;
-  gen = calc_gens_tmp_new gen gen_rand eight five;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 six seven;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Horns *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Scales - 4 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one zero;
-  gen = calc_gens_tmp_new gen gen_rand two zero;
-  gen = calc_gens_tmp_new gen gen_rand three zero;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five one;
-  gen = calc_gens_tmp_new gen gen_rand six one;
-  gen = calc_gens_tmp_new gen gen_rand seven two;
-  gen = calc_gens_tmp_new gen gen_rand eight two;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 three four;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Scales *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Spots - 9 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one one;
-  gen = calc_gens_tmp_new gen gen_rand two one;
-  gen = calc_gens_tmp_new gen gen_rand three two;
-  gen = calc_gens_tmp_new gen gen_rand four three;
-  gen = calc_gens_tmp_new gen gen_rand five four;
-  gen = calc_gens_tmp_new gen gen_rand six five;
-  gen = calc_gens_tmp_new gen gen_rand seven six;
-  gen = calc_gens_tmp_new gen gen_rand eight seven;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 eight nine;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Spots *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Tail - 8 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one one;
-  gen = calc_gens_tmp_new gen gen_rand two one;
-  gen = calc_gens_tmp_new gen gen_rand three one;
-  gen = calc_gens_tmp_new gen gen_rand four two;
-  gen = calc_gens_tmp_new gen gen_rand five three;
-  gen = calc_gens_tmp_new gen gen_rand six four;
-  gen = calc_gens_tmp_new gen gen_rand seven five;
-  gen = calc_gens_tmp_new gen gen_rand eight six;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 seven eight;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Tail *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Wings - 5 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one zero;
-  gen = calc_gens_tmp_new gen gen_rand two zero;
-  gen = calc_gens_tmp_new gen gen_rand three one;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five one;
-  gen = calc_gens_tmp_new gen gen_rand six two;
-  gen = calc_gens_tmp_new gen gen_rand seven two;
-  gen = calc_gens_tmp_new gen gen_rand eight three;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 four five;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Wings *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Spins - 4 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one zero;
-  gen = calc_gens_tmp_new gen gen_rand two zero;
-  gen = calc_gens_tmp_new gen gen_rand three one;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five two;
-  gen = calc_gens_tmp_new gen gen_rand six two;
-  gen = calc_gens_tmp_new gen gen_rand seven two;
-  gen = calc_gens_tmp_new gen gen_rand eight two;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 three four;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Spins *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Body - 3 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
-  gen = calc_gens_tmp_new gen gen_rand one one;
-  gen = calc_gens_tmp_new gen gen_rand two one;
-  gen = calc_gens_tmp_new gen gen_rand three one;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five one;
-  gen = calc_gens_tmp_new gen gen_rand six one;
-  gen = calc_gens_tmp_new gen gen_rand seven one;
-  gen = calc_gens_tmp_new gen gen_rand eight one;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 two three;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Body *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Eyes - 9 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
-  gen = calc_gens_tmp_new gen gen_rand one one;
-  gen = calc_gens_tmp_new gen gen_rand two one;
-  gen = calc_gens_tmp_new gen gen_rand three two;
-  gen = calc_gens_tmp_new gen gen_rand four three;
-  gen = calc_gens_tmp_new gen gen_rand five four;
-  gen = calc_gens_tmp_new gen gen_rand six five;
-  gen = calc_gens_tmp_new gen gen_rand seven six;
-  gen = calc_gens_tmp_new gen gen_rand eight seven;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 eight nine;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Eyes *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Head - 5 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
-  gen = calc_gens_tmp_new gen gen_rand one one;
-  gen = calc_gens_tmp_new gen gen_rand two one;
-  gen = calc_gens_tmp_new gen gen_rand three one;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five one;
-  gen = calc_gens_tmp_new gen gen_rand six one;
-  gen = calc_gens_tmp_new gen gen_rand seven two;
-  gen = calc_gens_tmp_new gen gen_rand eight three;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 four five;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Claws *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* color scheme *)
-  gen_rand = builtin rem random ten3;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten3;
-  gen_rand = builtin div gen_rand four;
-  i = builtin mul gens_image_ ten3;
-  i2 = builtin add i gen_rand;
-  gens_image_ = i2;
-
-  (* mutagenImutable *)
-  (* last gen no need to move to next digit *)
-  gen_rand = builtin rem random ten3;
-  gen_rand = builtin div gen_rand four;
-  i = builtin mul gens_image_ ten3;
-  i2 = builtin add i gen_rand;
-  gens_image_ = i2;
-
-  (* store gens to token *)
-  token_gen_image[token_id] := gens_image_
-end
-
-procedure GenerateGens(token_id: Uint256, to: ByStr20)
-  entropyNumber <- entropy;
-  current_block <- & BLOCKNUMBER;
-
-  random1 = random entropyNumber current_block to;
-  random2 = random random1 current_block to;
-
-  entropy := random2;
-
-  token_gen_battle[token_id] := random1;
-  GenerateImageGen token_id random2
-end
-
-
-(* DragonZIL procedures *)
-
-(* Emit Errors *)
-procedure ThrowError(err : Error)
-  e = make_error err;
-  throw e
 end
 
 procedure IsContractOwner()
@@ -811,24 +329,15 @@ procedure UpdateTokenCount(operation: Operation, address: ByStr20)
   end
 end
 
-procedure Minting(token_id: Uint256, to: ByStr20)
-  (* Add address stage. *)
-  tokens_owner_stage[to][token_id] := zero32;
-  token_stage[token_id] := zero32;
-  (* Mint new non-fungible token *)
-  token_owners[token_id] := to;
-  (* Generate some uri for token. *)
-  ChangeTokenURI token_id zero32;
-  (* Add to owner count *)
-  UpdateTokenCount add_operation to;
-
+procedure EmitEventMinted(token_id: Uint256, owner: ByStr20)
   some_token_uri <- token_uris[token_id];
+
   match some_token_uri with
   | Some token_uri => 
     e = {
       _eventname: "MintSuccess";
       by: _sender;
-      recipient: to;
+      recipient: owner;
       token_id: token_id;
       token_uri: token_uri
     };
@@ -837,23 +346,38 @@ procedure Minting(token_id: Uint256, to: ByStr20)
   end
 end
 
-procedure MintFor(to: ByStr20)
+procedure EventsMigrate(id: Uint256)
+  some_token_owner <- token_owners[id];
+
+  match some_token_owner with
+  | Some token_owner => 
+    EmitEventMinted id token_owner
+  | None =>
+  end
+end
+
+procedure Minting(input: Dragon)
   current_supply <- total_supply;
   current_count <- token_id_count;
 
-  new_supply = builtin add current_supply one;
-  new_count = builtin add current_count one;
-  (* Initiate token_id *)
-  token_id = new_count;
+  match input with
+  | Dragon owner gen_image gen_battle =>
+    new_supply = builtin add current_supply one;
+    new_count = builtin add current_count one;
 
-  GenerateGens token_id to;
-  Minting token_id to;
+    tokens_owner_stage[owner][new_count] := zero32;
+    token_stage[new_count] := zero32;
+    token_owners[new_count] := owner;
+    token_gen_battle[new_count] := gen_battle;
+    token_gen_image[new_count] := gen_image;
 
-  (* Add to total_supply *)
-  total_supply := new_supply;
-  (* Add to total_count *)
-  token_id_count := new_count
+    ChangeTokenURI new_count zero32;
+    UpdateTokenCount add_operation owner;
 
+    total_supply := new_supply;
+    token_id_count := new_count;
+    EmitEventMinted new_count owner
+  end
 end
 
 procedure ChangeBattleGen(id_gen: Pair Uint256 Uint256)
@@ -882,92 +406,6 @@ procedure ChangeBattleGen(id_gen: Pair Uint256 Uint256)
 end
 
 (* Interface transitions *)
-
-transition Migrate0()
-  gens <- token_gen_battle;
-  gens_size = builtin size gens;
-  is_zero = builtin eq gens_size zero32;
-
-  match is_zero with
-  | True =>
-    old_token_gen_battle <-& old.token_gen_battle;
-    token_gen_battle := old_token_gen_battle
-  | False =>
-  end
-end
-transition Migrate1()
-  gens <- token_gen_image;
-  gens_size = builtin size gens;
-  is_zero = builtin eq gens_size zero32;
-
-  match is_zero with
-  | True =>
-    old_token_gen_image <-& old.token_gen_image;
-    token_gen_image := old_token_gen_image
-  | False =>
-  end
-end
-transition Migrate2()
-  count <- token_id_count;
-  is_zero = builtin eq count zero;
-  match is_zero with
-  | True =>
-    old_token_id_count <-& old.token_id_count;
-    old_token_stage <-& old.token_stage;
-    token_id_count := old_token_id_count;
-    token_stage := old_token_stage
-  | False =>
-  end
-end
-transition Migrate3()
-  currect <- tokens_owner_stage;
-  gens_size = builtin size currect;
-  is_zero = builtin eq gens_size zero32;
-
-  match is_zero with
-  | True =>
-    old_tokens_owner_stage <-& old.tokens_owner_stage;
-    tokens_owner_stage := old_tokens_owner_stage
-  | False =>
-  end
-end
-transition Migrate4()
-  current <- token_uris;
-  gens_size = builtin size current;
-  is_zero = builtin eq gens_size zero32;
-
-  match is_zero with
-  | True =>
-    old_token_uris <-& old.token_uris;
-    token_uris := old_token_uris
-  | False =>
-  end
-end
-transition Migrate5()
-  t_supply <- total_supply;
-  is_zero = builtin eq t_supply zero;
-
-  match is_zero with
-  | True =>
-    old_token_owners <-& old.token_owners;
-    old_total_supply <-& old.total_supply;
-
-    token_owners := old_token_owners;
-    total_supply := old_total_supply
-  | False =>
-  end
-end
-transition Migrate6()
-  count <- owned_token_count;
-  gens_size = builtin size count;
-  is_zero = builtin eq gens_size zero32;
-  match is_zero with
-  | True =>
-    old_owned_token_count <-& old.owned_token_count;
-    owned_token_count := old_owned_token_count
-  | False =>
-  end
-end
 
 transition UpStage(token_id: Uint256)
   IsOwnerOrOperatorOrApprovedSpender token_id _sender;
@@ -1073,11 +511,13 @@ transition ConfigureMinter(minter: ByStr20)
   end
 end
 
-transition Mint(to: ByStr20)
+transition Mint(to: ByStr20, toekn_gens: Pair Uint256 Uint256)
   IsMinter _sender;
   
-  MintFor to;
-  
+  tmp_fun = build_dragon to toekn_gens;
+
+  Minting tmp_fun;
+
   msg_to_recipient = {
     _tag : "RecipientAcceptMint";
     _recipient : to;
@@ -1087,26 +527,25 @@ transition Mint(to: ByStr20)
   send msgs
 end
 
-transition BatchMint(onwers: List ByStr20)
+transition BatchMint(to: ByStr20, gens_token_list: List (Pair Uint256 Uint256))
   IsMinter _sender;
 
-  forall onwers MintFor;
-  
-  own_head = @list_head ByStr20;
-  option_to = own_head onwers;
-  match option_to with
-  | Some to =>
-    msg_to_recipient = {
-      _tag : "RecipientAcceptMint";
-      _recipient : to;
-      _amount : Uint128 0
-    };
-    msgs = one_msg msg_to_recipient;
-    send msgs
-  | None =>
-    err = CodeListEmpty;
-    ThrowError err
-  end
+  tmp_fun = build_dragon to;
+  input_list = pair_token_gens_list tmp_fun gens_token_list;
+  forall input_list Minting;
+
+  msg_to_recipient = {
+    _tag: "RecipientAcceptBatchMint";
+    _recipient: to;
+    _amount: Uint128 0
+  };
+  msg_to_sender = {
+    _tag: "BatchMintCallBack";
+    _recipient: _sender;
+    _amount: Uint128 0
+  };
+  msgs = two_msgs msg_to_recipient msg_to_sender;
+  send msgs
 end
 
 transition Burn(token_id: Uint256)
@@ -1347,3 +786,61 @@ transition TransferFrom(to: ByStr20, token_id: Uint256)
   end
 end
 
+transition Migrate()
+  migrator <- migrate_option;
+
+  match migrator with
+  | Battle =>
+    old_token_gen_battle <-& old.token_gen_battle;
+    token_gen_battle := old_token_gen_battle;
+    migrate_option := op_image
+  | Image =>
+    old_token_gen_image <-& old.token_gen_image;
+    token_gen_image := old_token_gen_image;
+    migrate_option := op_counters
+  | Counters =>
+    old_token_id_count <-& old.token_id_count;
+    old_total_supply <-& old.total_supply;
+    token_id_count := old_token_id_count;
+    total_supply := old_total_supply;
+    migrate_option := op_token_stage
+  | TokenStage =>
+    old_token_stage <-& old.token_stage;
+    token_stage := old_token_stage;
+    migrate_option := op_tokens_owner_stage
+  | TokensOwnerStage =>
+    old_tokens_owner_stage <-& old.tokens_owner_stage;
+    tokens_owner_stage := old_tokens_owner_stage;
+    migrate_option := op_token_owners
+  | TokenOwners =>
+    old_token_owners <-& old.token_owners;
+    token_owners := old_token_owners;
+    migrate_option := op_owned_token_count
+  | OwnedTokenCount =>
+    old_owned_token_count <-& old.owned_token_count;
+    owned_token_count := old_owned_token_count;
+    migrate_option := op_token_uris
+  | TokenUris =>
+    old_token_uris <-& old.token_uris;
+    token_uris := old_token_uris;
+    migrate_option := op_done
+  | Done =>
+  end
+end
+
+transition MigrateEvents(ids: List Uint256)
+  migrator <- migrate_option;
+
+  match migrator with
+  | Battle =>
+  | Image =>
+  | Counters =>
+  | TokenStage =>
+  | TokensOwnerStage =>
+  | TokenOwners =>
+  | OwnedTokenCount =>
+  | TokenUris =>
+  | Done =>
+    forall ids EventsMigrate
+  end
+end
