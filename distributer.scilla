@@ -37,6 +37,7 @@ let nine = Uint256 9
 let ten = Uint256 10
 let ten2 = Uint256 100
 let ten3 = Uint256 1000
+let start_gim = Uint256 7770
 
 (* Library functions *)
 let one_msg = 
@@ -130,7 +131,7 @@ let re_random =
     let r0 = next_digit r gr in
       builtin rem r0 ten
 
-let get_aura =
+let get_detail_gen =
   fun (gr0: Uint256) =>
   fun (gr1: Uint256) =>
   fun (detail: ImageDetails) =>
@@ -164,6 +165,28 @@ let get_aura =
       let gen = get_one_gen gr0 one one one one one one one two three in
         calc_gens_2opt gen gr0 nine gr1 four five
     end
+
+let get_details_color =
+  fun (r: Uint256) =>
+    let gr = builtin rem r ten in
+
+let get_image_gens =
+  fun (r: Uint256) =>
+    let gr0 = builtin rem r ten in
+    let gr1 = re_random r gr0 in
+    let aura = get_detail_gen gr0 gr1 Aura in
+    let gr2 = builtin rem gr1 ten in
+    let aura_color = builtin div gr2 two in
+
+    gen_rand = builtin rem random ten;
+    gen = builtin div gen_rand two;
+
+    let gim0 = builtin add start_gim aura in
+    let gim1 = builtin mul gim0 ten in
+    let gim2 = builtin add gim1 aura_color in
+
+
+
 
 let make_error =
   fun (result : Error) =>
