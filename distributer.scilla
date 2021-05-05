@@ -4,27 +4,8 @@ scilla_version 0
 (*               Associated library                *)
 (***************************************************)
 import BoolUtils PairUtils ListUtils
-library DragonZIL
+library DragonZILDistributerLib
 
-(* User-defined ADTs *)
-type Dummy =
-| Dummy
-
-type Operation =
-| Add
-| Sub
-
-(* DragonZIL types *)
-(* Custom ADT storing - token_id, owner, stage, token_uri, token_gen_battle, token_gen_image *)
-type Dragon =
-| Dragon of Uint256 ByStr20 Uint32 String Uint256 Uint256
-
-(* Custom ADT storing - token_id, token_gen_battle *)
-type IdBattleGenPair =
-| IdBattleGenPair of Uint256 Uint256
-(* DragonZIL types *)
-
-(* Global variables *)
 let zero = Uint256 0
 let one = Uint256 1
 let verdad = Dummy
@@ -59,22 +40,6 @@ let two_msgs =
   fun (msg2 : Message) =>
     let msgs_tmp = one_msg msg2 in
     Cons {Message} msg1 msgs_tmp
-
-let get_bal =
-  fun (some_bal: Option Uint256) =>
-    match some_bal with
-    | Some bal => bal
-    | None => zero
-    end
-
-let option_value =
-  tfun 'A =>
-  fun (default: 'A) =>
-  fun (opt_val: Option 'A) =>
-    match opt_val with
-    | Some v => v
-    | None => default
-    end
 
 let random =
   fun (entropy: Uint256) =>
@@ -123,60 +88,52 @@ let calc_gens_2opt =
     | False => old_val
     end
 
-let option_address = @option_value ByStr20
-let option_str = @option_value String
-let option_uint32 = @option_value Uint32
-let option_uint256 = @option_value Uint256
-let option_uint128 = @option_value Uint128
+let get_one_gen =
+  fun (gen_rand: Uint256) =>
+  fun (c0: Uint256) =>
+  fun (c1: Uint256) =>
+  fun (c2: Uint256) =>
+  fun (c3: Uint256) =>
+  fun (c4: Uint256) =>
+  fun (c5: Uint256) =>
+  fun (c6: Uint256) =>
+  fun (c7: Uint256) =>
+  fun (c8: Uint256) =>
+  fun (c9: Uint256) =>
+    let gen0 = calc_gens_tmp_new zero gen_rand zero c0 in
+    let gen1 = calc_gens_tmp_new gen0 gen_rand zero c1 in
+    let gen2 = calc_gens_tmp_new gen1 gen_rand zero c2 in
+    let gen3 = calc_gens_tmp_new gen2 gen_rand zero c3 in
+    let gen4 = calc_gens_tmp_new gen3 gen_rand zero c4 in
+    let gen5 = calc_gens_tmp_new gen4 gen_rand zero c5 in
+    let gen6 = calc_gens_tmp_new gen5 gen_rand zero c6 in
+    let gen7 = calc_gens_tmp_new gen6 gen_rand zero c7 in
+      calc_gens_tmp_new gen7 gen_rand zero c8
 
-let build_dragon =
-  fun (token_id: Uint256) =>
-  fun (some_token_owner: Option ByStr20) =>
-  fun (some_token_uri: Option String) =>
-  fun (some_token_gen_battle: Option Uint256) =>
-  fun (some_token_gen_image: Option Uint256) =>
-  fun (some_token_stage: Option Uint32) =>
-    let owner = option_address zero_address some_token_owner in
-    let uri = option_str dummy_str some_token_uri in
-    let gen_battle = option_uint256 zero some_token_gen_battle in
-    let gen_image = option_uint256 zero some_token_gen_image in
-    let stage = option_uint32 default_stage some_token_stage in
-      Dragon token_id owner stage uri gen_battle gen_image
+let re_random =
+  fun (r: Uint256) =>
+  fun (gr: Uint256) =>
+    let r0 = builtin sub r gr in
+    let r1 = builtin div r0 ten in
+      builtin rem r1 ten
 
-(* Error exception *)
+let get_gens =
+  fun (random: Uint256) =>
+    let gens_image_ = Uint256 777 in
+    let gr0 = builtin rem random ten in
+    let gen0 = get_one_gen gr0 zero zero zero zero one one one two three in
+    let gr1 = re_random random gr0 in
+    let aura = calc_gens_2opt gen0 gr0 nine gr1 four five in
+
+    (* Error exception *)
 type Error =
   | CodeNotContractOwner
-  | CodeIsSelf
-  | CodeTokenExists
-  | CodeIsNotMinter
-  | CodeNotApproved
-  | CodeNotTokenOwner
-  | CodeNotFound
-  | CodeNotApprovedForAll
-  | CodeNotOwnerOrOperator
-  | CodeNotApprovedSpenderOrOperator
-  | CodeNotOwnerOrOperatorOrApprovedSpender
-  | CodeStageError
-  | CodeListEmpty
 
 let make_error =
   fun (result : Error) =>
     let result_code = 
       match result with
-      | CodeNotContractOwner             => Int32 -1
-      | CodeIsSelf                       => Int32 -2
-      | CodeTokenExists                  => Int32 -3
-      | CodeIsNotMinter                  => Int32 -4
-      | CodeNotApproved                  => Int32 -5
-      | CodeNotTokenOwner                => Int32 -6
-      | CodeNotFound                     => Int32 -7
-      | CodeNotApprovedForAll            => Int32 -8
-      | CodeNotOwnerOrOperator           => Int32 -9
-      | CodeNotApprovedSpenderOrOperator => Int32 -10
-      | CodeNotOwnerOrOperatorOrApprovedSpender => Int32 -11
-      | CodeStageError                   => Int32 -12
-      | CodeListEmpty                    => Int32 -13
-      
+      | CodeNotContractOwner => Int32 -1
       end
     in
     { _exception : "Error"; code : result_code }
@@ -185,74 +142,12 @@ let make_error =
 (*             The contract definition             *)
 (***************************************************)
 
-contract DragonZIL
+contract DragonZILDistributer
 (
-  contract_owner: ByStr20,
-  name : String,
-  symbol: String
+  contract_owner: ByStr20
 )
 
-(* Mutable fields *)
-
-(* DragonZIL fields *)
 field entropy : Uint256 = Uint256 0
-field max_stage : Uint32 = Uint32 1
-
-field token_gen_battle: Map Uint256 Uint256 = Emp Uint256 Uint256
-field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
-
-field token_id_count: Uint256 = Uint256 0
-
-field tmp: List (Dragon) = Nil {Dragon}
-
-field cloud: String = ""
-field format_img: String = ".png"
-field token_stage: Map Uint256 Uint32 = Emp Uint256 Uint32
-field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
-  = Emp ByStr20 (Map Uint256 Uint32)
-(* DragonZIL fields *)
-
-(* Mapping of minters available *)
-field minters: Map ByStr20 Dummy =
-    let emp_map = Emp ByStr20 Dummy in
-    builtin put emp_map contract_owner verdad
-
-(* Mapping between token_id to token_owner *)
-field token_owners: Map Uint256 ByStr20 = Emp Uint256 ByStr20
-
-(* Mapping from owner to number of owned tokens *)
-field owned_token_count: Map ByStr20 Uint256 = Emp ByStr20 Uint256
-
-(* Mapping between token_id to approved address                              *)
-(* @dev: There can only be one approved address per token at any given time. *)
-field token_approvals: Map Uint256 ByStr20 = Emp Uint256 ByStr20
-
-(* Mapping of token_owner to operator  *)
-field operator_approvals: Map ByStr20 (Map ByStr20 Dummy)
-                            = Emp ByStr20 (Map ByStr20 Dummy)
-
-(* Mapping from token_id to token_uri *)
-field token_uris: Map Uint256 String = Emp Uint256 String
-
-(* Total token count *)
-field total_supply: Uint256 = Uint256 0
-
-(* DragonZIL procedures *)
-procedure ChangeTokenURI(token_id: Uint256, stage: Uint32)
-  cloud_url <- cloud;
-  format <- format_img;
-  separate = "_";
-
-  stage_as_astring = builtin to_string stage;
-  stage_separate = builtin concat stage_as_astring separate;
-  number_of_token = builtin to_string token_id;
-  id_name = builtin concat stage_separate number_of_token;
-  token_image_name = builtin concat id_name format;
-  token_uri = builtin concat cloud_url token_image_name;
-
-  (* Add token_uri for token_id *)
-  token_uris[token_id] := token_uri
-end
 
 procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   random = random_val;
