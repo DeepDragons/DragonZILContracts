@@ -1,0 +1,694 @@
+scilla_version 0
+
+(***************************************************)
+(*               Associated library                *)
+(***************************************************)
+import BoolUtils PairUtils ListUtils
+library DragonZIL
+
+(* User-defined ADTs *)
+type Dummy =
+| Dummy
+
+type Operation =
+| Add
+| Sub
+
+(* DragonZIL types *)
+(* Custom ADT storing - token_id, owner, stage, token_uri, token_gen_battle, token_gen_image *)
+type Dragon =
+| Dragon of Uint256 ByStr20 Uint32 String Uint256 Uint256
+
+(* Custom ADT storing - token_id, token_gen_battle *)
+type IdBattleGenPair =
+| IdBattleGenPair of Uint256 Uint256
+(* DragonZIL types *)
+
+(* Global variables *)
+let zero = Uint256 0
+let one = Uint256 1
+let verdad = Dummy
+let add_operation = Add
+let sub_operation = Sub
+
+let zero_address = 0x0000000000000000000000000000000000000000
+let dummy_str = ""
+let default_stage = Uint32 0
+let zero = Uint256 0
+let one = Uint256 1
+let two = Uint256 2
+let three = Uint256 3
+let four = Uint256 4
+let five = Uint256 5
+let six = Uint256 6
+let seven = Uint256 7
+let eight = Uint256 8
+let nine = Uint256 9
+let ten = Uint256 10
+let ten2 = Uint256 100
+let ten3 = Uint256 1000
+
+(* Library functions *)
+let one_msg = 
+  fun (msg : Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+let two_msgs =
+  fun (msg1 : Message) =>
+  fun (msg2 : Message) =>
+    let msgs_tmp = one_msg msg2 in
+    Cons {Message} msg1 msgs_tmp
+
+let get_bal =
+  fun (some_bal: Option Uint256) =>
+    match some_bal with
+    | Some bal => bal
+    | None => zero
+    end
+
+let option_value =
+  tfun 'A =>
+  fun (default: 'A) =>
+  fun (opt_val: Option 'A) =>
+    match opt_val with
+    | Some v => v
+    | None => default
+    end
+
+let random =
+  fun (entropy: Uint256) =>
+  fun (block_number: BNum) =>
+  fun (addr: ByStr20) =>
+    let addr_hash = builtin keccak256hash addr in
+    let entropy_hash = builtin keccak256hash entropy in
+    let blockhash = builtin keccak256hash block_number in
+    let ehash = builtin concat entropy_hash blockhash in
+    let ahash = builtin concat ehash addr_hash in
+    let last_hash = builtin concat ehash ahash in
+    let hash = builtin keccak256hash last_hash in
+      builtin to_uint256 hash
+
+let calc_gens_tmp_new =
+  fun (old_val: Uint256) =>
+  fun (gen_num: Uint256) =>
+  fun (check_with: Uint256) =>
+  fun (val: Uint256) =>
+    let gen_bool = builtin eq gen_num check_with in
+    match gen_bool with
+    | True => val
+    | False => old_val
+    end
+
+let calc_gens_2opt_do =
+  fun (gen_num: Uint256) =>
+  fun (val1: Uint256) =>
+  fun (val2: Uint256) =>
+    let gen_bool = builtin lt gen_num five in
+    match gen_bool with
+    | True => val1
+    | False => val2
+    end
+
+let calc_gens_2opt =
+  fun (old_val: Uint256) =>
+  fun (gen_num: Uint256) =>
+  fun (check_with: Uint256) =>
+  fun (gen_num2: Uint256) =>
+  fun (val1: Uint256) =>
+  fun (val2: Uint256) =>
+    let gen_bool = builtin eq gen_num check_with in
+    match gen_bool with
+    | True => calc_gens_2opt_do gen_num2 val1 val2
+    | False => old_val
+    end
+
+let option_address = @option_value ByStr20
+let option_str = @option_value String
+let option_uint32 = @option_value Uint32
+let option_uint256 = @option_value Uint256
+let option_uint128 = @option_value Uint128
+
+let build_dragon =
+  fun (token_id: Uint256) =>
+  fun (some_token_owner: Option ByStr20) =>
+  fun (some_token_uri: Option String) =>
+  fun (some_token_gen_battle: Option Uint256) =>
+  fun (some_token_gen_image: Option Uint256) =>
+  fun (some_token_stage: Option Uint32) =>
+    let owner = option_address zero_address some_token_owner in
+    let uri = option_str dummy_str some_token_uri in
+    let gen_battle = option_uint256 zero some_token_gen_battle in
+    let gen_image = option_uint256 zero some_token_gen_image in
+    let stage = option_uint32 default_stage some_token_stage in
+      Dragon token_id owner stage uri gen_battle gen_image
+
+(* Error exception *)
+type Error =
+  | CodeNotContractOwner
+  | CodeIsSelf
+  | CodeTokenExists
+  | CodeIsNotMinter
+  | CodeNotApproved
+  | CodeNotTokenOwner
+  | CodeNotFound
+  | CodeNotApprovedForAll
+  | CodeNotOwnerOrOperator
+  | CodeNotApprovedSpenderOrOperator
+  | CodeNotOwnerOrOperatorOrApprovedSpender
+  | CodeStageError
+  | CodeListEmpty
+
+let make_error =
+  fun (result : Error) =>
+    let result_code = 
+      match result with
+      | CodeNotContractOwner             => Int32 -1
+      | CodeIsSelf                       => Int32 -2
+      | CodeTokenExists                  => Int32 -3
+      | CodeIsNotMinter                  => Int32 -4
+      | CodeNotApproved                  => Int32 -5
+      | CodeNotTokenOwner                => Int32 -6
+      | CodeNotFound                     => Int32 -7
+      | CodeNotApprovedForAll            => Int32 -8
+      | CodeNotOwnerOrOperator           => Int32 -9
+      | CodeNotApprovedSpenderOrOperator => Int32 -10
+      | CodeNotOwnerOrOperatorOrApprovedSpender => Int32 -11
+      | CodeStageError                   => Int32 -12
+      | CodeListEmpty                    => Int32 -13
+      
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
+
+contract DragonZIL
+(
+  contract_owner: ByStr20,
+  name : String,
+  symbol: String
+)
+
+(* Mutable fields *)
+
+(* DragonZIL fields *)
+field entropy : Uint256 = Uint256 0
+field max_stage : Uint32 = Uint32 1
+
+field token_gen_battle: Map Uint256 Uint256 = Emp Uint256 Uint256
+field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
+
+field token_id_count: Uint256 = Uint256 0
+
+field tmp: List (Dragon) = Nil {Dragon}
+
+field cloud: String = ""
+field format_img: String = ".png"
+field token_stage: Map Uint256 Uint32 = Emp Uint256 Uint32
+field tokens_owner_stage: Map ByStr20 (Map Uint256 Uint32)
+  = Emp ByStr20 (Map Uint256 Uint32)
+(* DragonZIL fields *)
+
+(* Mapping of minters available *)
+field minters: Map ByStr20 Dummy =
+    let emp_map = Emp ByStr20 Dummy in
+    builtin put emp_map contract_owner verdad
+
+(* Mapping between token_id to token_owner *)
+field token_owners: Map Uint256 ByStr20 = Emp Uint256 ByStr20
+
+(* Mapping from owner to number of owned tokens *)
+field owned_token_count: Map ByStr20 Uint256 = Emp ByStr20 Uint256
+
+(* Mapping between token_id to approved address                              *)
+(* @dev: There can only be one approved address per token at any given time. *)
+field token_approvals: Map Uint256 ByStr20 = Emp Uint256 ByStr20
+
+(* Mapping of token_owner to operator  *)
+field operator_approvals: Map ByStr20 (Map ByStr20 Dummy)
+                            = Emp ByStr20 (Map ByStr20 Dummy)
+
+(* Mapping from token_id to token_uri *)
+field token_uris: Map Uint256 String = Emp Uint256 String
+
+(* Total token count *)
+field total_supply: Uint256 = Uint256 0
+
+(* DragonZIL procedures *)
+procedure ChangeTokenURI(token_id: Uint256, stage: Uint32)
+  cloud_url <- cloud;
+  format <- format_img;
+  separate = "_";
+
+  stage_as_astring = builtin to_string stage;
+  stage_separate = builtin concat stage_as_astring separate;
+  number_of_token = builtin to_string token_id;
+  id_name = builtin concat stage_separate number_of_token;
+  token_image_name = builtin concat id_name format;
+  token_uri = builtin concat cloud_url token_image_name;
+
+  (* Add token_uri for token_id *)
+  token_uris[token_id] := token_uri
+end
+
+procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
+  random = random_val;
+  (* gens init for current token *)
+  gens_image_ = Uint256 777;
+  gen_tmp = Uint256 0;
+
+  (* image gen Aura - 5 types *)
+  gen_rand = builtin rem random ten;
+  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
+  gen = calc_gens_tmp_new gen gen_rand one zero;
+  gen = calc_gens_tmp_new gen gen_rand two zero;
+  gen = calc_gens_tmp_new gen gen_rand three zero;
+  gen = calc_gens_tmp_new gen gen_rand four one;
+  gen = calc_gens_tmp_new gen gen_rand five one;
+  gen = calc_gens_tmp_new gen gen_rand six one;
+  gen = calc_gens_tmp_new gen gen_rand seven two;
+  gen = calc_gens_tmp_new gen gen_rand eight three;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 four five;
+  gen_rand = gen_rand2;
+
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Aura *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Horns - 7 types *)
+  gen_rand = builtin rem random ten;
+  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
+  gen = calc_gens_tmp_new gen gen_rand one zero;
+  gen = calc_gens_tmp_new gen gen_rand two zero;
+  gen = calc_gens_tmp_new gen gen_rand three one;
+  gen = calc_gens_tmp_new gen gen_rand four one;
+  gen = calc_gens_tmp_new gen gen_rand five two;
+  gen = calc_gens_tmp_new gen gen_rand six three;
+  gen = calc_gens_tmp_new gen gen_rand seven four;
+  gen = calc_gens_tmp_new gen gen_rand eight five;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 six seven;
+  gen_rand = gen_rand2;
+
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Horns *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Scales - 4 types *)
+  gen_rand = builtin rem random ten;
+  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
+  gen = calc_gens_tmp_new gen gen_rand one zero;
+  gen = calc_gens_tmp_new gen gen_rand two zero;
+  gen = calc_gens_tmp_new gen gen_rand three zero;
+  gen = calc_gens_tmp_new gen gen_rand four one;
+  gen = calc_gens_tmp_new gen gen_rand five one;
+  gen = calc_gens_tmp_new gen gen_rand six one;
+  gen = calc_gens_tmp_new gen gen_rand seven two;
+  gen = calc_gens_tmp_new gen gen_rand eight two;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 three four;
+  gen_rand = gen_rand2;
+
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Scales *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Spots - 9 types *)
+  gen_rand = builtin rem random ten;
+  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
+  gen = calc_gens_tmp_new gen gen_rand one one;
+  gen = calc_gens_tmp_new gen gen_rand two one;
+  gen = calc_gens_tmp_new gen gen_rand three two;
+  gen = calc_gens_tmp_new gen gen_rand four three;
+  gen = calc_gens_tmp_new gen gen_rand five four;
+  gen = calc_gens_tmp_new gen gen_rand six five;
+  gen = calc_gens_tmp_new gen gen_rand seven six;
+  gen = calc_gens_tmp_new gen gen_rand eight seven;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 eight nine;
+  gen_rand = gen_rand2;
+
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Spots *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Tail - 8 types *)
+  gen_rand = builtin rem random ten;
+  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
+  gen = calc_gens_tmp_new gen gen_rand one one;
+  gen = calc_gens_tmp_new gen gen_rand two one;
+  gen = calc_gens_tmp_new gen gen_rand three one;
+  gen = calc_gens_tmp_new gen gen_rand four two;
+  gen = calc_gens_tmp_new gen gen_rand five three;
+  gen = calc_gens_tmp_new gen gen_rand six four;
+  gen = calc_gens_tmp_new gen gen_rand seven five;
+  gen = calc_gens_tmp_new gen gen_rand eight six;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 seven eight;
+  gen_rand = gen_rand2;
+
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Tail *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Wings - 5 types *)
+  gen_rand = builtin rem random ten;
+  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
+  gen = calc_gens_tmp_new gen gen_rand one zero;
+  gen = calc_gens_tmp_new gen gen_rand two zero;
+  gen = calc_gens_tmp_new gen gen_rand three one;
+  gen = calc_gens_tmp_new gen gen_rand four one;
+  gen = calc_gens_tmp_new gen gen_rand five one;
+  gen = calc_gens_tmp_new gen gen_rand six two;
+  gen = calc_gens_tmp_new gen gen_rand seven two;
+  gen = calc_gens_tmp_new gen gen_rand eight three;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 four five;
+  gen_rand = gen_rand2;
+
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Wings *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Spins - 4 types *)
+  gen_rand = builtin rem random ten;
+  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
+  gen = calc_gens_tmp_new gen gen_rand one zero;
+  gen = calc_gens_tmp_new gen gen_rand two zero;
+  gen = calc_gens_tmp_new gen gen_rand three one;
+  gen = calc_gens_tmp_new gen gen_rand four one;
+  gen = calc_gens_tmp_new gen gen_rand five two;
+  gen = calc_gens_tmp_new gen gen_rand six two;
+  gen = calc_gens_tmp_new gen gen_rand seven two;
+  gen = calc_gens_tmp_new gen gen_rand eight two;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 three four;
+  gen_rand = gen_rand2;
+
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Spins *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Body - 3 types *)
+  gen_rand = builtin rem random ten;
+  gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
+  gen = calc_gens_tmp_new gen gen_rand one one;
+  gen = calc_gens_tmp_new gen gen_rand two one;
+  gen = calc_gens_tmp_new gen gen_rand three one;
+  gen = calc_gens_tmp_new gen gen_rand four one;
+  gen = calc_gens_tmp_new gen gen_rand five one;
+  gen = calc_gens_tmp_new gen gen_rand six one;
+  gen = calc_gens_tmp_new gen gen_rand seven one;
+  gen = calc_gens_tmp_new gen gen_rand eight one;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 two three;
+  gen_rand = gen_rand2;
+
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Body *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Eyes - 9 types *)
+  gen_rand = builtin rem random ten;
+  gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
+  gen = calc_gens_tmp_new gen gen_rand one one;
+  gen = calc_gens_tmp_new gen gen_rand two one;
+  gen = calc_gens_tmp_new gen gen_rand three two;
+  gen = calc_gens_tmp_new gen gen_rand four three;
+  gen = calc_gens_tmp_new gen gen_rand five four;
+  gen = calc_gens_tmp_new gen gen_rand six five;
+  gen = calc_gens_tmp_new gen gen_rand seven six;
+  gen = calc_gens_tmp_new gen gen_rand eight seven;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 eight nine;
+  gen_rand = gen_rand2;
+
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Eyes *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Head - 5 types *)
+  gen_rand = builtin rem random ten;
+  gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
+  gen = calc_gens_tmp_new gen gen_rand one one;
+  gen = calc_gens_tmp_new gen gen_rand two one;
+  gen = calc_gens_tmp_new gen gen_rand three one;
+  gen = calc_gens_tmp_new gen gen_rand four one;
+  gen = calc_gens_tmp_new gen gen_rand five one;
+  gen = calc_gens_tmp_new gen gen_rand six one;
+  gen = calc_gens_tmp_new gen gen_rand seven two;
+  gen = calc_gens_tmp_new gen gen_rand eight three;
+
+  (* 5prc cases *)
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+  gen_rand2 = builtin rem random ten;
+  gen = calc_gens_2opt gen gen_rand nine gen_rand2 four five;
+  gen_rand = gen_rand2;
+
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* image gen Color Claws *)
+  gen_rand = builtin rem random ten;
+  gen = builtin div gen_rand two;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten;
+
+  i = builtin mul gens_image_ ten;
+  i2 = builtin add i gen;
+  gens_image_ = i2;
+
+  (* color scheme *)
+  gen_rand = builtin rem random ten3;
+  (* moving to next digit *)
+  random = builtin sub random gen_rand;
+  random = builtin div random ten3;
+  gen_rand = builtin div gen_rand four;
+  i = builtin mul gens_image_ ten3;
+  i2 = builtin add i gen_rand;
+  gens_image_ = i2;
+
+  (* mutagenImutable *)
+  (* last gen no need to move to next digit *)
+  gen_rand = builtin rem random ten3;
+  gen_rand = builtin div gen_rand four;
+  i = builtin mul gens_image_ ten3;
+  i2 = builtin add i gen_rand;
+  gens_image_ = i2;
+
+  (* store gens to token *)
+  token_gen_image[token_id] := gens_image_
+end
+
+procedure GenerateGens(token_id: Uint256, to: ByStr20)
+  entropyNumber <- entropy;
+  current_block <- & BLOCKNUMBER;
+
+  random1 = random entropyNumber current_block to;
+  random2 = random random1 current_block to;
+
+  entropy := random2;
+
+  token_gen_battle[token_id] := random1;
+  GenerateImageGen token_id random2
+end
+
+(* DragonZIL procedures *)
+
+(* Emit Errors *)
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end

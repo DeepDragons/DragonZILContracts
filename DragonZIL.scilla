@@ -148,7 +148,6 @@ contract DragonZIL
   end
 )
 
-field entropy : Uint256 = zero
 field max_stage : Uint32 = Uint32 1
 field token_gen_battle: Map Uint256 Uint256 = Emp Uint256 Uint256
 field token_gen_image: Map Uint256 Uint256 = Emp Uint256 Uint256
