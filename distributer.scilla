@@ -6,11 +6,20 @@ scilla_version 0
 import BoolUtils PairUtils ListUtils
 library DragonZILDistributerLib
 
-let zero = Uint256 0
-let one = Uint256 1
-let verdad = Dummy
-let add_operation = Add
-let sub_operation = Sub
+type ImageDetails =
+| Aura
+| Horns
+| Scales
+| Spots
+| Tails
+| Wings
+| Spins
+| Body
+| Eyes
+| Head
+
+type Error =
+  | CodeNotContractOwner
 
 let zero_address = 0x0000000000000000000000000000000000000000
 let dummy_str = ""
@@ -99,7 +108,6 @@ let get_one_gen =
   fun (c6: Uint256) =>
   fun (c7: Uint256) =>
   fun (c8: Uint256) =>
-  fun (c9: Uint256) =>
     let gen0 = calc_gens_tmp_new zero gen_rand zero c0 in
     let gen1 = calc_gens_tmp_new gen0 gen_rand zero c1 in
     let gen2 = calc_gens_tmp_new gen1 gen_rand zero c2 in
@@ -110,24 +118,52 @@ let get_one_gen =
     let gen7 = calc_gens_tmp_new gen6 gen_rand zero c7 in
       calc_gens_tmp_new gen7 gen_rand zero c8
 
-let re_random =
+let next_digit =
   fun (r: Uint256) =>
   fun (gr: Uint256) =>
     let r0 = builtin sub r gr in
-    let r1 = builtin div r0 ten in
-      builtin rem r1 ten
+      builtin div r0 ten
 
-let get_gens =
-  fun (random: Uint256) =>
-    let gens_image_ = Uint256 777 in
-    let gr0 = builtin rem random ten in
-    let gen0 = get_one_gen gr0 zero zero zero zero one one one two three in
-    let gr1 = re_random random gr0 in
-    let aura = calc_gens_2opt gen0 gr0 nine gr1 four five in
+let re_random =
+  fun (r: Uint256) =>
+  fun (gr: Uint256) =>
+    let r0 = next_digit r gr in
+      builtin rem r0 ten
 
-    (* Error exception *)
-type Error =
-  | CodeNotContractOwner
+let get_aura =
+  fun (gr0: Uint256) =>
+  fun (gr1: Uint256) =>
+  fun (detail: ImageDetails) =>
+    match detail with
+    | Aura =>
+      let gen = get_one_gen gr0 zero zero zero zero one one one two three in
+        calc_gens_2opt gen gr0 nine gr1 four five
+    | Horns =>
+      let gen = get_one_gen gr0 zero zero zero one one two three four five in
+        calc_gens_2opt gen gr0 nine gr1 six seven
+    | Scales =>
+      let gen = get_one_gen gr0 zero zero zero zero one one one two two in
+        calc_gens_2opt gen gr0 nine gr1 three four
+    | Spots => zero
+    | Tails =>
+      let gen = get_one_gen gr0 zero one one one two three four five six in
+        calc_gens_2opt gen gr0 nine gr1 seven eight
+    | Wings =>
+      let gen = get_one_gen gr0 zero zero zero one one one two two three in
+        calc_gens_2opt gen gr0 nine gr1 four five
+    | Spins =>
+      let gen = get_one_gen gr0 zero zero zero one one two two two two in
+        calc_gens_2opt gen gr0 nine gr1 three four
+    | Body =>
+      let gen = get_one_gen gr0 one one one one one one one one one in
+        calc_gens_2opt gen gr0 nine gr1 two three
+    | Eyes =>
+      let gen = get_one_gen gr0 one one one two three four five six seven in
+        calc_gens_2opt gen gr0 nine gr1 eight nine
+    | Head =>
+      let gen = get_one_gen gr0 one one one one one one one two three in
+        calc_gens_2opt gen gr0 nine gr1 four five
+    end
 
 let make_error =
   fun (result : Error) =>
