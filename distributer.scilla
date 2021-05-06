@@ -49,7 +49,11 @@ let nine = Uint256 9
 let ten = Uint256 10
 let ten2 = Uint256 100
 let ten3 = Uint256 1000
-let start_gim = Uint256 7770
+let start_gim = Uint256 777
+
+
+let first = @fst Uint256 Uint256
+let second = @snd Uint256 Uint256
 
 (* Library functions *)
 let one_msg = 
@@ -184,22 +188,69 @@ let add_to_gens =
     let a = builtin mul gim ten in
       builtin add a gen
 
-let get_image_gens =
+let build_pair =
+  fun (arg0: Uint256) =>
+  fun (arg1: Uint256) =>
+    Pair {Uint256 Uint256} arg0 arg1
+
+let generate_gen =
   fun (r: Uint256) =>
+  fun (gim: Uint256) =>
+  fun (op: ImageDetails) =>
     let gr0 = builtin rem r ten in
     let gr1 = re_random r gr0 in
     let r_next = builtin div r ten2 in
-    (* aura *)
-    let aura = get_detail_gen gr0 gr1 aura_op in
-    let gens = builtin add start_gim aura in
-    (* image gen Color Aura *)
+    let gen = get_detail_gen gr0 gr1 op in
+    let gens = add_to_gens gim gen in
     let gr0 = builtin rem r_next ten in
-    let aura_color = builtin div gr0 two in
-    (* moving to next digit *)
-      add_to_gens gens aura_color
+    let r_next = builtin div r_next ten in
+    let color = builtin div gr0 two in
+    let gens = add_to_gens gens color in
+      build_pair gens r_next
+
+let generate_gens_image =
+  fun (r: Uint256) =>
     (* aura *)
-
-
+    let gens_pair = generate_gen r start_gim aura_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* horns *)
+    let gens_pair = generate_gen next_r gens horns_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* scales *)
+    let gens_pair = generate_gen next_r gens scales_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* spots *)
+    let gens_pair = generate_gen next_r gens spots_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* Tails *)
+    let gens_pair = generate_gen next_r gens tails_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* Wings *)
+    let gens_pair = generate_gen next_r gens wings_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* Spins *)
+    let gens_pair = generate_gen next_r gens spins_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* Body *)
+    let gens_pair = generate_gen next_r gens body_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* Eyes *)
+    let gens_pair = generate_gen next_r gens eyes_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* Head *)
+    let gens_pair = generate_gen next_r gens head_op in
+    let gens = first gens_pair in
+      gens
+      
 
 let make_error =
   fun (result : Error) =>
