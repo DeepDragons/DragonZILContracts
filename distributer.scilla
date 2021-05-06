@@ -21,6 +21,18 @@ type ImageDetails =
 type Error =
   | CodeNotContractOwner
 
+let aura_op = Aura
+let horns_op = Horns
+let scales_op = Scales
+let spots_op = Spots
+let tails_op = Tails
+let wings_op = Wings
+let spins_op = Spins
+let body_op = Body
+let eyes_op = Eyes
+let head_op = Head
+
+
 let zero_address = 0x0000000000000000000000000000000000000000
 let dummy_str = ""
 let default_stage = Uint32 0
@@ -110,14 +122,14 @@ let get_one_gen =
   fun (c7: Uint256) =>
   fun (c8: Uint256) =>
     let gen0 = calc_gens_tmp_new zero gen_rand zero c0 in
-    let gen1 = calc_gens_tmp_new gen0 gen_rand zero c1 in
-    let gen2 = calc_gens_tmp_new gen1 gen_rand zero c2 in
-    let gen3 = calc_gens_tmp_new gen2 gen_rand zero c3 in
-    let gen4 = calc_gens_tmp_new gen3 gen_rand zero c4 in
-    let gen5 = calc_gens_tmp_new gen4 gen_rand zero c5 in
-    let gen6 = calc_gens_tmp_new gen5 gen_rand zero c6 in
-    let gen7 = calc_gens_tmp_new gen6 gen_rand zero c7 in
-      calc_gens_tmp_new gen7 gen_rand zero c8
+    let gen1 = calc_gens_tmp_new gen0 gen_rand one c1 in
+    let gen2 = calc_gens_tmp_new gen1 gen_rand two c2 in
+    let gen3 = calc_gens_tmp_new gen2 gen_rand three c3 in
+    let gen4 = calc_gens_tmp_new gen3 gen_rand four c4 in
+    let gen5 = calc_gens_tmp_new gen4 gen_rand five c5 in
+    let gen6 = calc_gens_tmp_new gen5 gen_rand six c6 in
+    let gen7 = calc_gens_tmp_new gen6 gen_rand seven c7 in
+      calc_gens_tmp_new gen7 gen_rand eight c8
 
 let next_digit =
   fun (r: Uint256) =>
@@ -166,25 +178,26 @@ let get_detail_gen =
         calc_gens_2opt gen gr0 nine gr1 four five
     end
 
-let get_details_color =
-  fun (r: Uint256) =>
-    let gr = builtin rem r ten in
+let add_to_gens =
+  fun (gim: Uint256) =>
+  fun (gen: Uint256) =>
+    let a = builtin mul gim ten in
+      builtin add a gen
 
 let get_image_gens =
   fun (r: Uint256) =>
     let gr0 = builtin rem r ten in
     let gr1 = re_random r gr0 in
-    let aura = get_detail_gen gr0 gr1 Aura in
-    let gr2 = builtin rem gr1 ten in
-    let aura_color = builtin div gr2 two in
-
-    gen_rand = builtin rem random ten;
-    gen = builtin div gen_rand two;
-
-    let gim0 = builtin add start_gim aura in
-    let gim1 = builtin mul gim0 ten in
-    let gim2 = builtin add gim1 aura_color in
-
+    let r_next = builtin div r ten2 in
+    (* aura *)
+    let aura = get_detail_gen gr0 gr1 aura_op in
+    let gens = builtin add start_gim aura in
+    (* image gen Color Aura *)
+    let gr0 = builtin rem r_next ten in
+    let aura_color = builtin div gr0 two in
+    (* moving to next digit *)
+      add_to_gens gens aura_color
+    (* aura *)
 
 
 
