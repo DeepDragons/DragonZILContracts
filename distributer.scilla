@@ -32,7 +32,6 @@ let body_op = Body
 let eyes_op = Eyes
 let head_op = Head
 
-
 let zero_address = 0x0000000000000000000000000000000000000000
 let dummy_str = ""
 let default_stage = Uint32 0
@@ -249,8 +248,23 @@ let generate_gens_image =
     (* Head *)
     let gens_pair = generate_gen next_r gens head_op in
     let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* color schema *)
+    let gr  = builtin rem next_r ten3 in
+    let next_r = builtin sub next_r gr in
+    let next_r = builtin div next_r ten3 in
+    let gr = builtin div gr four in
+    let gens = builtin mul gens ten3 in
+    let gens = builtin add gens gr in
+    (* mutagenImutable *)
+    let gr = builtin rem next_r ten3 in
+    let gr = builtin div gr four in
+    let gens = builtin mul gens ten3 in
+    let gens = builtin add gens gr in
       gens
-      
+
+
+
 
 let make_error =
   fun (result : Error) =>
@@ -397,22 +411,13 @@ procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
 
   (* image gen Spots - 9 types *)
   gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one one;
-  gen = calc_gens_tmp_new gen gen_rand two one;
-  gen = calc_gens_tmp_new gen gen_rand three two;
-  gen = calc_gens_tmp_new gen gen_rand four three;
-  gen = calc_gens_tmp_new gen gen_rand five four;
-  gen = calc_gens_tmp_new gen gen_rand six five;
-  gen = calc_gens_tmp_new gen gen_rand seven six;
-  gen = calc_gens_tmp_new gen gen_rand eight seven;
+  gen = Uint256 0;
 
   (* 5prc cases *)
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten;
   gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 eight nine;
   gen_rand = gen_rand2;
 
   (* moving to next digit *)
@@ -668,11 +673,15 @@ procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
   i2 = builtin add i gen;
   gens_image_ = i2;
 
+
+
+
   (* color scheme *)
   gen_rand = builtin rem random ten3;
   (* moving to next digit *)
   random = builtin sub random gen_rand;
   random = builtin div random ten3;
+
   gen_rand = builtin div gen_rand four;
   i = builtin mul gens_image_ ten3;
   i2 = builtin add i gen_rand;
