@@ -19,7 +19,9 @@ type ImageDetails =
 | Head
 
 type Error =
-  | CodeNotContractOwner
+  | CodeInsufficientAmount
+  | CodeWrongListLength
+  | CodeNotAuthorised
 
 let aura_op = Aura
 let horns_op = Horns
@@ -50,6 +52,10 @@ let ten2 = Uint256 100
 let ten3 = Uint256 1000
 let start_gim = Uint256 777
 
+let zero32 = Uint32 0
+let zero128 = Uint128 0
+let one128 = Uint128 1
+let one_hundred = Uint128 100
 
 let first = @fst Uint256 Uint256
 let second = @snd Uint256 Uint256
@@ -65,6 +71,14 @@ let two_msgs =
   fun (msg2 : Message) =>
     let msgs_tmp = one_msg msg2 in
     Cons {Message} msg1 msgs_tmp
+
+let get_percent =
+  fun (some_percent: Option Uint128) =>
+  fun (default_percent: Uint128) =>
+  match some_percent with
+    | Some percent => percent
+    | None => default_percent
+  end
 
 let random =
   fun (entropy: Uint256) =>
@@ -262,11 +276,42 @@ let generate_gens_image =
     let gr = builtin div gr four in
       add_to_gens gens gr ten3
 
+let do_gens_list =
+  fun (m: Uint32) =>
+  fun (n: Uint32) =>
+  fun (random: Uint256) =>
+    let m_lt_n = builtin lt m n in
+    match m_lt_n with
+    | True =>
+        let delta = builtin sub n m in
+        let delta_nat = builtin to_nat delta in
+        let nil = Nil {(Pair Uint256 Uint256)} in
+        let acc_init = Pair {(List (Pair Uint256 Uint256)) Uint32} nil n in
+        let one = Uint32 1 in
+        let step = fun (xs_n : Pair (List (Pair Uint256 Uint256)) Uint32) => fun (ignore : Nat) =>
+          match xs_n with
+          | Pair xs n =>
+              let new_n = builtin sub n one in
+              let image_gens = generate_gens_image random in
+              let value = build_pair image_gens random in
+              let new_xs = Cons {(Pair Uint256 Uint256)} value xs in
+              Pair {(List (Pair Uint256 Uint256)) Uint32} new_xs new_n
+          end in
+        let fold = @nat_fold (Pair (List (Pair Uint256 Uint256)) Uint32) in
+        let xs_m = fold step acc_init delta_nat in
+        match xs_m with
+        | Pair xs m => xs
+        end
+    | False => Nil {(Pair Uint256 Uint256)}
+    end
+
 let make_error =
   fun (result : Error) =>
     let result_code = 
       match result with
-      | CodeNotContractOwner => Int32 -1
+      | CodeInsufficientAmount => Int32 -1
+      | CodeWrongListLength    => Int32 -2
+      | CodeNotAuthorised      => Int32 -3
       end
     in
     { _exception : "Error"; code : result_code }
@@ -277,32 +322,118 @@ let make_error =
 
 contract DragonZILDistributer
 (
-  contract_owner: ByStr20
+  main: ByStr20
 )
 
 field entropy : Uint256 = Uint256 0
+field start_referral_percent: Uint128 = Uint128 10
+field max_referral_percent: Uint128 = Uint128 50
+field referrals: Map ByStr20 Uint128 = Emp ByStr20 Uint128
 
-transition GenerateGens(to: ByStr20)
-  entropyNumber <- entropy;
-  current_block <- & BLOCKNUMBER;
-
-  r = random entropyNumber current_block to;
-  image = generate_gens_image r;
-
-  entropy := r;
-
-  e = {
-    _eventname: "Test1";
-    combat: r;
-    image: image
-  };
-  event e
-end
-
-(* DragonZIL procedures *)
+field incrementer: Uint128 = Uint128 0
+field current_price: Uint128 = Uint128 1000000000000
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
   e = make_error err;
   throw e
+end
+
+procedure MintDragons(gen_list: List (Pair Uint256 Uint256))
+  mint_call = {
+    _tag: "BatchMint";
+    _recipient: main;
+    _amount: Uint128 0;
+    to: _sender;
+    gens_token_list: gen_list
+  };
+  msgs = one_msg mint_call;
+  send msgs
+end
+
+procedure sendReferral(refAddr: ByStr20, amount: Uint128)
+  is_ref = builtin eq zero_address refAddr;
+
+  match is_ref with
+  | True =>
+  | False =>
+    referral_percent <- start_referral_percent;
+    max_percent <- max_referral_percent;
+    some_refferal_percent <- referrals[refAddr];
+
+    percent = get_percent  some_refferal_percent referral_percent;
+
+    is_max = builtin eq percent max_percent;
+
+    match is_max with
+      | False =>
+        new_referrals_percent = builtin add percent one128;
+        referrals[refAddr] := new_referrals_percent
+      | True =>
+    end;
+
+    reward = builtin mul amount percent;
+    reward = builtin div reward one_hundred;
+
+    msg = {
+      _tag: "AddFunds";
+      _recipient: refAddr;
+      _amount: reward
+    };
+    msgs = one_msg msg;
+    send msgs
+  end
+end
+
+transition Buy(refAddr: ByStr20)
+  price <- current_price;
+  inc <- incrementer;
+  entropyNumber <- entropy;
+  current_block <- & BLOCKNUMBER;
+
+  dragon_count128 = builtin div _amount price;
+  dragon_count32 = builtin to_uint32 dragon_count128;
+  r = random entropyNumber current_block _sender;
+
+  match dragon_count32 with
+  | Some count =>
+    is_zero = builtin eq count zero32;
+
+    match is_zero with
+    | False =>
+      gens_pair_list = do_gens_list zero32 count r;
+      accept;
+
+      MintDragons gens_pair_list;
+
+      addition = builtin mul inc dragon_count128;
+      new_price = builtin add price addition;
+
+      current_price := new_price;
+      
+      dragons_cost = builtin mul dragon_count128 price;
+      change = builtin sub _amount dragons_cost;
+      is_zero_change = builtin eq change zero128;
+
+      sendReferral refAddr _amount;
+
+      match is_zero_change with
+      | False => 
+        msg = {
+          _tag: "AddFunds";
+          _recipient: _sender;
+          _amount: change
+        };
+        msgs = one_msg msg;
+        send msgs
+      | True =>
+      end
+    | True =>
+      err = CodeInsufficientAmount;
+      ThrowError err
+    end
+  | None =>
+    err = CodeInsufficientAmount;
+    ThrowError err
+  end
 end
