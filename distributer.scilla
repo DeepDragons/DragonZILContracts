@@ -439,8 +439,7 @@ transition Buy(refAddr: ByStr20)
   end
 end
 
-transition ReturnFund()
-  IsOwner;
+transition ReturnFunds()
   bal <- _balance;
 
   e = {
