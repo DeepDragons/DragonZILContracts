@@ -137,13 +137,15 @@ let get_one_gen =
 let next_digit =
   fun (r: Uint256) =>
   fun (gr: Uint256) =>
+  fun (decimal: Uint256) =>
     let r0 = builtin sub r gr in
-      builtin div r0 ten
+      builtin div r0 decimal
 
 let re_random =
   fun (r: Uint256) =>
   fun (gr: Uint256) =>
-    let r0 = next_digit r gr in
+  fun (decimal: Uint256) =>
+    let r0 = next_digit r gr decimal in
       builtin rem r0 ten
 
 let get_detail_gen =
@@ -184,7 +186,8 @@ let get_detail_gen =
 let add_to_gens =
   fun (gim: Uint256) =>
   fun (gen: Uint256) =>
-    let a = builtin mul gim ten in
+  fun (decimal: Uint256) =>
+    let a = builtin mul gim decimal in
       builtin add a gen
 
 let build_pair =
@@ -197,14 +200,14 @@ let generate_gen =
   fun (gim: Uint256) =>
   fun (op: ImageDetails) =>
     let gr0 = builtin rem r ten in
-    let gr1 = re_random r gr0 in
+    let gr1 = re_random r gr0 ten in
     let r_next = builtin div r ten2 in
     let gen = get_detail_gen gr0 gr1 op in
-    let gens = add_to_gens gim gen in
+    let gens = add_to_gens gim gen ten in
     let gr0 = builtin rem r_next ten in
     let r_next = builtin div r_next ten in
     let color = builtin div gr0 two in
-    let gens = add_to_gens gens color in
+    let gens = add_to_gens gens color ten in
       build_pair gens r_next
 
 let generate_gens_image =
@@ -251,20 +254,13 @@ let generate_gens_image =
     let next_r = second gens_pair in
     (* color schema *)
     let gr  = builtin rem next_r ten3 in
-    let next_r = builtin sub next_r gr in
-    let next_r = builtin div next_r ten3 in
+    let next_r = next_digit next_r gr ten3 in
     let gr = builtin div gr four in
-    let gens = builtin mul gens ten3 in
-    let gens = builtin add gens gr in
+    let gens = add_to_gens gens gr ten3 in
     (* mutagenImutable *)
     let gr = builtin rem next_r ten3 in
     let gr = builtin div gr four in
-    let gens = builtin mul gens ten3 in
-    let gens = builtin add gens gr in
-      gens
-
-
-
+      add_to_gens gens gr ten3
 
 let make_error =
   fun (result : Error) =>
@@ -285,419 +281,6 @@ contract DragonZILDistributer
 )
 
 field entropy : Uint256 = Uint256 0
-
-procedure GenerateImageGen(token_id: Uint256, random_val: Uint256)
-  random = random_val;
-  (* gens init for current token *)
-  gens_image_ = Uint256 777;
-  gen_tmp = Uint256 0;
-
-  (* image gen Aura - 5 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one zero;
-  gen = calc_gens_tmp_new gen gen_rand two zero;
-  gen = calc_gens_tmp_new gen gen_rand three zero;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five one;
-  gen = calc_gens_tmp_new gen gen_rand six one;
-  gen = calc_gens_tmp_new gen gen_rand seven two;
-  gen = calc_gens_tmp_new gen gen_rand eight three;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 four five;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Aura *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Horns - 7 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one zero;
-  gen = calc_gens_tmp_new gen gen_rand two zero;
-  gen = calc_gens_tmp_new gen gen_rand three one;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five two;
-  gen = calc_gens_tmp_new gen gen_rand six three;
-  gen = calc_gens_tmp_new gen gen_rand seven four;
-  gen = calc_gens_tmp_new gen gen_rand eight five;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 six seven;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Horns *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Scales - 4 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one zero;
-  gen = calc_gens_tmp_new gen gen_rand two zero;
-  gen = calc_gens_tmp_new gen gen_rand three zero;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five one;
-  gen = calc_gens_tmp_new gen gen_rand six one;
-  gen = calc_gens_tmp_new gen gen_rand seven two;
-  gen = calc_gens_tmp_new gen gen_rand eight two;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 three four;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Scales *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Spots - 9 types *)
-  gen_rand = builtin rem random ten;
-  gen = Uint256 0;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Spots *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Tail - 8 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one one;
-  gen = calc_gens_tmp_new gen gen_rand two one;
-  gen = calc_gens_tmp_new gen gen_rand three one;
-  gen = calc_gens_tmp_new gen gen_rand four two;
-  gen = calc_gens_tmp_new gen gen_rand five three;
-  gen = calc_gens_tmp_new gen gen_rand six four;
-  gen = calc_gens_tmp_new gen gen_rand seven five;
-  gen = calc_gens_tmp_new gen gen_rand eight six;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 seven eight;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Tail *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Wings - 5 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one zero;
-  gen = calc_gens_tmp_new gen gen_rand two zero;
-  gen = calc_gens_tmp_new gen gen_rand three one;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five one;
-  gen = calc_gens_tmp_new gen gen_rand six two;
-  gen = calc_gens_tmp_new gen gen_rand seven two;
-  gen = calc_gens_tmp_new gen gen_rand eight three;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 four five;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Wings *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Spins - 4 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero zero;
-  gen = calc_gens_tmp_new gen gen_rand one zero;
-  gen = calc_gens_tmp_new gen gen_rand two zero;
-  gen = calc_gens_tmp_new gen gen_rand three one;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five two;
-  gen = calc_gens_tmp_new gen gen_rand six two;
-  gen = calc_gens_tmp_new gen gen_rand seven two;
-  gen = calc_gens_tmp_new gen gen_rand eight two;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 three four;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Spins *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Body - 3 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
-  gen = calc_gens_tmp_new gen gen_rand one one;
-  gen = calc_gens_tmp_new gen gen_rand two one;
-  gen = calc_gens_tmp_new gen gen_rand three one;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five one;
-  gen = calc_gens_tmp_new gen gen_rand six one;
-  gen = calc_gens_tmp_new gen gen_rand seven one;
-  gen = calc_gens_tmp_new gen gen_rand eight one;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 two three;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Body *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Eyes - 9 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
-  gen = calc_gens_tmp_new gen gen_rand one one;
-  gen = calc_gens_tmp_new gen gen_rand two one;
-  gen = calc_gens_tmp_new gen gen_rand three two;
-  gen = calc_gens_tmp_new gen gen_rand four three;
-  gen = calc_gens_tmp_new gen gen_rand five four;
-  gen = calc_gens_tmp_new gen gen_rand six five;
-  gen = calc_gens_tmp_new gen gen_rand seven six;
-  gen = calc_gens_tmp_new gen gen_rand eight seven;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 eight nine;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Eyes *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Head - 5 types *)
-  gen_rand = builtin rem random ten;
-  gen = calc_gens_tmp_new gen_tmp gen_rand zero one;
-  gen = calc_gens_tmp_new gen gen_rand one one;
-  gen = calc_gens_tmp_new gen gen_rand two one;
-  gen = calc_gens_tmp_new gen gen_rand three one;
-  gen = calc_gens_tmp_new gen gen_rand four one;
-  gen = calc_gens_tmp_new gen gen_rand five one;
-  gen = calc_gens_tmp_new gen gen_rand six one;
-  gen = calc_gens_tmp_new gen gen_rand seven two;
-  gen = calc_gens_tmp_new gen gen_rand eight three;
-
-  (* 5prc cases *)
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-  gen_rand2 = builtin rem random ten;
-  gen = calc_gens_2opt gen gen_rand nine gen_rand2 four five;
-  gen_rand = gen_rand2;
-
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-  (* image gen Color Claws *)
-  gen_rand = builtin rem random ten;
-  gen = builtin div gen_rand two;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten;
-
-  i = builtin mul gens_image_ ten;
-  i2 = builtin add i gen;
-  gens_image_ = i2;
-
-
-
-
-  (* color scheme *)
-  gen_rand = builtin rem random ten3;
-  (* moving to next digit *)
-  random = builtin sub random gen_rand;
-  random = builtin div random ten3;
-
-  gen_rand = builtin div gen_rand four;
-  i = builtin mul gens_image_ ten3;
-  i2 = builtin add i gen_rand;
-  gens_image_ = i2;
-
-  (* mutagenImutable *)
-  (* last gen no need to move to next digit *)
-  gen_rand = builtin rem random ten3;
-  gen_rand = builtin div gen_rand four;
-  i = builtin mul gens_image_ ten3;
-  i2 = builtin add i gen_rand;
-  gens_image_ = i2;
-
-  (* store gens to token *)
-  token_gen_image[token_id] := gens_image_
-end
 
 procedure GenerateGens(token_id: Uint256, to: ByStr20)
   entropyNumber <- entropy;
