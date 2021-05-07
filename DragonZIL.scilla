@@ -528,20 +528,7 @@ transition BatchMint(to: ByStr20, gens_token_list: List (Pair Uint256 Uint256))
 
   tmp_fun = build_dragon to;
   input_list = pair_token_gens_list tmp_fun gens_token_list;
-  forall input_list Minting;
-
-  msg_to_recipient = {
-    _tag: "RecipientAcceptBatchMint";
-    _recipient: to;
-    _amount: Uint128 0
-  };
-  msg_to_sender = {
-    _tag: "BatchMintCallBack";
-    _recipient: _sender;
-    _amount: Uint128 0
-  };
-  msgs = two_msgs msg_to_recipient msg_to_sender;
-  send msgs
+  forall input_list Minting
 end
 
 transition Burn(token_id: Uint256)
