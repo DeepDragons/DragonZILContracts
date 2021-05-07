@@ -2,25 +2,14 @@ scilla_version 0
 import ListUtils
 library GenLab
 
-(* Custom ADT storing - token_id, owner, stage, token_uri, token_gen_battle, token_gen_image *)
-type Dragon =
-| Dragon of Uint256 ByStr20 Uint32 String Uint256 Uint256
-
-(* Custom ADT storing - token_id, token_gen_battle *)
-type IdBattleGenPair =
-| IdBattleGenPair of Uint256 Uint256
-
+let tt = True
 let zero = Uint32 0
 let one = Uint32 1
 let two = Uint256 2
 let ten = Uint256 10
 let ten2 = Uint256 100
-
 let zero256 = Uint256 0
 let zero_address = 0x0000000000000000000000000000000000000000
-let dummy_str = ""
-let default_stage = Uint32 0
-let default_dragon = Dragon zero256 zero_address default_stage dummy_str zero256 zero256
 
 let option_value =
   tfun 'A =>
@@ -31,8 +20,9 @@ let option_value =
     | None => default
     end
 
-let unpack_dragon = @option_value Dragon
 let unpack_uint32 = @option_value Uint32
+let unpack_address = @option_value ByStr20
+let unpack_uint256 = @option_value Uint256
 
 (* Error events *)
 type Error =
@@ -40,7 +30,6 @@ type Error =
   | CodeImproperGenNum
   | CodeNotAuthorised
   | CodeStageIncorrect
-  | CodeNotAnOwner
 
 let make_error =
   fun (result : Error) =>
@@ -50,7 +39,6 @@ let make_error =
       | CodeImproperGenNum     => Int32 -2
       | CodeNotAuthorised      => Int32 -3
       | CodeStageIncorrect     => Int32 -4
-      | CodeNotAnOwner         => Int32 -5
       end
     in
     { _exception : "Error"; code : result_code }
@@ -66,10 +54,10 @@ let two_msgs =
     let msgs_tmp = one_msg msg2 in
     Cons {Message} msg1 msgs_tmp
 
-let one_listid =
-  fun (id : Uint256) =>
-    let nil_listid = Nil {Uint256} in
-    Cons {Uint256} id nil_listid
+let build_pair =
+  fun (arg0: Uint256) =>
+  fun (arg1: Uint256) =>
+    Pair {Uint256 Uint256} arg0 arg1
 
 let get_upgraded_genschain =
   fun (genschain: Uint256) =>
@@ -92,15 +80,27 @@ let get_upgraded_genschain =
     let new_genzeros = builtin mul new_gen divider2 in
       builtin add genchain_pre2 new_genzeros
 
-contract GenLab(main_dzt: ByStr20, proxy_zlp: ByStr20, owner: ByStr20)
+contract GenLab
+
+(
+  zlp_addr:    ByStr20,
+  owner:       ByStr20,
+  zlp_wallet:  ByStr20,
+  mainDZT: ByStr20 with contract
+    field token_stage: Map Uint256 Uint32,
+    field token_owners: Map Uint256 ByStr20,
+    field token_gen_battle: Map Uint256 Uint256
+  end,
+  old: ByStr20 with contract
+    field use_count: Map Uint256 Uint32
+  end
+)
 
 field use_count: Map Uint256 Uint32 = Emp Uint256 Uint32
 field start_price: Uint128 = Uint128 1000000000000000000
 field price_multiplicator: Uint128 = Uint128 2
-field proxy_zlp_addr: ByStr20 = proxy_zlp
-field tmp_sender: ByStr20 = 0x0000000000000000000000000000000000000000
-field tmp_gen_num: Uint256 = Uint256 0
-field tmp_new_value: Uint256 = Uint256 0
+field zlp_wallet_address: ByStr20 = zlp_wallet
+field is_migrate: Bool = False
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
@@ -124,17 +124,6 @@ procedure checkStage(stage: Uint32)
   | False =>
   | True =>
     err = CodeStageIncorrect;
-    ThrowError err
-  end
-end
-
-procedure checkOwner(address: ByStr20)
-  sender <- tmp_sender;
-  is_owner = builtin eq address sender;
-  match is_owner with
-  | True =>
-  | False =>
-    err = CodeNotAnOwner;
     ThrowError err
   end
 end
@@ -163,11 +152,6 @@ end
 transition ChangeGen(token_id: Uint256, gen_num: Uint256, new_value: Uint256)
   checkGenNum gen_num;
   checkValue new_value;
-  
-  tmp_sender := _sender;
-  tmp_gen_num := gen_num;
-  tmp_new_value := new_value;
-  
   some_use_count <- use_count[token_id];
   actual_use_count = unpack_uint32 zero some_use_count;
   new_use_count = builtin add actual_use_count one;
@@ -175,52 +159,36 @@ transition ChangeGen(token_id: Uint256, gen_num: Uint256, new_value: Uint256)
   actual_multiplicator <- price_multiplicator;
   multiplicator = builtin pow actual_multiplicator actual_use_count;
   price <- start_price;
+  zlp_wallet_addr <- zlp_wallet_address;
   amount_zlp = builtin mul price multiplicator;
-  proxy_zlp_address <- proxy_zlp_addr;
   msg = {
-      _tag: "AcceptZLP";
-      _recipient: proxy_zlp_address;
+      _tag: "TransferFrom";
+      _recipient: zlp_addr;
       _amount: Uint128 0;
       from: _sender;
+      to: zlp_wallet_addr;
       amount: amount_zlp
     };
-    
-  ids = one_listid token_id;
-  getdragons_call = {
-    _tag: "GetDragons";
-    _recipient: main_dzt;
-    _amount: Uint128 0;
-    ids: ids
-  };
-  msgs = two_msgs getdragons_call msg;
-  send msgs
-end
-
-transition GetDragonsCallBack(dragons: List Dragon)
-  (* need to check is it called from main contract *)
-  checkAddress main_dzt;
-  list_head = @list_head Dragon;
-  some_dragon = list_head dragons;
-  dragon = unpack_dragon default_dragon some_dragon;
-  match dragon with
-    | Dragon token_id dragon_owner stage token_uri token_gen_battle token_gen_image =>
-      checkStage stage;
-      checkOwner dragon_owner;
-      gen_num <- tmp_gen_num;
-      new_value <- tmp_new_value;
-      new_gen = get_upgraded_genschain token_gen_battle gen_num new_value;
-      id_gen = IdBattleGenPair token_id new_gen;
-      nil_drgnpair = Nil {IdBattleGenPair};
-      id_gen_list = Cons {IdBattleGenPair} id_gen nil_drgnpair;
-      changegens_call = {
+  some_stage <-& mainDZT.token_stage[token_id];
+  stage = unpack_uint32 zero some_stage;
+  checkStage stage;
+  some_dragon_owner <-& mainDZT.token_owners[token_id];
+  dragon_owner = unpack_address zero_address some_dragon_owner;
+  checkAddress dragon_owner;
+  some_token_gen_battle <-& mainDZT.token_gen_battle[token_id];
+  token_gen_battle = unpack_uint256 zero256 some_token_gen_battle;
+  new_gen = get_upgraded_genschain token_gen_battle gen_num new_value;
+  id_gen_pair = build_pair token_id new_gen;
+  nil_drgnpair = Nil {(Pair Uint256 Uint256)};
+  id_gen_list = Cons {(Pair Uint256 Uint256)} id_gen_pair nil_drgnpair;
+  changegens_call = {
       _tag: "ChangeBattleGens";
-      _recipient: main_dzt;
+      _recipient: mainDZT;
       _amount: Uint128 0;
       id_gen_list: id_gen_list
-      };
-      msgs = one_msg changegens_call;
-      send msgs 
-  end
+    };
+  msgs = one_msg changegens_call;
+  send msgs 
 end
 
 transition ChangePrice(new_price: Uint128, new_multiplicator: Uint128)
@@ -229,15 +197,29 @@ transition ChangePrice(new_price: Uint128, new_multiplicator: Uint128)
   start_price := new_price
 end
 
-transition ChangeProxyZLP(addr: ByStr20)
+transition ChangeZLPWallet(addr: ByStr20)
   checkAddress owner;
 
   e = {
-    _eventname: "ZLPContractChanged";
+    _eventname: "ZLPWalletChanged";
     addr: addr
   };
   event e;
 
-  proxy_zlp_addr := addr
+  zlp_wallet_address := addr
+end
+
+transition Migrate()
+  already_maigrate <- is_migrate;
+  match already_maigrate with
+  | False =>
+    old_use_count <-& old.use_count;
+    use_count := old_use_count;
+    is_migrate := tt
+  | True =>
+  end
+end
+
+transition TransferFromSuccessCallBack(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
 end
 
