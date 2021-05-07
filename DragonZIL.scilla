@@ -838,6 +838,6 @@ transition MigrateEvents(ids: List Uint256)
   | OwnedTokenCount =>
   | TokenUris =>
   | Done =>
-    forall ids EventsMigrate;
+    forall ids EventsMigrate
   end
 end
