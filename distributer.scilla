@@ -334,8 +334,10 @@ field start_referral_percent: Uint128 = Uint128 10
 field max_referral_percent: Uint128 = Uint128 50
 field referrals: Map ByStr20 Uint128 = Emp ByStr20 Uint128
 
-field incrementer: Uint128 = Uint128 0
-field current_price: Uint128 = Uint128 1000000000000
+field zil_incrementer: Uint128 = Uint128 0
+field zlp_incrementer: Uint128 = Uint128 0
+field zil_price: Uint128 = Uint128 1000000000000
+field zlp_price: Uint128 = Uint128 1000000000000
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
@@ -354,12 +356,12 @@ procedure IsZLP()
   end
 end
 
-procedure MintDragons(gen_list: List (Pair Uint256 Uint256))
+procedure MintDragons(to: ByStr20, gen_list: List (Pair Uint256 Uint256))
   mint_call = {
     _tag: "BatchMint";
     _recipient: main;
     _amount: Uint128 0;
-    to: _sender;
+    to: to;
     gens_token_list: gen_list
   };
   msgs = one_msg mint_call;
@@ -400,9 +402,65 @@ procedure sendReferral(refAddr: ByStr20, amount: Uint128)
   end
 end
 
+procedure CallTransfer(to: ByStr20, amount: Uint128)
+  msg_transfer = {
+    _tag: "Transfer";
+    _recipient: zlp;
+    _amount: zero128;
+    to: to;
+    amount: amount
+  };
+  msgs = one_msg msg_transfer;
+  send msgs
+end
+
+procedure BuyForZLP(amount: Uint128, to: ByStr20)
+  price <- zlp_price;
+  inc <- zlp_incrementer;
+  current_block <- & BLOCKNUMBER;
+  entropyNumber <- entropy;
+
+  count128 = builtin div amount price;
+  some_count32 = builtin to_uint32 count128;
+  r = random entropyNumber current_block to;
+
+  match some_count32 with
+  | Some count =>
+    is_zero = builtin eq count128 zero128;
+
+    match is_zero with
+    | False =>
+      gens_pair_list = do_gens_list zero32 count r;
+
+      MintDragons to gens_pair_list;
+
+      addition = builtin mul inc count128;
+      new_price = builtin add price addition;
+
+      zlp_price := new_price;
+
+      dragons_cost = builtin mul count128 price;
+      change = builtin sub amount dragons_cost;
+      is_zero_change = builtin eq change zero128;
+
+      match is_zero_change with
+      | False =>
+        CallTransfer to change
+      | True =>
+      end
+    | True =>
+      err = CodeInsufficientAmount;
+      ThrowError err
+    end
+  | None =>
+    err = CodeInsufficientAmount;
+    ThrowError err
+  end
+end
+
 transition Buy(refAddr: ByStr20)
-  price <- current_price;
-  inc <- incrementer;
+  price <- zil_price;
+  inc <- zil_incrementer;
   entropyNumber <- entropy;
   current_block <- & BLOCKNUMBER;
 
@@ -419,12 +477,12 @@ transition Buy(refAddr: ByStr20)
       gens_pair_list = do_gens_list zero32 count r;
       accept;
 
-      MintDragons gens_pair_list;
+      MintDragons _sender gens_pair_list;
 
       addition = builtin mul inc dragon_count128;
       new_price = builtin add price addition;
 
-      current_price := new_price;
+      zil_price := new_price;
       
       dragons_cost = builtin mul dragon_count128 price;
       change = builtin sub _amount dragons_cost;
@@ -474,12 +532,10 @@ end
 
 transition RecipientAcceptTransfer(sender: ByStr20, recipient: ByStr20, amount: Uint128)
   IsZLP;
+  BuyForZLP amount sender
+end
 
-  e = {
-    _eventname : "RecipientAccept";
-    sender: sender;
-    recipient: recipient;
-    amount: amount
-  };
-  event e
+transition RecipientAcceptTransferFrom(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
+  IsZLP;
+  BuyForZLP amount sender
 end
