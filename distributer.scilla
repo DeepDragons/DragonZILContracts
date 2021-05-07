@@ -322,7 +322,8 @@ let make_error =
 
 contract DragonZILDistributer
 (
-  main: ByStr20
+  main: ByStr20,
+  wallet: ByStr20
 )
 
 field entropy : Uint256 = Uint256 0
@@ -436,4 +437,24 @@ transition Buy(refAddr: ByStr20)
     err = CodeInsufficientAmount;
     ThrowError err
   end
+end
+
+transition ReturnFund()
+  IsOwner;
+  bal <- _balance;
+
+  e = {
+    _eventname : "ReturnFundSuccessful";
+    returned_amount: bal
+  };
+  event e;
+
+  msg = {
+    _tag: "AddFunds";
+    _recipient: wallet;
+    _amount: bal
+  };
+
+  msgs = one_msg msg;
+  send msgs
 end
