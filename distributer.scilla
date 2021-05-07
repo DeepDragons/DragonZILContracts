@@ -3,7 +3,7 @@ scilla_version 0
 (***************************************************)
 (*               Associated library                *)
 (***************************************************)
-import BoolUtils PairUtils ListUtils
+import PairUtils ListUtils
 library DragonZILDistributerLib
 
 type ImageDetails =
@@ -282,17 +282,21 @@ contract DragonZILDistributer
 
 field entropy : Uint256 = Uint256 0
 
-procedure GenerateGens(token_id: Uint256, to: ByStr20)
+transition GenerateGens(to: ByStr20)
   entropyNumber <- entropy;
   current_block <- & BLOCKNUMBER;
 
-  random1 = random entropyNumber current_block to;
-  random2 = random random1 current_block to;
+  r = random entropyNumber current_block to;
+  image = generate_gens_image r;
 
-  entropy := random2;
+  entropy := r;
 
-  token_gen_battle[token_id] := random1;
-  GenerateImageGen token_id random2
+  e = {
+    _eventname: "Test1";
+    combat: r;
+    image: image
+  };
+  event e
 end
 
 (* DragonZIL procedures *)
