@@ -22,6 +22,7 @@ type Error =
   | CodeInsufficientAmount
   | CodeWrongListLength
   | CodeNotAuthorised
+  | CodeNotZLP
 
 let aura_op = Aura
 let horns_op = Horns
@@ -312,6 +313,7 @@ let make_error =
       | CodeInsufficientAmount => Int32 -1
       | CodeWrongListLength    => Int32 -2
       | CodeNotAuthorised      => Int32 -3
+      | CodeNotZLP             => Int32 -4
       end
     in
     { _exception : "Error"; code : result_code }
@@ -323,7 +325,8 @@ let make_error =
 contract DragonZILDistributer
 (
   main: ByStr20,
-  wallet: ByStr20
+  wallet: ByStr20,
+  zlp: ByStr20
 )
 
 field entropy : Uint256 = Uint256 0
@@ -338,6 +341,17 @@ field current_price: Uint128 = Uint128 1000000000000
 procedure ThrowError(err : Error)
   e = make_error err;
   throw e
+end
+
+procedure IsZLP()
+  is_zlp = builtin eq zlp _sender;
+
+  match is_zlp with
+  | True =>
+  | False =>
+    err = CodeNotZLP;
+    ThrowError err
+  end
 end
 
 procedure MintDragons(gen_list: List (Pair Uint256 Uint256))
@@ -456,4 +470,16 @@ transition ReturnFunds()
 
   msgs = one_msg msg;
   send msgs
+end
+
+transition RecipientAcceptTransfer(sender: ByStr20, recipient: ByStr20, amount: Uint128)
+  IsZLP;
+
+  e = {
+    _eventname : "RecipientAccept";
+    sender: sender;
+    recipient: recipient;
+    amount: amount
+  };
+  event e
 end
