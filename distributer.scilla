@@ -67,12 +67,6 @@ let one_msg =
     let nil_msg = Nil {Message} in
     Cons {Message} msg nil_msg
 
-let two_msgs =
-  fun (msg1 : Message) =>
-  fun (msg2 : Message) =>
-    let msgs_tmp = one_msg msg2 in
-    Cons {Message} msg1 msgs_tmp
-
 let get_percent =
   fun (some_percent: Option Uint128) =>
   fun (default_percent: Uint128) =>
@@ -326,7 +320,9 @@ contract DragonZILDistributer
 (
   main: ByStr20,
   wallet: ByStr20,
-  zlp: ByStr20
+  zlp: ByStr20 with contract
+    field balances: Map ByStr20 Uint128
+  end
 )
 
 field entropy : Uint256 = Uint256 0
@@ -414,6 +410,17 @@ procedure CallTransfer(to: ByStr20, amount: Uint128)
   send msgs
 end
 
+procedure AddFunds(recipient: ByStr20, amount: Uint128)
+  msg = {
+    _tag: "AddFunds";
+    _recipient: recipient;
+    _amount: amount
+  };
+  msgs = one_msg msg;
+  send msgs
+end
+
+
 procedure BuyForZLP(amount: Uint128, to: ByStr20)
   price <- zlp_price;
   inc <- zlp_incrementer;
@@ -491,14 +498,8 @@ transition Buy(refAddr: ByStr20)
       sendReferral refAddr _amount;
 
       match is_zero_change with
-      | False => 
-        msg = {
-          _tag: "AddFunds";
-          _recipient: _sender;
-          _amount: change
-        };
-        msgs = one_msg msg;
-        send msgs
+      | False =>
+        AddFunds _sender change
       | True =>
       end
     | True =>
@@ -513,21 +514,14 @@ end
 
 transition ReturnFunds()
   bal <- _balance;
+  some_zlp_bal <-& zlp.balances[_this_address];
 
-  e = {
-    _eventname : "ReturnFundSuccessful";
-    returned_amount: bal
-  };
-  event e;
-
-  msg = {
-    _tag: "AddFunds";
-    _recipient: wallet;
-    _amount: bal
-  };
-
-  msgs = one_msg msg;
-  send msgs
+  match some_zlp_bal with
+  | None =>
+  | Some zlp_bal =>
+    CallTransfer wallet zlp_bal
+  end;
+  AddFunds wallet bal
 end
 
 transition RecipientAcceptTransfer(sender: ByStr20, recipient: ByStr20, amount: Uint128)
@@ -538,4 +532,7 @@ end
 transition RecipientAcceptTransferFrom(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
   IsZLP;
   BuyForZLP amount sender
+end
+
+transition TransferSuccessCallBack(sender: ByStr20, recipient: ByStr20, amount: Uint128)
 end
