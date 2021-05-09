@@ -364,6 +364,16 @@ procedure MintDragons(to: ByStr20, gen_list: List (Pair Uint256 Uint256))
   send msgs
 end
 
+procedure AddFunds(recipient: ByStr20, amount: Uint128)
+  msg = {
+    _tag: "AddFunds";
+    _recipient: recipient;
+    _amount: amount
+  };
+  msgs = one_msg msg;
+  send msgs
+end
+
 procedure sendReferral(refAddr: ByStr20, amount: Uint128)
   is_ref = builtin eq zero_address refAddr;
 
@@ -388,13 +398,7 @@ procedure sendReferral(refAddr: ByStr20, amount: Uint128)
     reward = builtin mul amount percent;
     reward = builtin div reward one_hundred;
 
-    msg = {
-      _tag: "AddFunds";
-      _recipient: refAddr;
-      _amount: reward
-    };
-    msgs = one_msg msg;
-    send msgs
+    AddFunds refAddr reward
   end
 end
 
@@ -407,16 +411,6 @@ procedure CallTransfer(to: ByStr20, amount: Uint128)
     amount: amount
   };
   msgs = one_msg msg_transfer;
-  send msgs
-end
-
-procedure AddFunds(recipient: ByStr20, amount: Uint128)
-  msg = {
-    _tag: "AddFunds";
-    _recipient: recipient;
-    _amount: amount
-  };
-  msgs = one_msg msg;
   send msgs
 end
 
