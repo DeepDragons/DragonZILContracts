@@ -11,7 +11,6 @@ type Error =
   | CodeNotInWaitingList
   | CodeSameDragon
   | CodeNotAnOwner
-  | CodeCallNotMainDzt
   | CodeStageIncorrect
   | CodeNotContractOwner
   | CodeBothInWaitingList
@@ -24,34 +23,26 @@ let make_error =
       | CodeNotInWaitingList   => Int32 -1
       | CodeSameDragon         => Int32 -2
       | CodeNotAnOwner         => Int32 -3
-      | CodeCallNotMainDzt     => Int32 -4
-      | CodeStageIncorrect     => Int32 -5
-      | CodeNotContractOwner   => Int32 -6
-      | CodeBothInWaitingList  => Int32 -7
-      | CodePauseNotPause      => Int32 -8
+      | CodeStageIncorrect     => Int32 -4
+      | CodeNotContractOwner   => Int32 -5
+      | CodeBothInWaitingList  => Int32 -6
+      | CodePauseNotPause      => Int32 -7
       end
     in
     { _exception : "Error"; code : result_code }
 
-let not_pause = Uint32 0
-let on_pause = Uint32 1
-
-let zero = Uint256 0
 let zero32 = Uint32 0
 let zero128 = Uint128 0
 let zero256 = Uint256 0
 let one = Uint256 1
 let one32 = Uint32 1
 let two = Uint256 2
-let two32 = Uint32 2
 let five = Uint256 5
 let ten = Uint256 10
 let ten2 = Uint256 100
 let ten20 = Uint256 100000000000000000000
 
 let zero_address = 0x0000000000000000000000000000000000000000
-let dummy_str = ""
-let default_stage = Uint32 0
 
 let option_value =
   tfun 'A =>
@@ -71,23 +62,6 @@ let one_msg =
   fun (msg : Message) =>
   let nil_msg = Nil {Message} in
     Cons {Message} msg nil_msg
-
-let two_msgs =
-  fun (msg1 : Message) =>
-  fun (msg2 : Message) =>
-    let msgs_tmp = one_msg msg2 in
-    Cons {Message} msg1 msgs_tmp
-
-let one_listid =
-  fun (id : Uint256) =>
-    let nil_listid = Nil {Uint256} in
-    Cons {Uint256} id nil_listid
-
-let two_listid =
-  fun (id1 : Uint256) =>
-  fun (id2 : Uint256) =>
-    let listid_tmp = one_listid id2 in
-    Cons {Uint256} id1 listid_tmp
 
 let random =
   fun (entropy: Uint256) =>
@@ -190,17 +164,16 @@ contract FightPlaceBet
 
 (*  Parameters *)
 (
-contract_owner: ByStr20,
-contract_zlp: ByStr20,
-contract_main: ByStr20 with contract
-  field token_gen_battle: Map Uint256 Uint256,
-  field token_stage: Map Uint256 Uint32,
-  field token_owners: Map Uint256 ByStr20
-end
+  contract_owner: ByStr20,
+  contract_zlp: ByStr20,
+  contract_main: ByStr20 with contract
+    field token_gen_battle: Map Uint256 Uint256,
+    field token_stage: Map Uint256 Uint32,
+    field token_owners: Map Uint256 ByStr20
+  end
 )
 
-field contract_zlp_addr: ByStr20 = contract_zlp
-field pause: Uint32 = not_pause
+field pause: Uint32 = zero32
 
 (* Mutable fields *)
 field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
@@ -223,15 +196,13 @@ procedure ThrowError(err : Error)
 end
 
 procedure TransferFromTo(amount: Uint128, from: ByStr20, to: ByStr20)
-  recipient <- contract_zlp_addr;
-
   is_zero = builtin eq zero128 amount;
 
   match is_zero with
   | False =>
     call_transfer_zlp = {
       _tag: "TransferFrom";
-      _recipient: recipient;
+      _recipient: contract_zlp;
       _amount: Uint128 0;
       from: from;
       to: to;
@@ -663,7 +634,7 @@ end
 
 
 transition FightStart(who_id: Uint256, with_id: Uint256)
-  CheckPause not_pause;
+  CheckPause zero32;
 
   tmp_initiator_adr := _sender;
   tmp_token_id := with_id;
@@ -704,7 +675,7 @@ transition FightStart(who_id: Uint256, with_id: Uint256)
 end
 
 transition WaitListAddDel(token_id: Uint256, fight_price: Uint128)
-  CheckPause not_pause;
+  CheckPause zero32;
 
   tmp_initiator_adr := _sender;
 
@@ -734,18 +705,6 @@ transition WaitListAddDel(token_id: Uint256, fight_price: Uint128)
   end
 end
 
-transition ChangeAdrZLP(addr: ByStr20)
-  IsContractOwner;
-
-  e = {
-    _eventname: "ZLPContractChanged";
-    addr: addr
-  };
-  event e;
-
-  contract_zlp_addr := addr
-end
-
 transition WaitListRemove(token_id: Uint256)
   IsContractOwner;
 
@@ -768,14 +727,14 @@ end
 transition ChangePause()
   IsContractOwner;
   status <- pause;
-  is_pause = builtin eq status on_pause;
+  is_pause = builtin eq status one32;
   match is_pause with
   | True =>
-    pause := not_pause;
+    pause := zero32;
     e = {_eventname : "Working"};
     event e
   | False =>
-    pause := on_pause;
+    pause := one32;
     e = {_eventname : "Paused"};
     event e
   end
