@@ -214,6 +214,18 @@ procedure TransferFromTo(amount: Uint128, from: ByStr20, to: ByStr20)
   end
 end
 
+procedure CallTransfer(to: ByStr20, amount: Uint128)
+  msg_transfer = {
+    _tag: "Transfer";
+    _recipient: contract_zlp;
+    _amount: zero128;
+    to: to;
+    amount: amount
+  };
+  msgs = one_msg msg_transfer;
+  send msgs
+end
+
 procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_battle_winner_param: Uint256, token_id_loser: Uint256, gen_battle_loser_param: Uint256)
   tmp_token_id_val <- tmp_token_id;
 
@@ -231,36 +243,24 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
 
   token_winner_in_waitlist_bool = builtin eq tmp_token_id_val token_id_winner;
   dragon1_win_bool = builtin eq num_winner one;
+  two128 = Uint128 2;
+  fight_pricex2 = builtin mul fight_price two128;
   match token_winner_in_waitlist_bool with
   | True =>
     match dragon1_win_bool with
     | True =>
-      two128 = Uint128 2;
-      fight_pricex2 = builtin mul fight_price two128;
-
-      TransferFromTo fight_pricex2 _this_address dragon1_owner_adr
+      CallTransfer dragon1_owner_adr fight_pricex2
     | False =>
-      two128 = Uint128 2;
-      fight_pricex2 = builtin mul fight_price two128;
-
-      TransferFromTo fight_pricex2 _this_address dragon2_owner_adr
+      CallTransfer dragon2_owner_adr fight_pricex2
     end
   | False =>
     match dragon1_win_bool with
     | True =>
-      two128 = Uint128 2;
-      fight_pricex2 = builtin mul fight_price two128;
-
-      TransferFromTo fight_pricex2 _this_address dragon1_owner_adr
+      CallTransfer dragon1_owner_adr fight_pricex2
     | False =>
-      two128 = Uint128 2;
-      fight_pricex2 = builtin mul fight_price two128;
-
-      TransferFromTo fight_pricex2 _this_address dragon2_owner_adr
+      CallTransfer dragon2_owner_adr fight_pricex2
     end
   end
-
-
 end
 
 procedure AfterFightDraw(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
@@ -630,8 +630,6 @@ procedure FightPrepare(dragon1_token_id: Uint256, dragon1_owner: ByStr20, dragon
     end
   end
 end
-
-
 
 transition FightStart(who_id: Uint256, with_id: Uint256)
   CheckPause zero32;
