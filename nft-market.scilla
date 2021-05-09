@@ -3,406 +3,386 @@ scilla_version 0
 (***************************************************)
 (*               Associated library                *)
 (***************************************************)
-import IntUtils BoolUtils
+import IntUtils
+
 library MarketPlace
+
+let not_pause = Uint32 0
+let on_pause = Uint32 1
 
 let one_msg = 
   fun (msg : Message) => 
   let nil_msg = Nil {Message} in
-  Cons {Message} msg nil_msg
+    Cons {Message} msg nil_msg
 
 let two_msgs =
-fun (msg1 : Message) =>
-fun (msg2 : Message) =>
-  let msgs_tmp = one_msg msg2 in
-  Cons {Message} msg1 msgs_tmp
+  fun (msg1 : Message) =>
+  fun (msg2 : Message) =>
+    let msgs_tmp = one_msg msg2 in
+      Cons {Message} msg1 msgs_tmp
 
-let three_msgs =
-fun (msg1 : Message) =>
-fun (msg2 : Message) =>
-fun (msg3 : Message) =>
-  let msgs_tmp = two_msgs msg2 msg3 in
-  Cons {Message} msg1 msgs_tmp
-  
-(* Error events *)
+let one = Uint256 1
+
+type Status =
+| Pending
+| Active
+
+(*ByStr20 - Address of owner*)
+(*Uint128 - Price*)
+(*Uint256 - tokenID*)
+(*Uint256 - orderID*)
+(*Status  - Order status*)
+
+ type Order =
+| Order of ByStr20 Uint128 Uint256 Uint256 Status 
+
+(* Error exceptions *)
 type Error =
-  | CodeSaleNotExist
-  | CodeSaleExists
-  | CodePaymentNotEqualAmount
-  | CodeNotTokenOwner
-  | CodeNotFound
-  | CodeMarketplaceNotApproved
-  | CodeNotContractOwner
-  | CodeInvalidCommissionAmount
-  | CodeInvalidRoyaltyAmount
-  | CodeExcessCommissionAndRoyalty
+  | CodeMPnotApprovedToTransfer
+  | CodeOrderWrongState
+  | CodeOrderNotFound
+  | CodePaymentAmountError
+  | CodeNotAuthorized
+  | CodeIsNotDZTContract
+  | CodePauseNotPause
 
 let make_error =
   fun (result : Error) =>
     let result_code = 
       match result with
-      | CodeSaleNotExist => Int32 -1
-      | CodeSaleExists=> Int32 -2
-      | CodePaymentNotEqualAmount => Int32 -3
-      | CodeNotTokenOwner => Int32 -4
-      | CodeNotFound => Int32 -5
-      | CodeMarketplaceNotApproved => Int32 -6
-      | CodeNotContractOwner => Int32 -7
-      | CodeInvalidCommissionAmount => Int32 -8
-      | CodeInvalidRoyaltyAmount => Int32 -9
-      | CodeExcessCommissionAndRoyalty => Int32 -10
+      | CodeMPnotApprovedToTransfer  => Int32 -1
+      | CodeOrderWrongState          => Int32 -2
+      | CodeOrderNotFound            => Int32 -3
+      | CodePaymentAmountError       => Int32 -4
+      | CodeNotAuthorized            => Int32 -5
+      | CodeIsNotDZTContract         => Int32 -6
+      | CodePauseNotPause            => Int32 -7
       end
     in
     { _exception : "Error"; code : result_code }
-  
-let zero = Uint128 0
-let sale_bought_code  = Int32 1
-
-(* Dummy user-defined ADT *)
-type Unit =
-| Unit
-
-(* Sale is NFTAddress, Name, OwnerAddress, Price *)
-type Sale =
-| Sale of ByStr20 String ByStr20 Uint128
-
-
-let get_val =
-  fun (some_val: Option Uint128) =>
-  match some_val with
-  | Some val => val
-  | None => zero
-  end
 
 (***************************************************)
 (*             The contract definition             *)
 (***************************************************)
 
 contract MarketPlace
-(
-  contract_owner: ByStr20
-)
+(contract_owner : ByStr20, main_dzt : ByStr20)
 
-(* Mutable fields *)
+field pause: Uint32 = not_pause
+(*Order IDs - use global variable to track order numbers *)
+field order_id : Uint256 = Uint256 0
+(* Orderbook: mapping (order_id => ( Order struct )) *)
+field orderbook : Map Uint256 Order
+                  = Emp Uint256 Order
+(* Temp_orderbook: mapping (token_id => (Order struct)) *)
+field temp_orderbook : Map Uint256 Order
+                            = Emp Uint256 Order
 
-(* List of sales *)
-field sales: Map ByStr20 (Map Uint256 Sale)
-  = Emp ByStr20 (Map Uint256 Sale)
+(* Fee taken from each purchase, 1/20 or 5% of price *)
+field marketplace_fee: Uint128 = Uint128 20
 
-field commission_amount: Uint128 = Uint128 1
-(**************************************)
-(*             Procedures             *)
-(**************************************)
-
+(* Procedures *)
 procedure ThrowError(err : Error)
   e = make_error err;
   throw e
 end
 
-procedure SaleExists(nftAddress: ByStr20, token_id: Uint256)
-  some_sale <- sales[nftAddress][token_id];
-  match some_sale with 
-  | None => 
-  | Some val =>
-    err = CodeSaleExists;
-    ThrowError err  
-  end
+procedure CheckApproved (token_id: Uint256)
+  is_approved_call = {
+    _tag: "GetApproved";
+    _recipient: main_dzt;
+    _amount: Uint128 0;
+    token_id: token_id
+  };
+  msgs = one_msg is_approved_call;
+  send msgs
 end
 
-(* Checks if commission amount is between 1-10000 representing 0.01% to 100% *)
-procedure IsValidCommissionAmount(amount: Uint128)
-  min_amount = Uint128 1;
-  max_amount = Uint128 10000;
-  less_or_equal_max = uint128_le amount max_amount;
-  greater_or_equal_one = uint128_ge amount min_amount;
-  is_valid_amount = andb less_or_equal_max greater_or_equal_one;
-  match is_valid_amount with 
-    | True => 
-    | False =>
-      err = CodeInvalidCommissionAmount;
-      ThrowError err
-  end
+(* @dev Transfer the ownership of a given Dragon to another address*)
+(*@param tokenID - Dragon ID*)
+procedure TransferDragonToOwner (token_id: Uint256, owner: ByStr20)
+  transfered = {
+    _tag: "Transfer";
+    _recipient: main_dzt;
+    _amount: Uint128 0;
+    to: owner;
+    token_id: token_id
+  };
+  msgs = one_msg transfered;
+  send msgs
 end
 
-(* Checks if royalty amount is between 1-10000 representing 0.01% to 100% *)
-procedure IsValidRoyaltyAmount(amount: Uint128)
-  min_amount = Uint128 1;
-  max_amount = Uint128 10000;
-  less_or_equal_max = uint128_le amount max_amount;
-  greater_or_equal_one = uint128_ge amount min_amount;
-  is_valid_amount = andb less_or_equal_max greater_or_equal_one;
-  match is_valid_amount with 
-    | True => 
-    | False =>
-      err = CodeInvalidRoyaltyAmount;
-      ThrowError err
-  end
+(* @dev Transfer the ownership of a given token ID to this address*)
+(*@param tokenID - address of NFT contract*)
+procedure TransferDragonToMarketPlace (token_id: Uint256)
+  transfered = {
+    _tag: "TransferFrom";
+    _recipient: main_dzt;
+    _amount: Uint128 0;
+    to: _this_address;
+    token_id: token_id
+  };
+  msgs = one_msg transfered;
+  send msgs
 end
 
-procedure IsValidCommissionAndRoyalty(royalty: Uint128, commission: Uint128)
-  max_percentage = Uint128 10000;
-  percentage = builtin add royalty commission;
-  is_valid_percentage = builtin lt percentage max_percentage;
-  match is_valid_percentage with
-  | True => 
-  | False =>
-    err = CodeExcessCommissionAndRoyalty;
-    ThrowError err
-  end 
-end
-    
 procedure IsContractOwner()
-  is_contract_owner = builtin eq contract_owner _sender;
+  is_contract_owner = builtin eq _sender contract_owner;
   match is_contract_owner with
   | True => 
   | False =>
-    err = CodeNotContractOwner;
+    err = CodeNotAuthorized;
+    ThrowError err 
+  end
+end
+
+procedure IsDZTContract()
+  is_zlp_sender = builtin eq main_dzt _sender;
+  match is_zlp_sender with
+  | True =>
+  | False =>
+    err = CodeIsNotDZTContract;
     ThrowError err
-  end 
+  end
 end
 
-(*@dev Transfers an NFT owned by this contract to another address. *)
-(*Returns true if the transfer succeeds. *)
-(*@param nft_address - Address of NFT. *)
-(*@param receiver - Address to transfer NFT to. *)
-(*@param token_id - ID of token to transfer. *)
-procedure transfer(nft_address: ByStr20, receiver: ByStr20, token_id: Uint256) 
-  (* it will throw if transfer fails *)
-  msg = {_tag: "Transfer"; _recipient: nft_address; _amount: Uint128 0; to: receiver; token_id: token_id};
-  msgs = one_msg msg;
-  send msgs
+procedure CheckPause (expected: Uint32)
+  curent_pause <- pause;
+  is_eq = builtin eq expected curent_pause;
+  match is_eq with
+  | True =>
+  | False =>
+    err = CodePauseNotPause;
+    ThrowError err
+  end
 end
 
-(* @dev Escrows the NFT, assigning ownership to this address. *)
-(* Throws if the escrow fails.  *)
-(* @param nft_address - Current owner address of token to escrow. *)
-(* @param token_id - ID of token whose approval to verify. *)
-procedure escrow(nft_address: ByStr20, token_id: Uint256) 
-  (* it will throw if transfer fails *)
-  msg = {_tag: "TransferFrom"; _recipient: nft_address; _amount: Uint128 0; to: _this_address; token_id: token_id};
-  msgs = one_msg msg;
-  send msgs
+(* Create a listing and sell a Dragon*) 
+(* First call from frontend. User wants to post an item for sale. They call this function *)
+(* then it will check if approval is okay, if so, then it will transfer Dragon to itself, *)
+(* and create the listing information and publish it as an item for sale *)
+transition Sell(token_id: Uint256, price: Uint128)
+  CheckPause not_pause;
+  (* Create a temporary order that is pending to be used as reference in callbacks*)
+  list_state  = Pending;
+  current_order_id <- order_id;
+  new_order = Order _sender price token_id current_order_id list_state;
+  temp_orderbook[token_id] := new_order;
+  new_order_id = builtin add current_order_id one;
+  order_id := new_order_id;
+  e = {_eventname : "PendingOrderRecorded"; extracted_order_id : current_order_id; order_info: new_order};
+  event e;
+   (* Check approval to see if we can transfer*)
+  CheckApproved token_id
 end
 
-(***************************************)
-(*             Transitions             *)
-(***************************************)
-
-(* @dev:    Change commission amount to be sent to contract_owner. Only contract_owner can change. *)
-(* @param:  amount - commission percentage amount to be changed to *)
-transition setCommission(amount: Uint128)
-  IsContractOwner;
-  IsValidCommissionAmount amount;
-  commission_amount := amount;
-  e = {_eventname: "setCommission"; amount: amount};
-  event e
-end
-
-
-(* Must approve marketplace to transfer nft on behalf *)
-transition approveMarketplace(nft_address: ByStr20, token_id: Uint256)
-  (*Approve marketplace contract to transfer nft*)
-  msg = {_tag: "SetApprove"; _recipient: nft_address; _amount: Uint128 0; to: _this_address; token_id: token_id};
-  msgs = one_msg msg;
-  send msgs
-end
-
-(* @dev Adds sale to marketplace *)
-(* @param nft_address - Current owner address of token to escrow. *)
-(* @param name - Name of item to sell *)
-(* @param token_id - ID of token whose approval to verify. *)
-(* @param price - Price of sale *)
-(* @param nft_contract: token_owners - Map of token_id to token owner 
-                        token_approvals - Map of token_id to approved token spender *)
-transition addSale(nft_address: ByStr20, name: String, token_id: Uint256, price: Uint128, nft_contract: ByStr20 with contract
-                    field token_owners : Map Uint256 ByStr20,
-                    field token_approvals: Map Uint256 ByStr20 end)
-  (*check if sender is owner of token *)
-  some_token_owner <-& nft_contract.token_owners[token_id];
-  match some_token_owner with
-  | Some addr =>
-    is_token_owner = builtin eq addr _sender;
-    match is_token_owner with
-    | True =>
-      some_token_approval <-& nft_contract.token_approvals[token_id];
-      match some_token_approval with 
-      | Some addr =>
-        is_marketplace_approved = builtin eq addr _this_address;
-        (*check if marketplace is approved to transfer nft*)
-        match is_marketplace_approved with 
-        | True =>
-          SaleExists nft_address token_id;
-          (* creates sale *)
-          newSale = Sale nft_address name _sender price;
-          sales[nft_address][token_id]:= newSale;
-          (* transfers ownership of token to contract_owner *)
-          escrow nft_address token_id;
-          (*emit SaleCreated event*)
-          e = {_eventname : "SaleCreated"; nft_address: nft_address; name: name; token_id: token_id; price: price};
-          event e
-        | False =>
-          err = CodeMarketplaceNotApproved;
-          ThrowError err
-        end
-      | None =>
-        err = CodeMarketplaceNotApproved;
+(*Callback Transitions*)
+transition GetApprovedCallBack(approved_addr: ByStr20, token_id: Uint256)
+  IsDZTContract;
+  CheckPause not_pause;
+  is_market_place_approved = builtin eq _this_address approved_addr;
+  match is_market_place_approved with
+  | False =>
+    (*Not approved to transfer Dragon*)
+    delete temp_orderbook[token_id];
+    err = CodeMPnotApprovedToTransfer;
+    ThrowError err
+  | True =>
+    (*Approved to transfer Dragon - call TransferFrom on main contract*)
+    temp_order <- temp_orderbook[token_id];
+    match temp_order with 
+    | Some (Order owner price saved_token_id item_order_id list_state) => 
+      match list_state with
+      | Pending =>
+        e = {_eventname : "DragonApprovedSuccess"; extracted_order_id : item_order_id; token_id : token_id};
+        event e;
+        TransferDragonToMarketPlace token_id
+      | _ =>
+        err = CodeOrderWrongState;
         ThrowError err
       end
-    | False =>
-      err = CodeNotTokenOwner;
-      ThrowError err 
+    | None => 
+      err = CodeOrderNotFound;
+      ThrowError err
     end
-  | None =>
-    err = CodeNotFound;
-    ThrowError err 
   end
-end
-
-(* @dev Remove sale from marketplace. *)
-(* @param nft_address - Current owner address of token to escrow. *)
-(* @param token_id - ID of token whose approval to verify. *)
-transition removeSale(nft_address: ByStr20, token_id: Uint256)
-(*check if sale exists *)
-  exist_sale <- sales[nft_address][token_id];
-  match exist_sale with
-  | Some s =>
-    match s with
-    | Sale addr name owner price =>
-      (* check if sender is previous owner *)
-      is_owner_sender = builtin eq owner _sender;
-      match is_owner_sender with
-      | True =>
-        (* delete sale and transfer nft back to previous owner*)
-        delete sales[nft_address][token_id];
-        transfer nft_address _sender token_id;
-        e = {_eventname : "SaleRemoved"; nft_address: nft_address; name: name; token_id: token_id; 
-        price: price; owner: _sender};
-        event e;
-        sales_map <- sales[nft_address];
-        match sales_map with
-        | Some entry =>
-          entry_size = builtin size entry;  
-          zero = Uint32 0;
-          is_empty = builtin eq entry_size zero;
-          match is_empty with
-          | True => 
-            delete sales[nft_address]
-          | False => 
-          end
-        | None => 
-        end
-      | False =>
-        err = CodeNotTokenOwner;
-        ThrowError err 
-      end
-    end
-  | None => 
-    err = CodeSaleNotExist;
-    ThrowError err 
-  end
-end
-
-(* @dev Buy sale from marketplace. *)
-(* @param nft_address - Current owner address of token to escrow. *)
-(* @param token_id - ID of token whose approval to verify. *)
-(* @param nft_contract: royalty_amount - royalty percentage (range 0-10000 representing 0%-100%) *)
-transition buySale(nft_address: ByStr20, token_id: Uint256, nft_contract: ByStr20 with contract
-                    field royalty_amount : Uint128 end)
-  zil_amount = _amount;
-  temp_royalty <-& nft_contract.royalty_amount;
-  temp_commission <- commission_amount;
-  (* Check if royalty amount within 0.01% to 100% *)
-  IsValidRoyaltyAmount temp_royalty;
-  (* Check whether tax + royalty percentage > 100% *)
-  IsValidCommissionAndRoyalty temp_royalty temp_commission;
-  (* check if sale exists*)
-  exist_sale <- sales[nft_address][token_id];
-  match exist_sale with
-  | Some s =>
-    match s with
-    | Sale addr name owner price =>
-      (* check if zil sent equals price *)
-      is_price_equal = builtin eq price zil_amount;
-      match is_price_equal with
-      | True =>
-        accept;
-        (* calculate nft owner cut *)
-        percentage = Uint128 10000;
-        zil_amount_div_percentage = builtin div zil_amount percentage;
-        (*royalty cut to be given to nft contract owner*)
-        royalty_cut = builtin mul zil_amount_div_percentage temp_royalty;
-        (*commission cut to be given to marketplace contract owner*)
-        commission_cut = builtin mul zil_amount_div_percentage temp_commission;
-        sale_minus_royalty = builtin sub zil_amount royalty_cut;
-        (*rest of amount to be given to previous owner*)
-        sale_cut = builtin sub sale_minus_royalty commission_cut;
- 
-         (* transfer nft to sender *)
-        transfer nft_address _sender token_id;
-        (* remove sale from marketplace *)
-        delete sales[nft_address][token_id];
-        sales_map <- sales[nft_address];
-        match sales_map with
-        | Some entry => 
-          entry_size = builtin size entry;  
-          zero = Uint32 0;
-          is_empty = builtin eq entry_size zero;
-          match is_empty with
-          | True => 
-            delete sales[nft_address];
-            (* transfer royalty_cut to nft contract owner *)
-            transfer_royalty_msg = {_tag: "transferRoyalty"; _recipient: nft_address; _amount: royalty_cut};
-            (* transfer commission_cut to nft contract owner *)
-            transfer_commission_msg = {_tag: "transferCommission"; _recipient: contract_owner; _amount: commission_cut};
-            (* transfer sale_cut to previous nft owner *)
-            sale_cut_msg = {_tag: "saleCut"; _recipient: owner; _amount: sale_cut};
-            msgs = three_msgs transfer_royalty_msg transfer_commission_msg sale_cut_msg;
-            send msgs;
-            e = {_eventname : "SaleBought"; nft_address: nft_address; name: name; token_id: token_id; price: price};
-            event e
-          | False => 
-            (* transfer royalty_cut to nft contract owner *)
-            transfer_royalty_msg = {_tag: "transferRoyalty"; _recipient: nft_address; _amount: royalty_cut};
-            (* transfer commission_cut to nft contract owner *)
-            transfer_commission_msg = {_tag: "transferCommission"; _recipient: contract_owner; _amount: commission_cut};
-            (* transfer sale_cut to previous nft owner *)
-            sale_cut_msg = {_tag: "saleCut"; _recipient: owner; _amount: sale_cut};
-            msgs = three_msgs transfer_royalty_msg transfer_commission_msg sale_cut_msg;
-            send msgs;
-            e = {_eventname : "SaleBought"; nft_address: nft_address; name: name; token_id: token_id; price: price};
-            event e
-          end
-        | None => 
-        end
-      | False =>
-        err = CodePaymentNotEqualAmount;
-        ThrowError err 
-      end
-    end
-  | None => 
-    err = CodeSaleNotExist;
-    ThrowError err 
-  end
-end
-
-(*empty callbacks*)
-transition TransferSuccessCallBack(from: ByStr20, recipient: ByStr20, token_id: Uint256)
 end
 
 transition TransferFromSuccessCallBack(from: ByStr20, recipient: ByStr20, token_id: Uint256)
+  IsDZTContract;
+  CheckPause not_pause;
+  temp_order <- temp_orderbook[token_id];
+  match temp_order with 
+  | Some (Order owner price saved_token_id item_order_id list_state) => 
+    match list_state with
+    | Pending =>
+      (* Store listing info inside the order mappings for references *)
+      new_state = Active;
+      new_order = Order from price token_id item_order_id new_state;
+      orderbook[item_order_id] := new_order;
+      delete temp_orderbook[token_id];
+      e = {_eventname : "ListOrderSuccess"; extracted_order_id : item_order_id; order: new_order};
+      event e
+    | _ =>
+      err = CodeOrderWrongState;
+      ThrowError err
+    end
+  | None => 
+    err = CodeOrderNotFound;
+    ThrowError err
+  end
 end
 
-transition RecipientAcceptTransfer(from: ByStr20, recipient : ByStr20, token_id : Uint256)
+(* Purchase an order/NFT that is for sale*)     
+transition Purchase(purchase_order_id: Uint256)
+  CheckPause not_pause;
+  listing <- orderbook[purchase_order_id];
+  current_marketplace_fee <- marketplace_fee;
+  match listing with
+  | Some (Order owner price token_id item_order_id list_state) =>  
+    match list_state with
+    | Active => 
+      (*Order is active! Check amount is right*)
+      is_amount_correct =  uint128_ge _amount price;
+      match is_amount_correct with
+      | True => 
+        accept;
+        (* amount is correct go ahead and remove order and transfer Dragon plus funds*)
+        (* remove fee from the purchase amount*)
+        fees = builtin div price current_marketplace_fee;
+        sellers_amount = builtin sub price fees;
+        (* Delete the order from the orderbook*)
+        delete orderbook[item_order_id];
+        (* transfer Dragon to new owner*)
+        nft_transfered = {
+          _tag: "Transfer";
+          _recipient: main_dzt;
+          _amount: Uint128 0;
+          to: _sender;
+          token_id: token_id
+        };
+        send_payment = {
+          _tag : ""; 
+          _recipient : owner; 
+          _amount : sellers_amount
+        };
+        e = { _eventname : "PurchaseSuccess"; item_order_id: item_order_id; token_id: token_id; buyer_address: _sender; seller_address : owner; price_sold : sellers_amount};
+        event e;
+        msgs = two_msgs nft_transfered send_payment;
+        send msgs
+      | False =>
+        err = CodePaymentAmountError;
+        ThrowError err
+      end
+    | _ => 
+      err = CodeOrderWrongState;
+      ThrowError err
+    end
+  | None => 
+    err = CodeOrderNotFound;
+    ThrowError err
+  end
 end
 
-transition RecipientAcceptTransferFrom(from: ByStr20, recipient : ByStr20, token_id : Uint256)
+
+
+
+(* Cancel listing, remove it, and transfer Dragon back to owner*) 
+(* Only performed by owner of listing*)
+transition CancelListing(cancel_order_id : Uint256)
+  listing <- orderbook[cancel_order_id];
+  match listing with
+  | Some (Order owner price token_id item_order_id list_state) =>  
+    (*check if owner of order*)
+    is_owner = builtin eq _sender owner;
+    match is_owner with
+    | True => 
+      match list_state with
+      | Active => 
+        (*Order is active! Go ahead delete the order and return Dragon*)
+        delete orderbook[item_order_id];
+        e = {_eventname : "OrderCanceled"; extracted_order : item_order_id};
+        event e;
+        (*transfer Dragon to owner*)
+        TransferDragonToOwner token_id owner
+      | _ => 
+        err = CodeOrderWrongState;
+        ThrowError err
+      end
+    | False =>
+      err = CodeNotAuthorized;
+      ThrowError err
+    end
+  | None => 
+    err = CodeOrderNotFound;
+    ThrowError err
+  end
 end
 
-transition TransferRoyaltySuccessCallBack(nft_contract: ByStr20, royalty_amount: Uint128)
-end 
-
-transition IsTokenOwnerCallBack()
+(* Cancel an order and refund the NFT when the contract is on pause *)
+transition CancelOrder(cancel_order_id: Uint256)
+  CheckPause on_pause;
+  listing <- orderbook[cancel_order_id];
+  match listing with
+  | Some (Order owner price token_id item_order_id list_state) =>
+    delete orderbook[item_order_id];
+    e = {_eventname : "OrderCancelled"; item_order_id : item_order_id};
+    event e;
+    match list_state with
+    | Active => 
+      TransferDragonToOwner token_id owner
+    | Pending =>
+    end
+  | None =>
+    err = CodeOrderNotFound;
+    ThrowError err
+  end
 end
 
-transition AddApprovalSuccessCallBack(approved_spender: ByStr20, token_id: Uint256)
+
+
+(* Admin only transitions *)
+
+(*Withdrawal balance of contract *)
+transition Withdrawal(to: ByStr20)
+  IsContractOwner;
+  (* get current balance *)
+  bal <- _balance;
+  e = {_eventname : "WithdrawBalanceSuccess"; withdrawal_amount : bal; recipient: _sender};
+  event e;
+  withdrawal = {_tag : ""; _recipient : to; _amount : bal};
+  msgs = one_msg withdrawal;
+  send msgs
 end
+
+transition ChangeMarketPlaceFee(new_fee: Uint128)
+  IsContractOwner;
+  old_fee <- marketplace_fee;
+  marketplace_fee := new_fee;
+  e = {_eventname : "FeeChanged"; previous_fee : old_fee; new_fee: new_fee};
+  event e
+end
+
+transition ChangePause()
+  IsContractOwner;
+  status <- pause;
+  is_pause = builtin eq status on_pause;
+  match is_pause with
+  | True =>
+    pause := not_pause;
+    e = {_eventname : "Working"};
+    event e
+  | False =>
+    pause := on_pause;
+    e = {_eventname : "Paused"};
+    event e
+  end
+end
+
+(*Empty callbacks*)
+transition RecipientAcceptTransferFrom(from: ByStr20, recipient: ByStr20, token_id: Uint256)
+end
+
+transition TransferSuccessCallBack(from: ByStr20, recipient: ByStr20, token_id: Uint256)
+end
+
