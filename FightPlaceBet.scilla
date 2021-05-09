@@ -6,11 +6,6 @@ import ListUtils
 (***************************************************)
 library FightPlaceBet
 
-(* DragonZIL types *)
-(* Custom ADT storing - token_id, owner, stage, token_uri, token_gen_battle, token_gen_image *)
-type Dragon =
-| Dragon of Uint256 ByStr20 Uint32 String Uint256 Uint256
-
 (* Error events *)
 type Error =
   | CodeNotInWaitingList
@@ -44,6 +39,7 @@ let on_pause = Uint32 1
 let zero = Uint256 0
 let zero32 = Uint32 0
 let zero128 = Uint128 0
+let zero256 = Uint256 0
 let one = Uint256 1
 let one32 = Uint32 1
 let two = Uint256 2
@@ -57,8 +53,6 @@ let zero_address = 0x0000000000000000000000000000000000000000
 let dummy_str = ""
 let default_stage = Uint32 0
 
-let default_dragon = Dragon zero zero_address default_stage dummy_str zero zero
-
 let option_value =
   tfun 'A =>
   fun (default: 'A) =>
@@ -70,7 +64,8 @@ let option_value =
 
 let option_uint32 = @option_value Uint32
 let option_uint128 = @option_value Uint128
-let option_dragon = @option_value Dragon
+let option_uint256 = @option_value Uint256
+let option_adr = @option_value ByStr20
 
 let one_msg =
   fun (msg : Message) =>
@@ -119,33 +114,74 @@ let get_gen_val =
     let genzeros = builtin sub rem_num1 rem_num2 in
       builtin div genzeros divider2
 
-let get_dragon_token_id =
-  fun (dragon: Dragon) =>
-    match dragon with
-    | Dragon token_id owner stage token_uri token_gen_battle token_gen_image =>
-      token_id
-    end
+let get_avg_atc_battle_gen =
+  fun (genschain: Uint256) =>
+    let genschain_val = genschain in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a1 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a2 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a3 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a4 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a5 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a6 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a7 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a8 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a9 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a10 = builtin rem genschain_val ten2 in
+    let sum = builtin add a1 a2 in
+    let sum = builtin add sum a3 in
+    let sum = builtin add sum a4 in
+    let sum = builtin add sum a5 in
+    let sum = builtin add sum a6 in
+    let sum = builtin add sum a7 in
+    let sum = builtin add sum a8 in
+    let sum = builtin add sum a9 in
+    let sum = builtin add sum a10 in
+    builtin div sum ten
 
-let get_dragon_owner =
-  fun (dragon: Dragon) =>
-    match dragon with
-    | Dragon token_id owner stage token_uri token_gen_battle token_gen_image =>
-      owner
-    end
-
-let get_dragon_stage =
-  fun (dragon: Dragon) =>
-    match dragon with
-    | Dragon token_id owner stage token_uri token_gen_battle token_gen_image =>
-      stage
-    end
-
-let get_dragon_gen_battle =
-  fun (dragon: Dragon) =>
-    match dragon with
-    | Dragon token_id owner stage token_uri token_gen_battle token_gen_image =>
-      token_gen_battle
-    end
+let get_avg_def_battle_gen =
+  fun (genschain: Uint256) =>
+    let genschain_val = genschain in
+    let genschain_val = builtin div genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten20 in
+    let a1 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a2 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a3 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a4 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a5 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a6 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a7 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a8 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a9 = builtin rem genschain_val ten2 in
+    let genschain_val = builtin div genschain_val ten2 in
+    let a10 = builtin rem genschain_val ten2 in
+    let sum = builtin add a1 a2 in
+    let sum = builtin add sum a3 in
+    let sum = builtin add sum a4 in
+    let sum = builtin add sum a5 in
+    let sum = builtin add sum a6 in
+    let sum = builtin add sum a7 in
+    let sum = builtin add sum a8 in
+    let sum = builtin add sum a9 in
+    let sum = builtin add sum a10 in
+    builtin div sum ten
 
 (***************************************************)
 (*             The contract definition             *)
@@ -153,9 +189,17 @@ let get_dragon_gen_battle =
 contract FightPlaceBet
 
 (*  Parameters *)
-(contract_owner: ByStr20, main_dzt : ByStr20, proxy_zlp: ByStr20)
+(
+contract_owner: ByStr20,
+contract_zlp: ByStr20,
+contract_main: ByStr20 with contract
+  field token_gen_battle: Map Uint256 Uint256,
+  field token_stage: Map Uint256 Uint32,
+  field token_owners: Map Uint256 ByStr20
+end
+)
 
-field proxy_zlp_addr: ByStr20 = proxy_zlp
+field contract_zlp_addr: ByStr20 = contract_zlp
 field pause: Uint32 = not_pause
 
 (* Mutable fields *)
@@ -170,8 +214,7 @@ field tmp_fight_price_fld : Uint128 = Uint128 0
 field tmp_dragon1_owner_adr : ByStr20 = zero_address
 field tmp_dragon2_owner_adr : ByStr20 = zero_address
 
-(* 0 - waitlist place, 1 - fight start, 2 - waitlist remove, 3 - pause contract*)
-field tmp_action : Uint256 = Uint256 0
+field super_dragon_avg_fld : Uint256 = Uint256 70
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
@@ -179,8 +222,28 @@ procedure ThrowError(err : Error)
   throw e
 end
 
+procedure TransferFromTo(amount: Uint128, from: ByStr20, to: ByStr20)
+  recipient <- contract_zlp_addr;
+
+  is_zero = builtin eq zero128 amount;
+
+  match is_zero with
+  | False =>
+    call_transfer_zlp = {
+      _tag: "TransferFrom";
+      _recipient: recipient;
+      _amount: Uint128 0;
+      from: from;
+      to: to;
+      amount: amount
+    };
+    msgs = one_msg call_transfer_zlp;
+    send msgs
+  | True =>
+  end
+end
+
 procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_battle_winner_param: Uint256, token_id_loser: Uint256, gen_battle_loser_param: Uint256)
-  zlp_contract <- proxy_zlp_addr;
   tmp_token_id_val <- tmp_token_id;
 
   fight_price <- tmp_fight_price_fld;
@@ -203,56 +266,30 @@ procedure AfterFightWinLose(num_winner: Uint256, token_id_winner: Uint256, gen_b
     | True =>
       two128 = Uint128 2;
       fight_pricex2 = builtin mul fight_price two128;
-      transfer_call = {
-        _tag: "Mint";
-        _recipient: zlp_contract;
-        _amount: Uint128 0;
-        recipient: dragon1_owner_adr;
-        amount: fight_pricex2
-      };
-      msgs = one_msg transfer_call;
-      send msgs
+
+      TransferFromTo fight_pricex2 _this_address dragon1_owner_adr
     | False =>
       two128 = Uint128 2;
       fight_pricex2 = builtin mul fight_price two128;
-      transfer_call = {
-        _tag: "Mint";
-        _recipient: zlp_contract;
-        _amount: Uint128 0;
-        recipient: dragon2_owner_adr;
-        amount: fight_pricex2
-      };
-      msgs = one_msg transfer_call;
-      send msgs
+
+      TransferFromTo fight_pricex2 _this_address dragon2_owner_adr
     end
   | False =>
     match dragon1_win_bool with
     | True =>
       two128 = Uint128 2;
       fight_pricex2 = builtin mul fight_price two128;
-      transfer_call = {
-        _tag: "Mint";
-        _recipient: zlp_contract;
-        _amount: Uint128 0;
-        recipient: dragon1_owner_adr;
-        amount: fight_pricex2
-      };
-      msgs = one_msg transfer_call;
-      send msgs
+
+      TransferFromTo fight_pricex2 _this_address dragon1_owner_adr
     | False =>
       two128 = Uint128 2;
       fight_pricex2 = builtin mul fight_price two128;
-      transfer_call = {
-        _tag: "Mint";
-        _recipient: zlp_contract;
-        _amount: Uint128 0;
-        recipient: dragon2_owner_adr;
-        amount: fight_pricex2
-      };
-      msgs = one_msg transfer_call;
-      send msgs
+
+      TransferFromTo fight_pricex2 _this_address dragon2_owner_adr
     end
   end
+
+
 end
 
 procedure AfterFightDraw(token_id1: Uint256, gen_battle1: Uint256, token_id2: Uint256, gen_battle2: Uint256)
@@ -440,6 +477,25 @@ procedure FightDo(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uin
   end
 end
 
+procedure FightDoSuper(token_id1: Uint256, gen_battle1_param: Uint256, token_id2: Uint256, gen_battle2_param: Uint256)
+  (* generating random values *)
+  entropyNumber <- entropy;
+  current_block <- & BLOCKNUMBER;
+  random = random entropyNumber current_block;
+  entropy := random;
+
+  fithy = Uint256 50;
+
+  random_luck = builtin rem random ten2;
+  luck_bool_eq = builtin lt random_luck fithy;
+  match luck_bool_eq with
+  | True =>
+    AfterFightWinLose one token_id1 gen_battle1_param token_id2 gen_battle2_param
+  | False =>
+    AfterFightWinLose two token_id2 gen_battle2_param token_id1 gen_battle1_param
+  end
+end
+
 procedure IsContractOwner()
   is_contract_owner = builtin eq contract_owner _sender;
   match is_contract_owner with
@@ -517,24 +573,7 @@ procedure CheckPause(expected: Uint32)
   end
 end
 
-procedure FightPrepare(dragons: List Dragon)
-  dragons_nth = @list_nth Dragon;
-  dragon_one_opt = dragons_nth zero32 dragons;
-  dragon_two_opt = dragons_nth one32 dragons;
-
-  dragon_one = option_dragon default_dragon dragon_one_opt;
-  dragon_two = option_dragon default_dragon dragon_two_opt;
-
-  dragon1_token_id = get_dragon_token_id dragon_one;
-  dragon1_owner = get_dragon_owner dragon_one;
-  dragon1_stage = get_dragon_stage dragon_one;
-  dragon1_gen_battle = get_dragon_gen_battle dragon_one;
-
-  dragon2_token_id = get_dragon_token_id dragon_two;
-  dragon2_owner = get_dragon_owner dragon_two;
-  dragon2_stage = get_dragon_stage dragon_two;
-  dragon2_gen_battle = get_dragon_gen_battle dragon_two;
-
+procedure FightPrepare(dragon1_token_id: Uint256, dragon1_owner: ByStr20, dragon1_stage: Uint32, dragon1_gen_battle: Uint256, dragon2_token_id: Uint256, dragon2_owner: ByStr20, dragon2_stage: Uint32, dragon2_gen_battle: Uint256)
   tmp_dragon1_owner_adr := dragon1_owner;
   tmp_dragon2_owner_adr := dragon2_owner;
 
@@ -581,128 +620,50 @@ procedure FightPrepare(dragons: List Dragon)
     end
   end;
 
-  (* start fight process with gens matching with this 2 dragons *)
-  FightDo dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
-end
+  super_dragon_avg <- super_dragon_avg_fld;
 
-procedure PlaceToWaitlist(dragons: List Dragon)
-  zlp_contract <- proxy_zlp_addr;
-  dragons_nth = @list_nth Dragon;
-  dragon_one_opt = dragons_nth zero32 dragons;
-  dragon_one = option_dragon default_dragon dragon_one_opt;
-  dragon1_owner = get_dragon_owner dragon_one;
-  dragon1_stage = get_dragon_stage dragon_one;
+  avg_def_battle_gen_d1 = get_avg_def_battle_gen dragon1_gen_battle;
+  avg_avg_battle_gen_d1 = get_avg_atc_battle_gen dragon1_gen_battle;
+  avg_def_battle_gen_d2 = get_avg_def_battle_gen dragon2_gen_battle;
+  avg_avg_battle_gen_d2 = get_avg_atc_battle_gen dragon2_gen_battle;
 
-  CheckStage dragon1_stage;
-  CheckIsInitiatorOwner dragon1_owner;
+  avg_def_battle_gen_d1_bool = builtin lt avg_def_battle_gen_d1 super_dragon_avg;
+  avg_avg_battle_gen_d1_bool = builtin lt avg_avg_battle_gen_d1 super_dragon_avg;
+  avg_def_battle_gen_d2_bool = builtin lt avg_def_battle_gen_d2 super_dragon_avg;
+  avg_avg_battle_gen_d2_bool = builtin lt avg_avg_battle_gen_d2 super_dragon_avg;
 
-  (* Owner wanted to put dragon to waiting list *)
-  initiator_adr <- tmp_initiator_adr;
-  token_id <- tmp_token_id;
-  token_inwatinglist <- exists waiting_list[token_id];
-  match token_inwatinglist with
+  match avg_def_battle_gen_d1_bool with
   | False =>
-    fight_price <- tmp_fight_price_fld;
-
-    transfer_call = {
-      _tag: "Burn";
-      _recipient: zlp_contract;
-      _amount: Uint128 0;
-      amount: fight_price;
-      burn_account: initiator_adr
-    };
-    msgs = one_msg transfer_call;
-    send msgs;
-
-    waiting_list[token_id] := fight_price
+    (* start fight process with random, because of super dragon in fight *)
+    FightDoSuper dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
   | True =>
-    fight_price_opt <- waiting_list[token_id];
-    fight_price = option_uint128 zero128 fight_price_opt;
-
-    transfer_call = {
-      _tag: "Mint";
-      _recipient: zlp_contract;
-      _amount: Uint128 0;
-      amount: fight_price;
-      recipient: initiator_adr
-    };
-    msgs = one_msg transfer_call;
-    send msgs;
-
-    delete waiting_list[token_id]
+    match avg_avg_battle_gen_d1_bool with
+    | False =>
+      (* start fight process with random, because of super dragon in fight *)
+      FightDoSuper dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
+    | True =>
+      match avg_def_battle_gen_d2_bool with
+      | False =>
+        (* start fight process with random, because of super dragon in fight *)
+        FightDoSuper dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
+      | True =>
+        match avg_avg_battle_gen_d2_bool with
+        | False =>
+          (* start fight process with random, because of super dragon in fight *)
+          FightDoSuper dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
+        | True =>
+          (* start fight process with gens matching with this 2 dragons *)
+          FightDo dragon1_token_id dragon1_gen_battle dragon2_token_id dragon2_gen_battle
+        end
+      end
+    end
   end
 end
 
-procedure RemoveFromWaitlist(dragons: List Dragon)
-  zlp_contract <- proxy_zlp_addr;
-  dragons_nth = @list_nth Dragon;
-  dragon_one_opt = dragons_nth zero32 dragons;
-  dragon_one = option_dragon default_dragon dragon_one_opt;
-  dragon1_token_id = get_dragon_token_id dragon_one;
-  dragon1_owner = get_dragon_owner dragon_one;
-  dragon1_stage = get_dragon_stage dragon_one;
 
-  token_inwatinglist <- exists waiting_list[dragon1_token_id];
-  match token_inwatinglist with
-  | False =>
-  | True =>
-    fight_price_opt <- waiting_list[dragon1_token_id];
-    fight_price = option_uint128 zero128 fight_price_opt;
-
-    transfer_call = {
-      _tag: "Mint";
-      _recipient: zlp_contract;
-      _amount: Uint128 0;
-      amount: fight_price;
-      recipient: dragon1_owner
-    };
-    msgs = one_msg transfer_call;
-    send msgs;
-
-    delete waiting_list[dragon1_token_id]
-  end
-end
-
-transition GetDragonsCallBack(dragons: List Dragon)
-  (* need to check is it called from main contract *)
-  is_main_dzt_call = builtin eq _sender main_dzt;
-  match is_main_dzt_call with
-  | False =>
-    err = CodeCallNotMainDzt;
-    ThrowError err
-  | True =>
-  end;
-
-  (* 0 - waitlist place, 1 - fight start, 2 - waitlist remove, 3 - pause contract*)
-  action <- tmp_action;
-
-  action_waitlist_place = builtin eq action zero;
-  action_fight = builtin eq action one;
-  action_waitlist_remove = builtin eq action two;
-
-  (* dragons_length = @list_length Dragon; *)
-  (* dragons_num = dragons_length dragons; *)
-  match action_waitlist_place with
-  | False =>
-  | True =>
-    PlaceToWaitlist dragons
-  end;
-  match action_fight with
-  | False =>
-  | True =>
-    FightPrepare dragons
-  end;
-  match action_waitlist_remove with
-  | False =>
-  | True =>
-    RemoveFromWaitlist dragons
-  end
-end
 
 transition FightStart(who_id: Uint256, with_id: Uint256)
   CheckPause not_pause;
-  tmp_action := one;
-
 
   tmp_initiator_adr := _sender;
   tmp_token_id := with_id;
@@ -712,51 +673,68 @@ transition FightStart(who_id: Uint256, with_id: Uint256)
 
   CheckNotBothInWaitingList who_id with_id;
 
-  zlp_contract <- proxy_zlp_addr;
-  fight_price_opt <- waiting_list[with_id];
-  fight_price = option_uint128 zero128 fight_price_opt;
-  transfer_call = {
-    _tag: "Burn";
-    _recipient: zlp_contract;
-    _amount: Uint128 0;
-    amount: fight_price;
-    burn_account: _sender
-  };
+  fight_price_init_opt <- waiting_list[with_id];
+  fight_price_init = option_uint128 zero128 fight_price_init_opt;
 
-  ids = two_listid who_id with_id;
-  getdragons_call = {
-    _tag: "GetDragons";
-    _recipient: main_dzt;
-    _amount: Uint128 0;
-    ids: ids
-  };
+  TransferFromTo fight_price_init _sender _this_address;
 
-  msgs = two_msgs transfer_call getdragons_call;
-  send msgs
+  dragon1_token_id = who_id;
+
+  some_dragon_owner1 <-& contract_main.token_owners[who_id];
+  dragon1_owner = option_adr zero_address some_dragon_owner1;
+
+  some_stage1 <-& contract_main.token_stage[who_id];
+  dragon1_stage = option_uint32 zero32 some_stage1;
+
+  some_gen_battle1 <-& contract_main.token_gen_battle[who_id];
+  dragon1_gen_battle = option_uint256 zero256 some_gen_battle1;
+
+  dragon2_token_id = with_id;
+
+  some_dragon_owner2 <-& contract_main.token_owners[with_id];
+  dragon2_owner = option_adr zero_address some_dragon_owner2;
+
+  some_stage2 <-& contract_main.token_stage[with_id];
+  dragon2_stage = option_uint32 zero32 some_stage2;
+
+  some_gen_battle2 <-& contract_main.token_gen_battle[with_id];
+  dragon2_gen_battle = option_uint256 zero256 some_gen_battle2;
+
+  FightPrepare dragon1_token_id dragon1_owner dragon1_stage dragon1_gen_battle dragon2_token_id dragon2_owner dragon2_stage dragon2_gen_battle
 end
 
 transition WaitListAddDel(token_id: Uint256, fight_price: Uint128)
   CheckPause not_pause;
-  tmp_action := zero;
 
-  (* checking is sender owner of the dragon and adding or removing dragon to list*)
   tmp_initiator_adr := _sender;
-  tmp_token_id := token_id;
 
-  tmp_fight_price_fld := fight_price;
+  some_stage <-& contract_main.token_stage[token_id];
+  dragon_stage = option_uint32 zero32 some_stage;
 
-  ids = one_listid token_id;
-  getdragons_call = {
-    _tag: "GetDragons";
-    _recipient: main_dzt;
-    _amount: Uint128 0;
-    ids: ids
-  };
-  msgs = one_msg getdragons_call;
-  send msgs
+  some_dragon_owner <-& contract_main.token_owners[token_id];
+  dragon_owner = option_adr zero_address some_dragon_owner;
+
+  CheckStage dragon_stage;
+  CheckIsInitiatorOwner dragon_owner;
+
+  (* Owner wanted to put dragon to waiting list *)
+  token_inwatinglist <- exists waiting_list[token_id];
+  match token_inwatinglist with
+  | False =>
+    TransferFromTo fight_price _sender _this_address;
+
+    waiting_list[token_id] := fight_price
+  | True =>
+    fight_price_init_opt <- waiting_list[token_id];
+    fight_price_init = option_uint128 zero128 fight_price_init_opt;
+
+    TransferFromTo fight_price_init _this_address _sender;
+
+    delete waiting_list[token_id]
+  end
 end
 
-transition ChangeProxyZLP(addr: ByStr20)
+transition ChangeAdrZLP(addr: ByStr20)
   IsContractOwner;
 
   e = {
@@ -765,25 +743,26 @@ transition ChangeProxyZLP(addr: ByStr20)
   };
   event e;
 
-  proxy_zlp_addr := addr
+  contract_zlp_addr := addr
 end
 
 transition WaitListRemove(token_id: Uint256)
   IsContractOwner;
 
-  tmp_action := two;
+  token_inwatinglist <- exists waiting_list[token_id];
+  match token_inwatinglist with
+  | False =>
+  | True =>
+    fight_price_init_opt <- waiting_list[token_id];
+    fight_price_init = option_uint128 zero128 fight_price_init_opt;
 
-  tmp_initiator_adr := _sender;
+    some_dragon_owner <-& contract_main.token_owners[token_id];
+    dragon_owner = option_adr zero_address some_dragon_owner;
 
-  ids = one_listid token_id;
-  getdragons_call = {
-    _tag: "GetDragons";
-    _recipient: main_dzt;
-    _amount: Uint128 0;
-    ids: ids
-  };
-  msgs = one_msg getdragons_call;
-  send msgs
+    TransferFromTo fight_price_init _this_address dragon_owner;
+
+    delete waiting_list[token_id]
+  end
 end
 
 transition ChangePause()
@@ -797,22 +776,22 @@ transition ChangePause()
     event e
   | False =>
     pause := on_pause;
-
-
-    (* todo: get list of all dragons in the list and mint zlp for all owners *)
-(*
-  ids = one_listid token_id;
-  getdragons_call = {
-    _tag: "GetDragons";
-    _recipient: main_dzt;
-    _amount: Uint128 0;
-    ids: ids
-  };
-  msgs = one_msg getdragons_call;
-  send msgs
-*)
-
     e = {_eventname : "Paused"};
     event e
   end
+end
+
+transition ChangeSuperDragonAvg(value: Uint256)
+  IsContractOwner;
+
+  e = {
+    _eventname: "ChangeSuperDragonAvg";
+    value: value
+  };
+  event e;
+
+  super_dragon_avg_fld := value
+end
+
+transition TransferFromSuccessCallBack(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
 end
