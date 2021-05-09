@@ -548,6 +548,8 @@ procedure FightPrepare(dragon1_token_id: Uint256, dragon1_owner: ByStr20, dragon
   tmp_dragon1_owner_adr := dragon1_owner;
   tmp_dragon2_owner_adr := dragon2_owner;
 
+  (* 2nd in waitlist - with_id *)
+
   (* check stage of dragons *)
   CheckStage dragon1_stage;
   CheckStage dragon2_stage;
@@ -558,6 +560,7 @@ procedure FightPrepare(dragon1_token_id: Uint256, dragon1_owner: ByStr20, dragon
   dragon2_owner_bool_eq = builtin eq dragon2_owner initiator_adr;
 
   (* removing dragons from waiting list *)
+(*
   token1_inwatinglist <- exists waiting_list[dragon1_token_id];
   match token1_inwatinglist with
   | False =>
@@ -590,6 +593,12 @@ procedure FightPrepare(dragon1_token_id: Uint256, dragon1_owner: ByStr20, dragon
       ThrowError err
     end
   end;
+*)
+  fight_price_opt <- waiting_list[dragon2_token_id];
+  fight_price = option_uint128 zero128 fight_price_opt;
+  tmp_fight_price_fld := fight_price;
+
+  delete waiting_list[dragon2_token_id];
 
   super_dragon_avg <- super_dragon_avg_fld;
 
@@ -697,7 +706,7 @@ transition WaitListAddDel(token_id: Uint256, fight_price: Uint128)
     fight_price_init_opt <- waiting_list[token_id];
     fight_price_init = option_uint128 zero128 fight_price_init_opt;
 
-    TransferFromTo fight_price_init _this_address _sender;
+    CallTransfer _sender fight_price_init;
 
     delete waiting_list[token_id]
   end
@@ -716,7 +725,7 @@ transition WaitListRemove(token_id: Uint256)
     some_dragon_owner <-& contract_main.token_owners[token_id];
     dragon_owner = option_adr zero_address some_dragon_owner;
 
-    TransferFromTo fight_price_init _this_address dragon_owner;
+    CallTransfer dragon_owner fight_price_init;
 
     delete waiting_list[token_id]
   end
