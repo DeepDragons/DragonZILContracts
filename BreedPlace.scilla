@@ -367,10 +367,10 @@ procedure Breed(who_id: Uint256, with_id: Uint256)
 
     r = random entropyNumber current_block _sender;
 
-    combat_gens = combinate_image_gens token2_image token1_image r;
-    image_gens = combinate_combat_gens token2_combat token1_combat r;
+    image_gens = combinate_image_gens token2_image token1_image r;
+    combat_gens = combinate_combat_gens token2_combat token1_combat r;
     pair = Pair {Uint256 Uint256} image_gens combat_gens;
-
+    
     delete waiting_list[who_id];
     delete waiting_list[with_id];
     entropy := r;
