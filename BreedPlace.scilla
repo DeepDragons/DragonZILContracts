@@ -8,6 +8,12 @@ let two256 = Uint256 2
 let one256 = Uint256 1
 let zero256 = Uint256 0
 let one_hundred256 = Uint256 100
+let factor_60 = Uint256 1000000000000000000000000000000000000000000000000000000000000
+let factor_54 = Uint256 1000000000000000000000000000000000000000000000000000000
+let factor_48 = Uint256 1000000000000000000000000000000000000000000000000
+let factor_42 = Uint256 1000000000000000000000000000000000000000000
+let factor_36 = Uint256 1000000000000000000000000000000000000
+let factor_30 = Uint256 1000000000000000000000000000000
 let factor_24 = Uint256 1000000000000000000000000
 let factor_18 = Uint256 1000000000000000000
 let factor_12 = Uint256 1000000000000
@@ -47,6 +53,39 @@ let concat_gens_image =
     let gens = builtin add gens g4 in
       builtin add gens gen5
 
+let concat_gens_combat =
+  fun (gen0: Uint256) =>
+  fun (gen1: Uint256) =>
+  fun (gen2: Uint256) =>
+  fun (gen3: Uint256) =>
+  fun (gen4: Uint256) =>
+  fun (gen5: Uint256) =>
+  fun (gen6: Uint256) =>
+  fun (gen7: Uint256) =>
+  fun (gen8: Uint256) =>
+  fun (gen9: Uint256) =>
+  fun (gen10: Uint256) =>
+    let g0 = builtin mul gen0 factor_60 in
+    let g1 = builtin mul gen1 factor_54 in
+    let g2 = builtin mul gen2 factor_48 in
+    let g3 = builtin mul gen3 factor_42 in
+    let g4 = builtin mul gen4 factor_36 in
+    let g5 = builtin mul gen5 factor_30 in
+    let g6 = builtin mul gen6 factor_24 in
+    let g7 = builtin mul gen7 factor_18 in
+    let g8 = builtin mul gen8 factor_12 in
+    let g9 = builtin mul gen9 factor_6 in
+    let gens = builtin add g0 g1 in
+    let gens = builtin add gens g2 in
+    let gens = builtin add gens g3 in
+    let gens = builtin add gens g4 in
+    let gens = builtin add gens g5 in
+    let gens = builtin add gens g6 in
+    let gens = builtin add gens g7 in
+    let gens = builtin add gens g8 in
+    let gens = builtin add gens g9 in
+      builtin add gens gen10
+
 let combinate_image_gens =
   fun (gens0: Uint256) =>
   fun (gens1: Uint256) =>
@@ -75,14 +114,71 @@ let combinate_image_gens =
     end in
       concat_gens_image gen1 gen2 gen3 gen4 gen5
 
+let combinate_combat_gens =
+  fun (gens0: Uint256) =>
+  fun (gens1: Uint256) =>
+  fun (random: Uint256) =>
+    let n = builtin rem random one_hundred256 in
+    let is_half = builtin lt n fifty256 in
+    let gen10 = match is_half with
+    | True => builtin rem gens0 factor_6
+    | False => builtin rem gens1 factor_6
+    end in
+
+    let r_next = builtin div random two256 in
+    let n = builtin rem r_next one_hundred256 in
+    let gen9 = cut_gen gens0 gens1 n factor_6 in 
+
+    let r_next = builtin div random two256 in
+    let n = builtin rem r_next one_hundred256 in
+    let gen8 = cut_gen gens0 gens1 n factor_12 in
+
+    let r_next = builtin div random two256 in
+    let n = builtin rem r_next one_hundred256 in
+    let gen7 = cut_gen gens0 gens1 n factor_18 in
+
+    let r_next = builtin div random two256 in
+    let n = builtin rem r_next one_hundred256 in
+    let gen6 = cut_gen gens0 gens1 n factor_24 in
+
+    let r_next = builtin div random two256 in
+    let n = builtin rem r_next one_hundred256 in
+    let gen5 = cut_gen gens0 gens1 n factor_30 in
+
+    let r_next = builtin div random two256 in
+    let n = builtin rem r_next one_hundred256 in
+    let gen4 = cut_gen gens0 gens1 n factor_36 in
+
+    let r_next = builtin div random two256 in
+    let n = builtin rem r_next one_hundred256 in
+    let gen3 = cut_gen gens0 gens1 n factor_42 in
+
+    let r_next = builtin div random two256 in
+    let n = builtin rem r_next one_hundred256 in
+    let gen2 = cut_gen gens0 gens1 n factor_48 in
+
+    let r_next = builtin div random two256 in
+    let n = builtin rem r_next one_hundred256 in
+    let gen1 = cut_gen gens0 gens1 n factor_54 in
+
+    let r_next = builtin div random two256 in
+    let n = builtin rem r_next one_hundred256 in
+    let is_half = builtin lt n fifty256 in
+    let gen0 = match is_half with
+    | True => builtin div gens0 factor_60
+    | False => builtin div gens1 factor_60
+    end in
+      concat_gens_combat gen0 gen1 gen2 gen3 gen4 gen5 gen6 gen7 gen8 gen9 gen10
+
 contract DragonZILBreed
 ()
 
 transition Test()
-  gen0 = Uint256 77742020474220424231014055026;
-  gen1 = Uint256 77723710180045032147252032241;
+  gen0 = Uint256 101647673406769880573901220984528846221301586515024944091799042138004426191841;
+  gen1 = Uint256 101647673406769880573901220984528846221301586515024944091799042138004426191841;
   r = Uint256 8842241887348121053642943213174811942429995499481999421099999928807063991194;
-  gens = combinate_image_gens gen0 gen1 r;
+  (* gens = combinate_image_gens gen0 gen1 r; *)
+  gens = combinate_combat_gens gen0 gen1 r;
 
   e = {
     _eventname: "Test";
