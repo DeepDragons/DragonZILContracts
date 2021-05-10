@@ -3,6 +3,14 @@ scilla_version 0
 import PairUtils
 library DragonZILBreedLib
 
+type Error =
+  | CodeMinPrice
+  | CodeNotMain
+  | CodeNotZLP
+  | CodeNotOwner
+
+let zero_address = 0x0000000000000000000000000000000000000000
+
 let fifty256 = Uint256 50
 let two256 = Uint256 2
 let one256 = Uint256 1
@@ -18,6 +26,17 @@ let factor_24 = Uint256 1000000000000000000000000
 let factor_18 = Uint256 1000000000000000000
 let factor_12 = Uint256 1000000000000
 let factor_6 = Uint256 1000000
+
+let option_value =
+  tfun 'A =>
+  fun (default: 'A) =>
+  fun (opt_val: Option 'A) =>
+    match opt_val with
+    | Some v => v
+    | None => default
+    end
+
+let option_address = @option_value ByStr20
 
 let split =
   fun (gens: Uint256) =>
@@ -170,8 +189,67 @@ let combinate_combat_gens =
     end in
       concat_gens_combat gen0 gen1 gen2 gen3 gen4 gen5 gen6 gen7 gen8 gen9 gen10
 
+let make_error =
+  fun (result : Error) =>
+    let result_code = 
+      match result with
+      | CodeMinPrice => Int32 -1
+      | CodeNotMain  => Int32 -2
+      | CodeNotZLP   => Int32 -3
+      | CodeNotOwner => Int32 -4
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
 contract DragonZILBreed
-()
+(
+  main: ByStr20 with contract
+    field token_owners: Map Uint256 ByStr20
+  end,
+  wallet: ByStr20,
+  zlp: ByStr20
+)
+
+field entropy : Uint256 = Uint256 42
+field breed_min_price_fld : Uint128 = Uint128 25000000000000000000
+
+field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
+
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+procedure CheckToeknOwner(token_id: Uint256)
+  some_owner <-& main.token_owners[token_id];
+  owner = option_address _this_address some_owner;
+  is_owner = builtin eq owner _sender;
+
+  match is_owner with
+  | True =>
+  | False =>
+    err = CodeNotOwner;
+    ThrowError err
+  end
+end
+
+procedure CheckMinPrice(breed_price: Uint128)
+  breed_min_price <- breed_min_price_fld;
+  low_price_bool = builtin lt breed_price breed_min_price;
+
+  match low_price_bool with
+  | True =>
+    err = CodeNotZLP;
+    ThrowError err
+  | False =>
+  end
+end
+
+transition Add(token_id: Uint256, breed_price: Uint128)
+  CheckToeknOwner token_id;
+  CheckMinPrice breed_price;
+  waiting_list[token_id] := breed_price
+end
 
 transition Test()
   gen0 = Uint256 101647673406769880573901220984528846221301586515024944091799042138004426191841;
