@@ -20,7 +20,6 @@ type ImageDetails =
 
 type Error =
   | CodeInsufficientAmount
-  | CodeWrongListLength
   | CodeNotAuthorised
   | CodeNotZLP
 
@@ -66,6 +65,17 @@ let one_msg =
   fun (msg : Message) => 
     let nil_msg = Nil {Message} in
     Cons {Message} msg nil_msg
+
+let option_value =
+  tfun 'A =>
+  fun (default: 'A) =>
+  fun (opt_val: Option 'A) =>
+    match opt_val with
+    | Some v => v
+    | None => default
+    end
+  
+let option_256 = @option_value Uint256
 
 let get_percent =
   fun (some_percent: Option Uint128) =>
@@ -287,8 +297,12 @@ let do_gens_list =
           match xs_n with
           | Pair xs n =>
               let new_n = builtin sub n one in
-              let image_gens = generate_gens_image random in
-              let value = build_pair image_gens random in
+              let some_step_256 = builtin to_uint256 n in
+              let step_256 = option_256 zero some_step_256 in
+              let r = builtin div random step_256 in
+              let r2 = builtin div r step_256 in
+              let image_gens = generate_gens_image r in
+              let value = build_pair image_gens r2 in
               let new_xs = Cons {(Pair Uint256 Uint256)} value xs in
               Pair {(List (Pair Uint256 Uint256)) Uint32} new_xs new_n
           end in
@@ -305,9 +319,8 @@ let make_error =
     let result_code = 
       match result with
       | CodeInsufficientAmount => Int32 -1
-      | CodeWrongListLength    => Int32 -2
-      | CodeNotAuthorised      => Int32 -3
-      | CodeNotZLP             => Int32 -4
+      | CodeNotAuthorised      => Int32 -2
+      | CodeNotZLP             => Int32 -3
       end
     in
     { _exception : "Error"; code : result_code }
@@ -439,18 +452,7 @@ procedure BuyForZLP(amount: Uint128, to: ByStr20)
       new_price = builtin add price addition;
 
       zlp_price := new_price;
-
-      dragons_cost = builtin mul count128 price;
-      change = builtin sub amount dragons_cost;
-      is_zero_change = builtin eq change zero128;
-
-      entropy := r;
-
-      match is_zero_change with
-      | False =>
-        CallTransfer to change
-      | True =>
-      end
+      entropy := r
     | True =>
       err = CodeInsufficientAmount;
       ThrowError err
