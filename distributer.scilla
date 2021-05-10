@@ -444,6 +444,8 @@ procedure BuyForZLP(amount: Uint128, to: ByStr20)
       change = builtin sub amount dragons_cost;
       is_zero_change = builtin eq change zero128;
 
+      entropy := r;
+
       match is_zero_change with
       | False =>
         CallTransfer to change
@@ -488,6 +490,7 @@ transition Buy(refAddr: ByStr20)
       dragons_cost = builtin mul dragon_count128 price;
       change = builtin sub _amount dragons_cost;
       is_zero_change = builtin eq change zero128;
+      entropy := r;
 
       sendReferral refAddr _amount;
 
