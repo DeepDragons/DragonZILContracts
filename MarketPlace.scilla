@@ -80,6 +80,7 @@ let make_error =
 contract MarketPlace
 (
   contract_owner: ByStr20,
+  wallet: ByStr20,
   main_dzt: ByStr20 with contract
     field token_approvals: Map Uint256 ByStr20
   end
@@ -178,6 +179,27 @@ procedure CheckPause(expected: Uint32)
   | True =>
   | False =>
     err = CodePauseNotPause;
+    ThrowError err
+  end
+end
+
+procedure CancelOrder(cancel_order_id: Uint256)
+  listing <- orderbook[cancel_order_id];
+  match listing with
+  | Some (Order owner price token_id item_order_id list_state) =>
+    delete orderbook[item_order_id];
+    e = {
+      _eventname: "OrderCancelled";
+      item_order_id: item_order_id
+    };
+    event e;
+    match list_state with
+    | Active => 
+      TransferDragonToOwner token_id owner
+    | Pending =>
+    end
+  | None =>
+    err = CodeOrderNotFound;
     ThrowError err
   end
 end
@@ -327,48 +349,17 @@ transition CancelListing(cancel_order_id : Uint256)
 end
 
 (* Cancel an order and refund the NFT when the contract is on pause *)
-transition CancelOrder(cancel_order_id: Uint256)
+transition CancelOrders(orders_list: List Uint256)
   CheckPause on_pause;
-  listing <- orderbook[cancel_order_id];
-  match listing with
-  | Some (Order owner price token_id item_order_id list_state) =>
-    delete orderbook[item_order_id];
-    e = {
-      _eventname: "OrderCancelled";
-      item_order_id: item_order_id
-    };
-    event e;
-    match list_state with
-    | Active => 
-      TransferDragonToOwner token_id owner
-    | Pending =>
-    end
-  | None =>
-    err = CodeOrderNotFound;
-    ThrowError err
-  end
+  forall orders_list CancelOrder
 end
 
-
+transition ReturnFunds()
+  bal <- _balance;
+  AddFunds wallet bal
+end
 
 (* Admin only transitions *)
-
-(*Withdrawal balance of contract *)
-transition Withdrawal(to: ByStr20)
-  IsContractOwner;
-  (* get current balance *)
-  bal <- _balance;
-  e = {
-    _eventname: "WithdrawBalanceSuccess";
-    withdrawal_amount: bal;
-    recipient: _sender
-  };
-  event e;
-  withdrawal = {_tag : ""; _recipient : to; _amount : bal};
-  msgs = one_msg withdrawal;
-  send msgs
-end
-
 transition ChangeMarketPlaceFee(new_fee: Uint128)
   IsContractOwner;
   old_fee <- marketplace_fee;
