@@ -55,6 +55,9 @@ let option_uint256 = @option_value Uint256
 let option_uint128 = @option_value Uint128
 let option_uint32 = @option_value Uint32
 
+let first = @fst Uint128 ByStr20
+let second = @snd Uint128 ByStr20
+
 let random =
   fun (entropy: Uint256) =>
   fun (block_number: BNum) =>
@@ -250,8 +253,7 @@ field entropy : Uint256 = Uint256 42
 field breed_commission : Uint128 = Uint128 10
 field breed_min_price_fld : Uint128 = Uint128 25000000000000000000
 
-field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
-field waiting_owner_list: Map Uint256 ByStr20 = Emp Uint256 ByStr20
+field waiting_list: Map Uint256 (Pair Uint128 ByStr20) = Emp Uint256 (Pair Uint128 ByStr20)
 
 procedure ThrowError(err : Error)
   e = make_error err;
@@ -338,26 +340,26 @@ procedure CallTransferFrom(amount: Uint128, from: ByStr20, to: ByStr20)
   end
 end
 
-procedure SendRewards(token_id: Uint256)
-  some_amount <- waiting_list[token_id];
+procedure SendRewards(token: Pair Uint128 ByStr20)
   commission <- breed_commission;
 
-  value = option_uint128 zero128 some_amount;
+  value = first token;
+  owner = second token;
   team_rewards = builtin mul value commission;
   team_rewards = builtin div team_rewards one_hundred128;
   amount = builtin sub value team_rewards;
 
   CallTransferFrom team_rewards _sender wallet;
-  CallTransferFrom amount _sender wallet
+  CallTransferFrom amount _sender owner
 end
 
 procedure Breed(who_id: Uint256, with_id: Uint256)
-  some_whore <- waiting_owner_list[with_id];
+  some_whore <- waiting_list[with_id];
   entropyNumber <- entropy;
   current_block <- & BLOCKNUMBER;
 
   match some_whore with
-  | Some owner =>
+  | Some whore =>
     some_token1_image <-& main.token_gen_image[who_id];
     some_token1_combat <-& main.token_gen_battle[who_id];
 
@@ -370,7 +372,7 @@ procedure Breed(who_id: Uint256, with_id: Uint256)
     token2_image = option_uint256 zero256 some_token2_image;
     token2_combat = option_uint256 zero256 some_token2_combat;
 
-    SendRewards with_id;
+    SendRewards whore;
 
     r = random entropyNumber current_block _sender;
 
@@ -380,8 +382,6 @@ procedure Breed(who_id: Uint256, with_id: Uint256)
 
     delete waiting_list[who_id];
     delete waiting_list[with_id];
-    delete waiting_owner_list[who_id];
-    delete waiting_owner_list[with_id];
     entropy := r;
 
     MintDragons _sender pair
@@ -396,8 +396,8 @@ transition Add(token_id: Uint256, breed_price: Uint128)
   CheckToeknOwner token_id;
   CheckMinPrice breed_price;
   CheckStage token_id;
-  waiting_list[token_id] := breed_price;
-  waiting_owner_list[token_id] := _sender
+  pair = Pair {Uint128 ByStr20} breed_price _sender;
+  waiting_list[token_id] := pair
 end
 
 transition BreedStart(who_id: Uint256, with_id: Uint256)
