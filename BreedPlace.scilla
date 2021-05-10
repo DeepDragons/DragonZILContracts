@@ -8,8 +8,12 @@ type Error =
   | CodeNotMain
   | CodeNotZLP
   | CodeNotOwner
+  | CodeSameDragon
+  | CodeNotFound
 
 let zero_address = 0x0000000000000000000000000000000000000000
+
+let zero128 = Uint128 0
 
 let fifty256 = Uint256 50
 let two256 = Uint256 2
@@ -27,6 +31,11 @@ let factor_18 = Uint256 1000000000000000000
 let factor_12 = Uint256 1000000000000
 let factor_6 = Uint256 1000000
 
+let one_msg = 
+  fun (msg : Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
 let option_value =
   tfun 'A =>
   fun (default: 'A) =>
@@ -37,6 +46,20 @@ let option_value =
     end
 
 let option_address = @option_value ByStr20
+let option_uint256 = @option_value Uint256
+
+let random =
+  fun (entropy: Uint256) =>
+  fun (block_number: BNum) =>
+  fun (addr: ByStr20) =>
+    let addr_hash = builtin keccak256hash addr in
+    let entropy_hash = builtin keccak256hash entropy in
+    let blockhash = builtin keccak256hash block_number in
+    let ehash = builtin concat entropy_hash blockhash in
+    let ahash = builtin concat ehash addr_hash in
+    let last_hash = builtin concat ehash ahash in
+    let hash = builtin keccak256hash last_hash in
+      builtin to_uint256 hash
 
 let split =
   fun (gens: Uint256) =>
@@ -193,10 +216,12 @@ let make_error =
   fun (result : Error) =>
     let result_code = 
       match result with
-      | CodeMinPrice => Int32 -1
-      | CodeNotMain  => Int32 -2
-      | CodeNotZLP   => Int32 -3
-      | CodeNotOwner => Int32 -4
+      | CodeMinPrice   => Int32 -1
+      | CodeNotMain    => Int32 -2
+      | CodeNotZLP     => Int32 -3
+      | CodeNotOwner   => Int32 -4
+      | CodeSameDragon => Int32 -5
+      | CodeNotFound   => Int32 -6
       end
     in
     { _exception : "Error"; code : result_code }
@@ -204,6 +229,8 @@ let make_error =
 contract DragonZILBreed
 (
   main: ByStr20 with contract
+    field token_gen_battle: Map Uint256 Uint256,
+    field token_gen_image: Map Uint256 Uint256,
     field token_owners: Map Uint256 ByStr20
   end,
   wallet: ByStr20,
@@ -218,6 +245,17 @@ field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
 procedure ThrowError(err : Error)
   e = make_error err;
   throw e
+end
+
+procedure CheckIsSameDragon(token_id1: Uint256, token_id2: Uint256)
+  is_same_dragon = builtin eq token_id1 token_id2;
+
+  match is_same_dragon with
+  | True =>
+    err = CodeSameDragon;
+    ThrowError err
+  | False =>
+  end
 end
 
 procedure CheckToeknOwner(token_id: Uint256)
@@ -245,22 +283,82 @@ procedure CheckMinPrice(breed_price: Uint128)
   end
 end
 
+procedure CallTransferFrom(amount: Uint128, from: ByStr20, to: ByStr20)
+  is_zero = builtin eq zero128 amount;
+
+  match is_zero with
+  | False =>
+    call_transfer_zlp = {
+      _tag: "TransferFrom";
+      _recipient: zlp;
+      _amount: Uint128 0;
+      from: from;
+      to: to;
+      amount: amount
+    };
+    msgs = one_msg call_transfer_zlp;
+    send msgs
+  | True =>
+  end
+end
+
+procedure CallTransfer(to: ByStr20, amount: Uint128)
+  msg_transfer = {
+    _tag: "Transfer";
+    _recipient: zlp;
+    _amount: zero128;
+    to: to;
+    amount: amount
+  };
+  msgs = one_msg msg_transfer;
+  send msgs
+end
+
+procedure Breed(who_id: Uint256, with_id: Uint256)
+  some_whore <- waiting_list[who_id];
+  entropyNumber <- entropy;
+  current_block <- & BLOCKNUMBER;
+
+  match some_whore with
+  | Some whore =>
+    some_token1_image <-& main.token_gen_image[who_id];
+    some_token1_combat <-& main.token_gen_battle[who_id];
+
+    some_token2_image <-& main.token_gen_image[with_id];
+    some_token2_combat <-& main.token_gen_battle[with_id];
+
+    token1_image = option_uint256 zero256 some_token1_image;
+    token1_combat = option_uint256 zero256 some_token1_combat;
+
+    token2_image = option_uint256 zero256 some_token2_image;
+    token2_combat = option_uint256 zero256 some_token2_combat;
+
+    r = random entropyNumber current_block _sender;
+
+    combat_gens = combinate_image_gens token2_image token1_image r;
+    image_gens = combinate_combat_gens token2_combat token1_combat r;
+
+    e = {
+      _eventname: "Test";
+      combat_gens: combat_gens;
+      image_gens: image_gens
+    };
+    event e
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+
+
 transition Add(token_id: Uint256, breed_price: Uint128)
   CheckToeknOwner token_id;
   CheckMinPrice breed_price;
   waiting_list[token_id] := breed_price
 end
 
-transition Test()
-  gen0 = Uint256 101647673406769880573901220984528846221301586515024944091799042138004426191841;
-  gen1 = Uint256 101647673406769880573901220984528846221301586515024944091799042138004426191841;
-  r = Uint256 8842241887348121053642943213174811942429995499481999421099999928807063991194;
-  (* gens = combinate_image_gens gen0 gen1 r; *)
-  gens = combinate_combat_gens gen0 gen1 r;
-
-  e = {
-    _eventname: "Test";
-    gens: gens
-  };
-  event e
+transition BreedStart(who_id: Uint256, with_id: Uint256)
+  CheckToeknOwner who_id;
+  CheckIsSameDragon who_id with_id;
+  Breed who_id with_id
 end
