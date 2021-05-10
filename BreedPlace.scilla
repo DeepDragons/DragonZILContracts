@@ -151,13 +151,13 @@ let combinate_image_gens =
     let r_next = builtin div random two256 in
     let n = builtin rem r_next one_hundred256 in
     let gen4 = cut_gen gens0 gens1 n factor_6 in
-    let r_next = builtin div random two256 in
+    let r_next = builtin div r_next two256 in
     let n = builtin rem r_next one_hundred256 in
     let gen3 = cut_gen gens0 gens1 n factor_12 in
-    let r_next = builtin div random two256 in
+    let r_next = builtin div r_next two256 in
     let n = builtin rem r_next one_hundred256 in
     let gen2 = cut_gen gens0 gens1 n factor_18 in
-    let r_next = builtin div random two256 in
+    let r_next = builtin div r_next two256 in
     let n = builtin rem r_next one_hundred256 in
     let is_half = builtin lt n fifty256 in
     let gen1 = match is_half with
@@ -181,39 +181,39 @@ let combinate_combat_gens =
     let n = builtin rem r_next one_hundred256 in
     let gen9 = cut_gen gens0 gens1 n factor_6 in 
 
-    let r_next = builtin div random two256 in
+    let r_next = builtin div r_next two256 in
     let n = builtin rem r_next one_hundred256 in
     let gen8 = cut_gen gens0 gens1 n factor_12 in
 
-    let r_next = builtin div random two256 in
+    let r_next = builtin div r_next two256 in
     let n = builtin rem r_next one_hundred256 in
     let gen7 = cut_gen gens0 gens1 n factor_18 in
 
-    let r_next = builtin div random two256 in
+    let r_next = builtin div r_next two256 in
     let n = builtin rem r_next one_hundred256 in
     let gen6 = cut_gen gens0 gens1 n factor_24 in
 
-    let r_next = builtin div random two256 in
+    let r_next = builtin div r_next two256 in
     let n = builtin rem r_next one_hundred256 in
     let gen5 = cut_gen gens0 gens1 n factor_30 in
 
-    let r_next = builtin div random two256 in
+    let r_next = builtin div r_next two256 in
     let n = builtin rem r_next one_hundred256 in
     let gen4 = cut_gen gens0 gens1 n factor_36 in
 
-    let r_next = builtin div random two256 in
+    let r_next = builtin div r_next two256 in
     let n = builtin rem r_next one_hundred256 in
     let gen3 = cut_gen gens0 gens1 n factor_42 in
 
-    let r_next = builtin div random two256 in
+    let r_next = builtin div r_next two256 in
     let n = builtin rem r_next one_hundred256 in
     let gen2 = cut_gen gens0 gens1 n factor_48 in
 
-    let r_next = builtin div random two256 in
+    let r_next = builtin div r_next two256 in
     let n = builtin rem r_next one_hundred256 in
     let gen1 = cut_gen gens0 gens1 n factor_54 in
 
-    let r_next = builtin div random two256 in
+    let r_next = builtin div r_next two256 in
     let n = builtin rem r_next one_hundred256 in
     let is_half = builtin lt n fifty256 in
     let gen0 = match is_half with
