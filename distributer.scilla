@@ -343,10 +343,10 @@ field start_referral_percent: Uint128 = Uint128 10
 field max_referral_percent: Uint128 = Uint128 50
 field referrals: Map ByStr20 Uint128 = Emp ByStr20 Uint128
 
-field zil_incrementer: Uint128 = Uint128 0
-field zlp_incrementer: Uint128 = Uint128 0
-field zil_price: Uint128 = Uint128 1000000000000
-field zlp_price: Uint128 = Uint128 1000000000000
+field zil_incrementer: Uint128 = Uint128 1000000000000
+field zlp_incrementer: Uint128 = Uint128 10000000000000000
+field zil_price: Uint128 = Uint128 400000000000000
+field zlp_price: Uint128 = Uint128 10000000000000000000
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
