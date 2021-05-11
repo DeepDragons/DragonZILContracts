@@ -391,6 +391,10 @@ procedure Breed(who_id: Uint256, with_id: Uint256)
   end
 end
 
+transition Cancel(token_id: Uint256)
+  CheckToeknOwner token_id;
+  delete waiting_list[token_id]
+end
 
 transition Add(token_id: Uint256, breed_price: Uint128)
   CheckToeknOwner token_id;
