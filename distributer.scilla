@@ -1,0 +1,537 @@
+scilla_version 0
+
+(***************************************************)
+(*               Associated library                *)
+(***************************************************)
+import PairUtils ListUtils
+library DragonZILDistributerLib
+
+type ImageDetails =
+| Aura
+| Horns
+| Scales
+| Spots
+| Tails
+| Wings
+| Spins
+| Body
+| Eyes
+| Head
+
+type Error =
+  | CodeInsufficientAmount
+  | CodeNotAuthorised
+  | CodeNotZLP
+
+let aura_op = Aura
+let horns_op = Horns
+let scales_op = Scales
+let spots_op = Spots
+let tails_op = Tails
+let wings_op = Wings
+let spins_op = Spins
+let body_op = Body
+let eyes_op = Eyes
+let head_op = Head
+
+let zero_address = 0x0000000000000000000000000000000000000000
+let dummy_str = ""
+let default_stage = Uint32 0
+let zero = Uint256 0
+let one = Uint256 1
+let two = Uint256 2
+let three = Uint256 3
+let four = Uint256 4
+let five = Uint256 5
+let six = Uint256 6
+let seven = Uint256 7
+let eight = Uint256 8
+let nine = Uint256 9
+let ten = Uint256 10
+let ten2 = Uint256 100
+let ten3 = Uint256 1000
+let start_gim = Uint256 777
+
+let zero32 = Uint32 0
+let zero128 = Uint128 0
+let one128 = Uint128 1
+let one_hundred = Uint128 100
+
+let first = @fst Uint256 Uint256
+let second = @snd Uint256 Uint256
+
+(* Library functions *)
+let one_msg = 
+  fun (msg : Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+let option_value =
+  tfun 'A =>
+  fun (default: 'A) =>
+  fun (opt_val: Option 'A) =>
+    match opt_val with
+    | Some v => v
+    | None => default
+    end
+  
+let option_256 = @option_value Uint256
+
+let get_percent =
+  fun (some_percent: Option Uint128) =>
+  fun (default_percent: Uint128) =>
+  match some_percent with
+    | Some percent => percent
+    | None => default_percent
+  end
+
+let random =
+  fun (entropy: Uint256) =>
+  fun (block_number: BNum) =>
+  fun (addr: ByStr20) =>
+    let addr_hash = builtin keccak256hash addr in
+    let entropy_hash = builtin keccak256hash entropy in
+    let blockhash = builtin keccak256hash block_number in
+    let ehash = builtin concat entropy_hash blockhash in
+    let ahash = builtin concat ehash addr_hash in
+    let last_hash = builtin concat ehash ahash in
+    let hash = builtin keccak256hash last_hash in
+      builtin to_uint256 hash
+
+let calc_gens_tmp_new =
+  fun (old_val: Uint256) =>
+  fun (gen_num: Uint256) =>
+  fun (check_with: Uint256) =>
+  fun (val: Uint256) =>
+    let gen_bool = builtin eq gen_num check_with in
+    match gen_bool with
+    | True => val
+    | False => old_val
+    end
+
+let calc_gens_2opt_do =
+  fun (gen_num: Uint256) =>
+  fun (val1: Uint256) =>
+  fun (val2: Uint256) =>
+    let gen_bool = builtin lt gen_num five in
+    match gen_bool with
+    | True => val1
+    | False => val2
+    end
+
+let calc_gens_2opt =
+  fun (old_val: Uint256) =>
+  fun (gen_num: Uint256) =>
+  fun (check_with: Uint256) =>
+  fun (gen_num2: Uint256) =>
+  fun (val1: Uint256) =>
+  fun (val2: Uint256) =>
+    let gen_bool = builtin eq gen_num check_with in
+    match gen_bool with
+    | True => calc_gens_2opt_do gen_num2 val1 val2
+    | False => old_val
+    end
+
+let get_one_gen =
+  fun (gen_rand: Uint256) =>
+  fun (c0: Uint256) =>
+  fun (c1: Uint256) =>
+  fun (c2: Uint256) =>
+  fun (c3: Uint256) =>
+  fun (c4: Uint256) =>
+  fun (c5: Uint256) =>
+  fun (c6: Uint256) =>
+  fun (c7: Uint256) =>
+  fun (c8: Uint256) =>
+    let gen0 = calc_gens_tmp_new zero gen_rand zero c0 in
+    let gen1 = calc_gens_tmp_new gen0 gen_rand one c1 in
+    let gen2 = calc_gens_tmp_new gen1 gen_rand two c2 in
+    let gen3 = calc_gens_tmp_new gen2 gen_rand three c3 in
+    let gen4 = calc_gens_tmp_new gen3 gen_rand four c4 in
+    let gen5 = calc_gens_tmp_new gen4 gen_rand five c5 in
+    let gen6 = calc_gens_tmp_new gen5 gen_rand six c6 in
+    let gen7 = calc_gens_tmp_new gen6 gen_rand seven c7 in
+      calc_gens_tmp_new gen7 gen_rand eight c8
+
+let next_digit =
+  fun (r: Uint256) =>
+  fun (gr: Uint256) =>
+  fun (decimal: Uint256) =>
+    let r0 = builtin sub r gr in
+      builtin div r0 decimal
+
+let re_random =
+  fun (r: Uint256) =>
+  fun (gr: Uint256) =>
+  fun (decimal: Uint256) =>
+    let r0 = next_digit r gr decimal in
+      builtin rem r0 ten
+
+let get_detail_gen =
+  fun (gr0: Uint256) =>
+  fun (gr1: Uint256) =>
+  fun (detail: ImageDetails) =>
+    match detail with
+    | Aura =>
+      let gen = get_one_gen gr0 zero zero zero zero one one one two three in
+        calc_gens_2opt gen gr0 nine gr1 four five
+    | Horns =>
+      let gen = get_one_gen gr0 zero zero zero one one two three four five in
+        calc_gens_2opt gen gr0 nine gr1 six seven
+    | Scales =>
+      let gen = get_one_gen gr0 zero zero zero zero one one one two two in
+        calc_gens_2opt gen gr0 nine gr1 three four
+    | Spots => zero
+    | Tails =>
+      let gen = get_one_gen gr0 zero one one one two three four five six in
+        calc_gens_2opt gen gr0 nine gr1 seven eight
+    | Wings =>
+      let gen = get_one_gen gr0 zero zero zero one one one two two three in
+        calc_gens_2opt gen gr0 nine gr1 four five
+    | Spins =>
+      let gen = get_one_gen gr0 zero zero zero one one two two two two in
+        calc_gens_2opt gen gr0 nine gr1 three four
+    | Body =>
+      let gen = get_one_gen gr0 one one one one one one one one one in
+        calc_gens_2opt gen gr0 nine gr1 two three
+    | Eyes =>
+      let gen = get_one_gen gr0 one one one two three four five six seven in
+        calc_gens_2opt gen gr0 nine gr1 eight nine
+    | Head =>
+      let gen = get_one_gen gr0 one one one one one one one two three in
+        calc_gens_2opt gen gr0 nine gr1 four five
+    end
+
+let add_to_gens =
+  fun (gim: Uint256) =>
+  fun (gen: Uint256) =>
+  fun (decimal: Uint256) =>
+    let a = builtin mul gim decimal in
+      builtin add a gen
+
+let build_pair =
+  fun (arg0: Uint256) =>
+  fun (arg1: Uint256) =>
+    Pair {Uint256 Uint256} arg0 arg1
+
+let generate_gen =
+  fun (r: Uint256) =>
+  fun (gim: Uint256) =>
+  fun (op: ImageDetails) =>
+    let gr0 = builtin rem r ten in
+    let gr1 = re_random r gr0 ten in
+    let r_next = builtin div r ten2 in
+    let gen = get_detail_gen gr0 gr1 op in
+    let gens = add_to_gens gim gen ten in
+    let gr0 = builtin rem r_next ten in
+    let r_next = builtin div r_next ten in
+    let color = builtin div gr0 two in
+    let gens = add_to_gens gens color ten in
+      build_pair gens r_next
+
+let generate_gens_image =
+  fun (r: Uint256) =>
+    (* aura *)
+    let gens_pair = generate_gen r start_gim aura_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* horns *)
+    let gens_pair = generate_gen next_r gens horns_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* scales *)
+    let gens_pair = generate_gen next_r gens scales_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* spots *)
+    let gens_pair = generate_gen next_r gens spots_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* Tails *)
+    let gens_pair = generate_gen next_r gens tails_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* Wings *)
+    let gens_pair = generate_gen next_r gens wings_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* Spins *)
+    let gens_pair = generate_gen next_r gens spins_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* Body *)
+    let gens_pair = generate_gen next_r gens body_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* Eyes *)
+    let gens_pair = generate_gen next_r gens eyes_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* Head *)
+    let gens_pair = generate_gen next_r gens head_op in
+    let gens = first gens_pair in
+    let next_r = second gens_pair in
+    (* color schema *)
+    let gr  = builtin rem next_r ten3 in
+    let next_r = next_digit next_r gr ten3 in
+    let gr = builtin div gr four in
+    let gens = add_to_gens gens gr ten3 in
+    (* mutagenImutable *)
+    let gr = builtin rem next_r ten3 in
+    let gr = builtin div gr four in
+      add_to_gens gens gr ten3
+
+let do_gens_list =
+  fun (m: Uint32) =>
+  fun (n: Uint32) =>
+  fun (random: Uint256) =>
+    let m_lt_n = builtin lt m n in
+    match m_lt_n with
+    | True =>
+        let delta = builtin sub n m in
+        let delta_nat = builtin to_nat delta in
+        let nil = Nil {(Pair Uint256 Uint256)} in
+        let acc_init = Pair {(List (Pair Uint256 Uint256)) Uint32} nil n in
+        let one = Uint32 1 in
+        let step = fun (xs_n : Pair (List (Pair Uint256 Uint256)) Uint32) => fun (ignore : Nat) =>
+          match xs_n with
+          | Pair xs n =>
+              let new_n = builtin sub n one in
+              let some_step_256 = builtin to_uint256 n in
+              let step_256 = option_256 zero some_step_256 in
+              let r = builtin div random step_256 in
+              let r2 = builtin div r step_256 in
+              let image_gens = generate_gens_image r in
+              let value = build_pair image_gens r2 in
+              let new_xs = Cons {(Pair Uint256 Uint256)} value xs in
+              Pair {(List (Pair Uint256 Uint256)) Uint32} new_xs new_n
+          end in
+        let fold = @nat_fold (Pair (List (Pair Uint256 Uint256)) Uint32) in
+        let xs_m = fold step acc_init delta_nat in
+        match xs_m with
+        | Pair xs m => xs
+        end
+    | False => Nil {(Pair Uint256 Uint256)}
+    end
+
+let make_error =
+  fun (result : Error) =>
+    let result_code = 
+      match result with
+      | CodeInsufficientAmount => Int32 -1
+      | CodeNotAuthorised      => Int32 -2
+      | CodeNotZLP             => Int32 -3
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
+(***************************************************)
+(*             The contract definition             *)
+(***************************************************)
+
+contract DragonZILDistributer
+(
+  main: ByStr20,
+  wallet: ByStr20,
+  zlp: ByStr20 with contract
+    field balances: Map ByStr20 Uint128
+  end
+)
+
+field entropy : Uint256 = Uint256 0
+field start_referral_percent: Uint128 = Uint128 10
+field max_referral_percent: Uint128 = Uint128 50
+field referrals: Map ByStr20 Uint128 = Emp ByStr20 Uint128
+
+field zil_incrementer: Uint128 = Uint128 1000000000000
+field zlp_incrementer: Uint128 = Uint128 10000000000000000
+field zil_price: Uint128 = Uint128 400000000000000
+field zlp_price: Uint128 = Uint128 10000000000000000000
+
+(* Emit Errors *)
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+procedure IsZLP()
+  is_zlp = builtin eq zlp _sender;
+
+  match is_zlp with
+  | True =>
+  | False =>
+    err = CodeNotZLP;
+    ThrowError err
+  end
+end
+
+procedure MintDragons(to: ByStr20, gen_list: List (Pair Uint256 Uint256))
+  mint_call = {
+    _tag: "BatchMint";
+    _recipient: main;
+    _amount: Uint128 0;
+    to: to;
+    gens_token_list: gen_list
+  };
+  msgs = one_msg mint_call;
+  send msgs
+end
+
+procedure AddFunds(recipient: ByStr20, amount: Uint128)
+  msg = {
+    _tag: "AddFunds";
+    _recipient: recipient;
+    _amount: amount
+  };
+  msgs = one_msg msg;
+  send msgs
+end
+
+procedure sendReferral(refAddr: ByStr20, amount: Uint128)
+  is_ref = builtin eq zero_address refAddr;
+
+  match is_ref with
+  | True =>
+  | False =>
+    referral_percent <- start_referral_percent;
+    max_percent <- max_referral_percent;
+    some_refferal_percent <- referrals[refAddr];
+
+    percent = get_percent  some_refferal_percent referral_percent;
+
+    is_max = builtin eq percent max_percent;
+
+    match is_max with
+      | False =>
+        new_referrals_percent = builtin add percent one128;
+        referrals[refAddr] := new_referrals_percent
+      | True =>
+    end;
+
+    reward = builtin mul amount percent;
+    reward = builtin div reward one_hundred;
+
+    AddFunds refAddr reward
+  end
+end
+
+procedure CallTransfer(to: ByStr20, amount: Uint128)
+  msg_transfer = {
+    _tag: "Transfer";
+    _recipient: zlp;
+    _amount: zero128;
+    to: to;
+    amount: amount
+  };
+  msgs = one_msg msg_transfer;
+  send msgs
+end
+
+
+procedure BuyForZLP(amount: Uint128, to: ByStr20)
+  price <- zlp_price;
+  inc <- zlp_incrementer;
+  current_block <- & BLOCKNUMBER;
+  entropyNumber <- entropy;
+
+  count128 = builtin div amount price;
+  some_count32 = builtin to_uint32 count128;
+  r = random entropyNumber current_block to;
+
+  match some_count32 with
+  | Some count =>
+    is_zero = builtin eq count128 zero128;
+
+    match is_zero with
+    | False =>
+      gens_pair_list = do_gens_list zero32 count r;
+
+      MintDragons to gens_pair_list;
+
+      addition = builtin mul inc count128;
+      new_price = builtin add price addition;
+
+      zlp_price := new_price;
+      entropy := r
+    | True =>
+      err = CodeInsufficientAmount;
+      ThrowError err
+    end
+  | None =>
+    err = CodeInsufficientAmount;
+    ThrowError err
+  end
+end
+
+transition Buy(refAddr: ByStr20)
+  price <- zil_price;
+  inc <- zil_incrementer;
+  entropyNumber <- entropy;
+  current_block <- & BLOCKNUMBER;
+
+  dragon_count128 = builtin div _amount price;
+  dragon_count32 = builtin to_uint32 dragon_count128;
+  r = random entropyNumber current_block _sender;
+
+  match dragon_count32 with
+  | Some count =>
+    is_zero = builtin eq count zero32;
+
+    match is_zero with
+    | False =>
+      gens_pair_list = do_gens_list zero32 count r;
+      accept;
+
+      MintDragons _sender gens_pair_list;
+
+      addition = builtin mul inc dragon_count128;
+      new_price = builtin add price addition;
+
+      zil_price := new_price;
+      
+      dragons_cost = builtin mul dragon_count128 price;
+      change = builtin sub _amount dragons_cost;
+      is_zero_change = builtin eq change zero128;
+      entropy := r;
+
+      sendReferral refAddr _amount;
+
+      match is_zero_change with
+      | False =>
+        AddFunds _sender change
+      | True =>
+      end
+    | True =>
+      err = CodeInsufficientAmount;
+      ThrowError err
+    end
+  | None =>
+    err = CodeInsufficientAmount;
+    ThrowError err
+  end
+end
+
+transition ReturnFunds()
+  bal <- _balance;
+  some_zlp_bal <-& zlp.balances[_this_address];
+
+  match some_zlp_bal with
+  | None =>
+  | Some zlp_bal =>
+    CallTransfer wallet zlp_bal
+  end;
+  AddFunds wallet bal
+end
+
+transition RecipientAcceptTransfer(sender: ByStr20, recipient: ByStr20, amount: Uint128)
+  IsZLP;
+  BuyForZLP amount sender
+end
+
+transition RecipientAcceptTransferFrom(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
+  IsZLP;
+  BuyForZLP amount sender
+end
+
+transition TransferSuccessCallBack(sender: ByStr20, recipient: ByStr20, amount: Uint128)
+end
