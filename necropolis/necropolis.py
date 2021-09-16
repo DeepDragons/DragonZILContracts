@@ -1,5 +1,5 @@
 
-GENS_SEPORATE = 300
+GENS_SEPORATE = 150
 MAX_REWARDS = 500000000000000000000
 
 f1 = 10
@@ -90,7 +90,7 @@ def calc_gen_lab(start_price, use_count, multiplicator):
   return multiplicator ** use_count * (start_price / 2)
 
 def calc_amoun(zlp_amount, dmz_total_supply, token_id):
-  return zlp_amount // ((dmz_total_supply * token_id) / 800)
+  return zlp_amount // ((dmz_total_supply * token_id) / 10)
 
 def calc_rewards(supply, gen_lab, combat, face):
   if (supply > MAX_REWARDS):
@@ -100,17 +100,17 @@ def calc_rewards(supply, gen_lab, combat, face):
 
 
 ZLP_AMOUNT = 16344308266940854272735
-DMZ_SUPPLY = 10
-TOKEN_ID = 1
+DMZ_SUPPLY = 3964
+TOKEN_ID = 1000
 
-gen_lab = calc_gen_lab(10000000000000000000, 1, 2)
-combat = calc_combat_gens(113557207084082392001653552727254081999999999999999999999999999999999999999999)
+gen_lab = calc_gen_lab(10000000000000000000, 0, 2)
+combat = calc_combat_gens(8842241887348121053642943479474811942429995499489999429999999928807053991194)
 supply = calc_amoun(ZLP_AMOUNT, DMZ_SUPPLY, TOKEN_ID)
-face = calc_face_gens(77754644081635302349351242132)
+face = calc_face_gens(77703044463111120136022035016)
 rewards = calc_rewards(supply, gen_lab, combat, face)
 
-print('gen_lab %i ZLP' % (gen_lab))
-print('combat %i ZLP' % (combat))
-print('face %i ZLP' % (face))
-print('supply %i ZLP' % (supply))
-print('rewards %i ZLP' % (rewards))
+print('gen_lab %i ZLP' % (gen_lab // 10**18))
+print('combat %i ZLP' % (combat // 10**18))
+print('face %i ZLP' % (face // 10**18))
+print('supply %i ZLP' % (supply // 10**18))
+print('rewards %i ZLP' % (rewards // 10**18))

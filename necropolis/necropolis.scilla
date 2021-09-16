@@ -14,9 +14,9 @@ type Error =
   | CodeNotSelf
 
 let max_curve_init = Uint256 500000000000000000000
-let combat_curve_init = Uint256 300
+let combat_curve_init = Uint256 150
 let face_curve_init = Uint256 4
-let supply_curve_init = Uint256 800
+let supply_curve_init = Uint256 10
 
 let zero256 = Uint256 0
 let zero128 = Uint128 0
