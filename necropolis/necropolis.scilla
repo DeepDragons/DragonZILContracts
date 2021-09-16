@@ -65,6 +65,13 @@ let get_gen =
     let n1 = builtin div f d in
       builtin div n0 n1
 
+let next_combat_gen =
+  fun (sub: Uint256) =>
+  fun (f: Uint256) =>
+  fun (l: Uint256) =>
+    let n = get_gen sub f f2 in
+      builtin add n l
+
 let next_face_gen =
   fun (sub: Uint256) =>
   fun (f: Uint256) =>
@@ -87,6 +94,33 @@ let calc_face_gens =
     let he = next_face_gen sub f6 e in
     let n = builtin mul he f19 in
       builtin div n c
+
+let calc_combat_gens =
+  fun (gens: Uint256) =>
+  fun (s: Uint256) =>
+    let g0 = next_combat_gen gens f43 zero256 in
+    let g1 = next_combat_gen gens f41 g0 in
+    let g2 = next_combat_gen gens f39 g1 in
+    let g3 = next_combat_gen gens f37 g2 in
+    let g4 = next_combat_gen gens f35 g3 in
+    let g5 = next_combat_gen gens f33 g4 in
+    let g6 = next_combat_gen gens f31 g5 in
+    let g7 = next_combat_gen gens f29 g6 in
+    let g8 = next_combat_gen gens f27 g7 in
+    let g9 = next_combat_gen gens f25 g8 in
+    let g10 = next_combat_gen gens f23 g9 in
+    let g11 = next_combat_gen gens f21 g10 in
+    let g12 = next_combat_gen gens f19 g11 in
+    let g13 = next_combat_gen gens f17 g12 in
+    let g14 = next_combat_gen gens f15 g13 in
+    let g15 = next_combat_gen gens f13 g14 in
+    let g16 = next_combat_gen gens f11 g15 in
+    let g17 = next_combat_gen gens f9 g16 in
+    let g18 = next_combat_gen gens f7 g17 in
+    let g19 = next_combat_gen gens f4 g18 in
+    let g20 = next_combat_gen gens f2 g19 in
+    let n = builtin mul g20 f19 in
+      builtin div n s
 
 let make_error =
   fun (result : Error) =>
@@ -113,9 +147,18 @@ procedure ThrowError(err : Error)
   throw e
 end
 
-
-transition Test(face_gens: Uint256, c: Uint256)
+transition TestFace(face_gens: Uint256, c: Uint256)
   value = calc_face_gens face_gens c;
+
+  e = {
+    _eventname: "Test";
+    value: value
+  };
+  event e
+end
+
+transition TestCombat(combat_gens: Uint256, c: Uint256)
+  value = calc_combat_gens combat_gens c;
 
   e = {
     _eventname: "Test";

@@ -110,7 +110,7 @@ face = calc_face_gens(77754644081635302349351242132)
 rewards = calc_rewards(supply, gen_lab, combat, face)
 
 print('gen_lab %i ZLP' % (gen_lab // 10**18))
-print('combat %i ZLP' % (combat / 10**18))
+print('combat %i ZLP' % (combat))
 print('face %i ZLP' % (face / 10**18))
 print('supply %i ZLP' % (supply / 10**18))
 print('rewards %i ZLP' % (rewards // 10**18))
