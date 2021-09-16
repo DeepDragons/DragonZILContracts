@@ -153,6 +153,22 @@ let calc_amount =
     let count = builtin div token_count s in
       builtin div zlp count
 
+let calc_rewards =
+  fun (supply: Uint256) =>
+  fun (gen_lab: Uint256) =>
+  fun (combat: Uint256) =>
+  fun (face: Uint256) =>
+  fun (max: Uint256) =>
+    let is_max = builtin lt max supply in
+    match is_max with
+    | True => max
+    | False =>
+      let sg = builtin add supply gen_lab in
+      let cf = builtin add combat face in
+        builtin add sg cf
+    end
+
+
 let make_error =
   fun (result : Error) =>
     let result_code = 
