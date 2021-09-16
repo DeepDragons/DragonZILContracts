@@ -10,6 +10,8 @@ type Error =
 
 let zero_address = 0x0000000000000000000000000000000000000000
 let zero256 = Uint256 0
+let zero32 = Uint32 0
+let two256 = Uint256 2
 
 let f1 = Uint256 10
 let f2 = Uint256 100
@@ -56,6 +58,7 @@ let option_value =
     end
 
 let option_address = @option_value ByStr20
+let unpack_uint256 = @option_value Uint256
 
 let get_gen =
   fun (gens: Uint256) =>
@@ -122,6 +125,34 @@ let calc_combat_gens =
     let n = builtin mul g20 f19 in
       builtin div n s
 
+let calc_gen_lab =
+  fun (start_price: Uint128) =>
+  fun (use_count: Uint32) =>
+  fun (multiplicator: Uint128) =>
+    let is_zero = builtin eq use_count zero32 in
+    match is_zero with
+    | True => zero256
+    | False =>
+      let some_m = builtin to_uint256 multiplicator in
+      let some_p = builtin to_uint256 start_price in
+      let m = unpack_uint256 zero256 some_m in
+      let p = unpack_uint256 zero256 some_p in
+      let n = builtin pow m use_count in
+      let p = builtin div p two256 in
+        builtin mul n p
+    end
+
+let calc_amount =
+  fun (zlp_amount: Uint128) =>
+  fun (nft_supply: Uint256) =>
+  fun (token_id: Uint256) =>
+  fun (s: Uint256) =>
+    let some_zlp = builtin to_uint256 zlp_amount in
+    let zlp = unpack_uint256 zero256 some_zlp in
+    let token_count = builtin mul nft_supply token_id in
+    let count = builtin div token_count s in
+      builtin div zlp count
+
 let make_error =
   fun (result : Error) =>
     let result_code = 
@@ -159,6 +190,26 @@ end
 
 transition TestCombat(combat_gens: Uint256, c: Uint256)
   value = calc_combat_gens combat_gens c;
+
+  e = {
+    _eventname: "Test";
+    value: value
+  };
+  event e
+end
+
+transition TestGenLab(start_price: Uint128, use_count: Uint32, multiplicator: Uint128)
+  value = calc_gen_lab start_price use_count multiplicator;
+
+  e = {
+    _eventname: "Test";
+    value: value
+  };
+  event e
+end
+
+transition TestAmount(zlp_amount: Uint128, dmz_total_supply: Uint256, token_id: Uint256, s: Uint256)
+  value = calc_amount zlp_amount dmz_total_supply token_id s;
 
   e = {
     _eventname: "Test";
