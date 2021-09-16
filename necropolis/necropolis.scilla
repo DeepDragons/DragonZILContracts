@@ -1,0 +1,375 @@
+scilla_version 0
+
+library DragonZILNecropolisLib
+
+(* Custom ADT storing - face_curve, combat_curve, max_rewards, supply_curve *)
+type Curve =
+| Curve of Uint256 Uint256 Uint256 Uint256
+
+type Error =
+  | CodeNotMain
+  | CodeNotZLP
+  | CodeNotOwner
+  | CodeNotFound
+  | CodeNotSelf
+
+let max_curve_init = Uint256 500000000000000000000
+let combat_curve_init = Uint256 150
+let face_curve_init = Uint256 4
+let supply_curve_init = Uint256 10
+
+let zero256 = Uint256 0
+let zero128 = Uint128 0
+let zero32 = Uint32 0
+let two256 = Uint256 2
+let one256 = Uint256 1
+
+let f1 = Uint256 10
+let f2 = Uint256 100
+let f4 = Uint256 10000
+let f7 = Uint256 1000000
+let f6 = Uint256 10000000
+let f9 = Uint256 100000000
+let f11 = Uint256 10000000000
+let f12 = Uint256 100000000000
+let f13 = Uint256 1000000000000
+let f15 = Uint256 100000000000000
+let f16 = Uint256 1000000000000000
+let f17 = Uint256 10000000000000000
+let f18 = Uint256 100000000000000000
+let f19 = Uint256 1000000000000000000
+let f20 = Uint256 10000000000000000000
+let f21 = Uint256 100000000000000000000
+let f23 = Uint256 10000000000000000000000
+let f22 = Uint256 100000000000000000000000
+let f25 = Uint256 1000000000000000000000000
+let f26 = Uint256 10000000000000000000000000
+let f27 = Uint256 100000000000000000000000000
+let f29 = Uint256 10000000000000000000000000000
+let f31 = Uint256 1000000000000000000000000000000
+let f33 = Uint256 100000000000000000000000000000000
+let f35 = Uint256 10000000000000000000000000000000000
+let f37 = Uint256 1000000000000000000000000000000000000
+let f39 = Uint256 100000000000000000000000000000000000000
+let f41 = Uint256 10000000000000000000000000000000000000000
+let f43 = Uint256 1000000000000000000000000000000000000000000
+
+let one_msg = 
+  fun (msg : Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+let option_value =
+  tfun 'A =>
+  fun (default: 'A) =>
+  fun (opt_val: Option 'A) =>
+    match opt_val with
+    | Some v => v
+    | None => default
+    end
+
+let unpack_uint256 = @option_value Uint256
+let unpack_uint128 = @option_value Uint128
+let unpack_uint32 = @option_value Uint32
+
+let get_gen =
+  fun (gens: Uint256) =>
+  fun (f: Uint256) =>
+  fun (d: Uint256) =>
+    let n0 = builtin rem gens f in
+    let n1 = builtin div f d in
+      builtin div n0 n1
+
+let next_combat_gen =
+  fun (sub: Uint256) =>
+  fun (f: Uint256) =>
+  fun (l: Uint256) =>
+    let n = get_gen sub f f2 in
+      builtin add n l
+
+let next_face_gen =
+  fun (sub: Uint256) =>
+  fun (f: Uint256) =>
+  fun (l: Uint256) =>
+    let n = get_gen sub f f1 in
+      builtin add n l
+
+let calc_face_gens =
+  fun (face_gens: Uint256) =>
+  fun (c: Uint256) =>
+    let sub = builtin rem face_gens f27 in
+    let a = builtin div sub f26 in
+    let h = next_face_gen sub f25 a in
+    let s = next_face_gen sub f22 h in
+    let sp = next_face_gen sub f20 s in
+    let t = next_face_gen sub f18 sp in
+    let w = next_face_gen sub f16 t in
+    let b = next_face_gen sub f12 w in
+    let e = next_face_gen sub f9 b in
+    let he = next_face_gen sub f6 e in
+    let n = builtin mul he f19 in
+      builtin div n c
+
+let calc_combat_gens =
+  fun (gens: Uint256) =>
+  fun (s: Uint256) =>
+    let g0 = next_combat_gen gens f43 zero256 in
+    let g1 = next_combat_gen gens f41 g0 in
+    let g2 = next_combat_gen gens f39 g1 in
+    let g3 = next_combat_gen gens f37 g2 in
+    let g4 = next_combat_gen gens f35 g3 in
+    let g5 = next_combat_gen gens f33 g4 in
+    let g6 = next_combat_gen gens f31 g5 in
+    let g7 = next_combat_gen gens f29 g6 in
+    let g8 = next_combat_gen gens f27 g7 in
+    let g9 = next_combat_gen gens f25 g8 in
+    let g10 = next_combat_gen gens f23 g9 in
+    let g11 = next_combat_gen gens f21 g10 in
+    let g12 = next_combat_gen gens f19 g11 in
+    let g13 = next_combat_gen gens f17 g12 in
+    let g14 = next_combat_gen gens f15 g13 in
+    let g15 = next_combat_gen gens f13 g14 in
+    let g16 = next_combat_gen gens f11 g15 in
+    let g17 = next_combat_gen gens f9 g16 in
+    let g18 = next_combat_gen gens f7 g17 in
+    let g19 = next_combat_gen gens f4 g18 in
+    let g20 = next_combat_gen gens f2 g19 in
+    let n = builtin mul g20 f19 in
+      builtin div n s
+
+let calc_gen_lab =
+  fun (start_price: Uint128) =>
+  fun (use_count: Uint32) =>
+  fun (multiplicator: Uint128) =>
+    let is_zero = builtin eq use_count zero32 in
+    match is_zero with
+    | True => zero256
+    | False =>
+      let some_m = builtin to_uint256 multiplicator in
+      let some_p = builtin to_uint256 start_price in
+      let m = unpack_uint256 zero256 some_m in
+      let p = unpack_uint256 zero256 some_p in
+      let n = builtin pow m use_count in
+      let p = builtin div p two256 in
+        builtin mul n p
+    end
+
+let calc_amount =
+  fun (zlp_amount: Uint128) =>
+  fun (nft_supply: Uint256) =>
+  fun (token_id: Uint256) =>
+  fun (s: Uint256) =>
+    let some_zlp = builtin to_uint256 zlp_amount in
+    let zlp = unpack_uint256 zero256 some_zlp in
+    let token_count = builtin mul nft_supply token_id in
+    let count = builtin div token_count s in
+    let count = builtin add count one256 in
+      builtin div zlp count
+
+let calc_rewards =
+  fun (supply: Uint256) =>
+  fun (gen_lab: Uint256) =>
+  fun (combat: Uint256) =>
+  fun (face: Uint256) =>
+  fun (max: Uint256) =>
+    let is_max = builtin lt max supply in
+    match is_max with
+    | True => max
+    | False =>
+      let sg = builtin add supply gen_lab in
+      let cf = builtin add combat face in
+        builtin add sg cf
+    end
+
+
+let make_error =
+  fun (result : Error) =>
+    let result_code = 
+      match result with
+      | CodeNotMain  => Int32 -1
+      | CodeNotZLP   => Int32 -2
+      | CodeNotOwner => Int32 -3
+      | CodeNotFound => Int32 -4
+      | CodeNotSelf  => Int32 -5
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
+contract DragonZILNecropolisContract
+(
+  contract_owner: ByStr20,
+  zlp: ByStr20 with contract
+    field balances: Map ByStr20 Uint128
+  end,
+  main: ByStr20 with contract
+    field token_gen_battle: Map Uint256 Uint256,
+    field token_gen_image: Map Uint256 Uint256,
+    field total_supply: Uint256,
+    field token_owners: Map Uint256 ByStr20
+  end,
+  lab: ByStr20 with contract
+    field price_multiplicator: Uint128,
+    field start_price: Uint128,
+    field use_count: Map Uint256 Uint32
+  end
+)
+
+field curve : Curve = Curve
+  face_curve_init
+  combat_curve_init
+  max_curve_init
+  supply_curve_init
+
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+procedure IsZLP()
+  is_zlp = builtin eq zlp _sender;
+
+  match is_zlp with
+  | True =>
+  | False =>
+    err = CodeNotZLP;
+    ThrowError err
+  end
+end
+
+procedure IsMain()
+  is_main = builtin eq main _sender;
+
+  match is_main with
+  | True =>
+  | False =>
+    err = CodeNotMain;
+    ThrowError err
+  end
+end
+
+procedure IsSelf(addr: ByStr20)
+  is_self = builtin eq addr _this_address;
+
+  match is_self with
+  | True =>
+  | False =>
+    err = CodeNotSelf;
+    ThrowError err
+  end
+end
+
+procedure IsContractOwner()
+  is_contract_owner = builtin eq contract_owner _sender;
+  match is_contract_owner with
+  | True => 
+  | False =>
+    err = CodeNotOwner;
+    ThrowError err
+  end
+end
+
+procedure CallTransfer(to: ByStr20, amount: Uint128)
+  msg_transfer = {
+    _tag: "Transfer";
+    _recipient: zlp;
+    _amount: zero128;
+    to: to;
+    amount: amount
+  };
+  msgs = one_msg msg_transfer;
+  send msgs
+end
+
+procedure CallBurn(token_id: Uint256)
+  msg_transfer = {
+    _tag: "Burn";
+    _recipient: main;
+    _amount: zero128;
+    token_id: token_id
+  };
+  msgs = one_msg msg_transfer;
+  send msgs
+end
+
+
+transition CallRewards(token_id: Uint256)
+  CallBurn token_id;
+
+  curve_app <- curve;
+
+  total_dragons <-& main.total_supply;
+  gel_lab_multiplicator <-& lab.price_multiplicator;
+  gen_lab_price <-& lab.start_price;
+
+  some_zlp_bal <-& zlp.balances[_this_address];
+  some_combat_gens <-& main.token_gen_battle[token_id];
+  some_face_gens <-& main.token_gen_image[token_id];
+  some_onwer <-& main.token_owners[token_id];
+  some_use_count <-& lab.use_count[token_id];
+
+  zlp_bal = unpack_uint128 zero128 some_zlp_bal;
+  combat_gens = unpack_uint256 zero256 some_combat_gens;
+  face_gens = unpack_uint256 zero256 some_face_gens;
+  gen_lab_use_count = unpack_uint32 zero32 some_use_count;
+
+  match some_onwer with
+  | Some addr =>
+    match curve_app with
+    | Curve face_curve combat_curve max_rewards supply_curve =>
+      gen_lab = calc_gen_lab gen_lab_price gen_lab_use_count gel_lab_multiplicator;
+      combat = calc_combat_gens combat_gens combat_curve;
+      face = calc_face_gens face_gens face_curve;
+      supply = calc_amount zlp_bal total_dragons token_id supply_curve;
+      zlp_amount_256 = calc_rewards supply gen_lab combat face max_rewards;
+      some_zlp = builtin to_uint128 zlp_amount_256;
+      zlp_amount = unpack_uint128 zero128 some_zlp;
+
+      CallTransfer addr zlp_amount
+    end
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+
+transition ChangeCurve(face_curve: Uint256, combat_curve: Uint256, max_rewards: Uint256, supply_curve: Uint256)
+  IsContractOwner;
+
+  new_curve = Curve face_curve combat_curve max_rewards supply_curve;
+
+  curve := new_curve;
+
+  e = {
+    _eventname: "CurveWasChanged";
+    curve: new_curve
+  };
+  event e
+end
+
+transition ReturnFunds()
+  IsContractOwner;
+
+  some_zlp_bal <-& zlp.balances[_this_address];
+
+  zlp_bal = unpack_uint128 zero128 some_zlp_bal;
+
+  CallTransfer contract_owner zlp_bal
+end
+
+(* Callbacks *)
+transition RecipientAcceptTransfer(sender: ByStr20, recipient: ByStr20, amount: Uint128)
+  IsZLP
+end
+
+transition RecipientAcceptTransferFrom(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
+  IsZLP
+end
+
+transition TransferSuccessCallBack(sender: ByStr20, recipient: ByStr20, amount: Uint128)
+end
+
+transition BurnCallBack(initiator: ByStr20, burn_address: ByStr20, token_id: Uint256)
+  IsMain;
+  IsSelf initiator
+end
+(* Callbacks *)
