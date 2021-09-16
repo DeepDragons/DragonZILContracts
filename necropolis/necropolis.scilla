@@ -1,0 +1,125 @@
+scilla_version 0
+
+library DragonZILNecropolisLib
+
+type Error =
+  | CodeNotMain
+  | CodeNotZLP
+  | CodeNotOwner
+  | CodeNotFound
+
+let zero_address = 0x0000000000000000000000000000000000000000
+let zero256 = Uint256 0
+
+let f1 = Uint256 10
+let f2 = Uint256 100
+let f4 = Uint256 10000
+let f7 = Uint256 1000000
+let f6 = Uint256 10000000
+let f9 = Uint256 100000000
+let f11 = Uint256 10000000000
+let f12 = Uint256 100000000000
+let f13 = Uint256 1000000000000
+let f15 = Uint256 100000000000000
+let f16 = Uint256 1000000000000000
+let f17 = Uint256 10000000000000000
+let f18 = Uint256 100000000000000000
+let f19 = Uint256 1000000000000000000
+let f20 = Uint256 10000000000000000000
+let f21 = Uint256 100000000000000000000
+let f23 = Uint256 10000000000000000000000
+let f22 = Uint256 100000000000000000000000
+let f25 = Uint256 1000000000000000000000000
+let f26 = Uint256 10000000000000000000000000
+let f27 = Uint256 100000000000000000000000000
+let f29 = Uint256 10000000000000000000000000000
+let f31 = Uint256 1000000000000000000000000000000
+let f33 = Uint256 100000000000000000000000000000000
+let f35 = Uint256 10000000000000000000000000000000000
+let f37 = Uint256 1000000000000000000000000000000000000
+let f39 = Uint256 100000000000000000000000000000000000000
+let f41 = Uint256 10000000000000000000000000000000000000000
+let f43 = Uint256 1000000000000000000000000000000000000000000
+
+let one_msg = 
+  fun (msg : Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+let option_value =
+  tfun 'A =>
+  fun (default: 'A) =>
+  fun (opt_val: Option 'A) =>
+    match opt_val with
+    | Some v => v
+    | None => default
+    end
+
+let option_address = @option_value ByStr20
+
+let get_gen =
+  fun (gens: Uint256) =>
+  fun (f: Uint256) =>
+  fun (d: Uint256) =>
+    let n0 = builtin rem gens f in
+    let n1 = builtin div f d in
+      builtin div n0 n1
+
+let next_face_gen =
+  fun (sub: Uint256) =>
+  fun (f: Uint256) =>
+  fun (l: Uint256) =>
+    let n = get_gen sub f f1 in
+      builtin add n l
+
+let calc_face_gens =
+  fun (face_gens: Uint256) =>
+  fun (c: Uint256) =>
+    let sub = builtin rem face_gens f27 in
+    let a = builtin div sub f26 in
+    let h = next_face_gen sub f25 a in
+    let s = next_face_gen sub f22 h in
+    let sp = next_face_gen sub f20 s in
+    let t = next_face_gen sub f18 sp in
+    let w = next_face_gen sub f16 t in
+    let b = next_face_gen sub f12 w in
+    let e = next_face_gen sub f9 b in
+    let he = next_face_gen sub f6 e in
+    let n = builtin mul he f19 in
+      builtin div n c
+
+let make_error =
+  fun (result : Error) =>
+    let result_code = 
+      match result with
+      | CodeNotMain  => Int32 -1
+      | CodeNotZLP   => Int32 -2
+      | CodeNotOwner => Int32 -3
+      | CodeNotFound => Int32 -4
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
+contract DragonZILNecropolisContract
+()
+
+field entropy : Uint256 = Uint256 42
+field breed_commission : Uint128 = Uint128 10
+
+field waiting_list: Map Uint256 (Pair Uint128 ByStr20) = Emp Uint256 (Pair Uint128 ByStr20)
+
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+
+transition Test(face_gens: Uint256, c: Uint256)
+  value = calc_face_gens face_gens c;
+
+  e = {
+    _eventname: "Test";
+    value: value
+  };
+  event e
+end

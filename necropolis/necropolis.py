@@ -38,20 +38,24 @@ def get_combat_gen(gens, f):
 def get_face_gen(gens, f):
   return gens % f // (f // f1)
 
+def next_face_gen(sub, f, l):
+  n = get_face_gen(sub, f)
+
+  return n + l
+
 def calc_face_gens(gens):
   sub = gens % f27
   aura = sub // f26
-  horns = get_face_gen(sub, f25)
-  scales = get_face_gen(sub, f22)
-  spots = get_face_gen(sub, f20)
-  tail = get_face_gen(sub, f18)
-  wings = get_face_gen(sub, f16)
-  body = get_face_gen(sub, f12)
-  eyes = get_face_gen(sub, f9)
-  head = get_face_gen(sub, f6)
-  sum = aura + horns + scales + spots + tail + wings + body + eyes + head
+  horns = next_face_gen(sub, f25, aura)
+  scales = next_face_gen(sub, f22, horns)
+  spots = next_face_gen(sub, f20, scales)
+  tail = next_face_gen(sub, f18, spots)
+  wings = next_face_gen(sub, f16, tail)
+  body = next_face_gen(sub, f12, wings)
+  eyes = next_face_gen(sub, f9, body)
+  head = next_face_gen(sub, f6, eyes)
 
-  return (sum * 10**18) // 4
+  return (head * 10**18) // 4
 
 def calc_combat_gens(gens):
   g0 = get_combat_gen(gens, f43)
