@@ -22,6 +22,7 @@ let zero256 = Uint256 0
 let zero128 = Uint128 0
 let zero32 = Uint32 0
 let two256 = Uint256 2
+let one256 = Uint256 1
 
 let f1 = Uint256 10
 let f2 = Uint256 100
@@ -162,6 +163,7 @@ let calc_amount =
     let zlp = unpack_uint256 zero256 some_zlp in
     let token_count = builtin mul nft_supply token_id in
     let count = builtin div token_count s in
+    let count = builtin add count one256 in
       builtin div zlp count
 
 let calc_rewards =
