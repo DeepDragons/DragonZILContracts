@@ -233,3 +233,38 @@ transition TestAmount(zlp_amount: Uint128, dmz_total_supply: Uint256, token_id: 
   };
   event e
 end
+
+transition TestRewards(supply: Uint256, gen_lab: Uint256, combat: Uint256, face: Uint256)
+  max = Uint256 500000000000000000000;
+  value = calc_rewards supply gen_lab combat face max;
+
+  e = {
+    _eventname: "Test";
+    value: value
+  };
+  event e
+end
+
+
+transition TestFull(zlp: Uint128, total_dragons: Uint256, token_id: Uint256, combat_gens: Uint256, face_gens: Uint256)
+  max = Uint256 500000000000000000000;
+  gen_lab_price = Uint128 10000000000000000000;
+  gen_lab_use_count = Uint32 1;
+  gel_lab_multiplicator = Uint128 2;
+  gens_seporate = Uint256 300;
+  gens_s = Uint256 4;
+  supply_seporate = Uint256 800;
+
+  gen_lab = calc_gen_lab gen_lab_price gen_lab_use_count gel_lab_multiplicator;
+  combat = calc_combat_gens combat_gens gens_seporate;
+  face = calc_face_gens face_gens gens_s;
+  supply = calc_amount zlp total_dragons token_id supply_seporate;
+  value = calc_rewards supply gen_lab combat face max;
+
+
+  e = {
+    _eventname: "Test";
+    value: value
+  };
+  event e
+end
