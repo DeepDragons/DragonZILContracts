@@ -99,14 +99,14 @@ def calc_rewards(supply, gen_lab, combat, face):
   return supply + gen_lab + combat + face
 
 
-ZLP_AMOUNT = 16344308266940854272735
-DMZ_SUPPLY = 3964
-TOKEN_ID = 1000
+ZLP_AMOUNT = 21344308266940854272735
+DMZ_SUPPLY = 4020
+TOKEN_ID = 189
 
 gen_lab = calc_gen_lab(10000000000000000000, 1, 3)
-combat = calc_combat_gens(8842241887348121053642943479474811942429995499489999429999999928807053991194)
+combat = calc_combat_gens(2923050955875207484220018640416815354667337947866681571931895423076306874164)
 supply = calc_amoun(ZLP_AMOUNT, DMZ_SUPPLY, TOKEN_ID)
-face = calc_face_gens(77703044463111120136022035016)
+face = calc_face_gens(77714634243432331121210047145)
 rewards = calc_rewards(supply, gen_lab, combat, face)
 
 print('gen_lab %i ZLP' % (gen_lab // 10**18))
