@@ -346,10 +346,10 @@ field start_referral_percent: Uint128 = Uint128 10
 field max_referral_percent: Uint128 = Uint128 50
 field referrals: Map ByStr20 Uint128 = Emp ByStr20 Uint128
 
-field zil_incrementer: Uint128 = Uint128 1000000000000
-field zlp_incrementer: Uint128 = Uint128 10000000000000000
-field zil_price: Uint128 = Uint128 400000000000000
-field zlp_price: Uint128 = Uint128 10000000000000000000
+field zil_incrementer: Uint128 = Uint128 100000000000000
+field zlp_incrementer: Uint128 = Uint128 5000000000000000000
+field zil_price: Uint128 = Uint128 702000000000000
+field zlp_price: Uint128 = Uint128 15940000000000000000
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
@@ -447,6 +447,12 @@ transition setPrice(zil_i: Uint128, zlp_i: Uint128, zil: Uint128, z: Uint128)
   zlp_incrementer := zlp_i;
   zil_price := zil;
   zlp_price := z
+end
+
+transition setReferrals(addr: ByStr20, percent: Uint128)
+  IsContractOwner;
+
+  referrals[addr] := percent
 end
 
 procedure BuyForZLP(amount: Uint128, to: ByStr20)
