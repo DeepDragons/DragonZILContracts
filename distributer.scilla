@@ -22,6 +22,7 @@ type Error =
   | CodeInsufficientAmount
   | CodeNotAuthorised
   | CodeNotZLP
+  | CodeNotOwner
 
 let aura_op = Aura
 let horns_op = Horns
@@ -321,6 +322,7 @@ let make_error =
       | CodeInsufficientAmount => Int32 -1
       | CodeNotAuthorised      => Int32 -2
       | CodeNotZLP             => Int32 -3
+      | CodeNotOwner           => Int32 -4
       end
     in
     { _exception : "Error"; code : result_code }
@@ -331,6 +333,7 @@ let make_error =
 
 contract DragonZILDistributer
 (
+  contract_owner: ByStr20,
   main: ByStr20,
   wallet: ByStr20,
   zlp: ByStr20 with contract
@@ -343,10 +346,10 @@ field start_referral_percent: Uint128 = Uint128 10
 field max_referral_percent: Uint128 = Uint128 50
 field referrals: Map ByStr20 Uint128 = Emp ByStr20 Uint128
 
-field zil_incrementer: Uint128 = Uint128 1000000000000
-field zlp_incrementer: Uint128 = Uint128 10000000000000000
-field zil_price: Uint128 = Uint128 400000000000000
-field zlp_price: Uint128 = Uint128 10000000000000000000
+field zil_incrementer: Uint128 = Uint128 100000000000000
+field zlp_incrementer: Uint128 = Uint128 5000000000000000000
+field zil_price: Uint128 = Uint128 702000000000000
+field zlp_price: Uint128 = Uint128 15940000000000000000
 
 (* Emit Errors *)
 procedure ThrowError(err : Error)
@@ -361,6 +364,16 @@ procedure IsZLP()
   | True =>
   | False =>
     err = CodeNotZLP;
+    ThrowError err
+  end
+end
+
+procedure IsContractOwner()
+  is_contract_owner = builtin eq contract_owner _sender;
+  match is_contract_owner with
+  | True => 
+  | False =>
+    err = CodeNotOwner;
     ThrowError err
   end
 end
@@ -427,6 +440,20 @@ procedure CallTransfer(to: ByStr20, amount: Uint128)
   send msgs
 end
 
+transition setPrice(zil_i: Uint128, zlp_i: Uint128, zil: Uint128, z: Uint128)
+  IsContractOwner;
+
+  zil_incrementer := zil_i;
+  zlp_incrementer := zlp_i;
+  zil_price := zil;
+  zlp_price := z
+end
+
+transition setReferrals(addr: ByStr20, percent: Uint128)
+  IsContractOwner;
+
+  referrals[addr] := percent
+end
 
 procedure BuyForZLP(amount: Uint128, to: ByStr20)
   price <- zlp_price;
@@ -522,6 +549,7 @@ transition ReturnFunds()
   end;
   AddFunds wallet bal
 end
+
 
 transition RecipientAcceptTransfer(sender: ByStr20, recipient: ByStr20, amount: Uint128)
   IsZLP;

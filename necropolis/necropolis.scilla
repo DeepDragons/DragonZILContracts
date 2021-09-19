@@ -6,12 +6,16 @@ library DragonZILNecropolisLib
 type Curve =
 | Curve of Uint256 Uint256 Uint256 Uint256
 
+type Dummy =
+| Dummy
+
 type Error =
   | CodeNotMain
   | CodeNotZLP
   | CodeNotOwner
   | CodeNotFound
   | CodeNotSelf
+  | CodeIgnore
 
 let max_curve_init = Uint256 500000000000000000000
 let combat_curve_init = Uint256 150
@@ -21,6 +25,8 @@ let supply_curve_init = Uint256 10
 let zero256 = Uint256 0
 let zero128 = Uint128 0
 let zero32 = Uint32 0
+let verdad = Dummy
+
 let two256 = Uint256 2
 let one256 = Uint256 1
 
@@ -191,6 +197,7 @@ let make_error =
       | CodeNotOwner => Int32 -3
       | CodeNotFound => Int32 -4
       | CodeNotSelf  => Int32 -5
+      | CodeIgnore   => Int32 -6
       end
     in
     { _exception : "Error"; code : result_code }
@@ -213,6 +220,8 @@ contract DragonZILNecropolisContract
     field use_count: Map Uint256 Uint32
   end
 )
+
+field ignore_addres: Map ByStr20 Dummy = Emp ByStr20 Dummy
 
 field curve : Curve = Curve
   face_curve_init
@@ -244,6 +253,17 @@ procedure IsMain()
   | False =>
     err = CodeNotMain;
     ThrowError err
+  end
+end
+
+procedure IsIgnore()
+  some_addr <- ignore_addres[_sender];
+
+  match some_addr with
+  | Some a =>
+    err = CodeIgnore;
+    ThrowError err
+  | None =>
   end
 end
 
@@ -291,8 +311,19 @@ procedure CallBurn(token_id: Uint256)
   send msgs
 end
 
+procedure ConfigureIgnore(addr: ByStr20)
+  some_addr <- ignore_addres[addr];
+
+  match some_addr with
+  | Some a =>
+    delete ignore_addres[addr]
+  | None =>
+    ignore_addres[addr] := verdad
+  end
+end
 
 transition CallRewards(token_id: Uint256)
+  IsIgnore;
   CallBurn token_id;
 
   curve_app <- curve;
@@ -354,6 +385,12 @@ transition ReturnFunds()
   zlp_bal = unpack_uint128 zero128 some_zlp_bal;
 
   CallTransfer contract_owner zlp_bal
+end
+
+transition UpdateIgnoreList(addresses: List ByStr20)
+  IsContractOwner;
+
+  forall addresses ConfigureIgnore
 end
 
 (* Callbacks *)
