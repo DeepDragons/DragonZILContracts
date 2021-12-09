@@ -1,5 +1,3 @@
-GENES = 94971868430698218815550784762969701691290030012016199912601261219107712080824
-
 factor0 = 100
 factor1 = 10000
 factor2 = 1000000
@@ -68,7 +66,7 @@ def get_attack(entropy: int, genes: int):
   g17 = get_attack_gene(genes, factor17, factor16, entropy)
   g18 = get_attack_gene(genes, factor18, factor17, entropy)
   g19 = get_attack_gene(genes, factor19, factor18, entropy)
-  # g38 = get_attack_gene(genes, factor38, factor37, entropy) #TODO luck gene
+  g38 = get_attack_gene(genes, factor38, factor37, entropy) #TODO luck gene
 
   return (g0, g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, g11, g12, g13, g14, g15, g16, g17, g18, g19)
 
@@ -94,8 +92,16 @@ def get_defence_genes(genes: int, defence: bool, percent: int):
 
   return (g20, g21, g22, g23, g24, g25, g26, g27, g28, g29, g30, g31, g32, g33, g34, g35, g36, g37)
 
-attack = get_attack(0, GENES)
-defence = get_defence_genes(GENES, False, 10)
+def fight(genes: int):
+  attack = get_attack(0, genes)
+  defence = get_defence_genes(genes, False, 10)
+  luck = get_gene(genes, factor38, factor37)
 
-print(attack)
-print(defence)
+  print({
+    'attack': attack,
+    'defence': defence,
+    'luck': luck
+  })
+
+
+fight(94971868430698218815550784762969701691290030012016199912601261219107712080824)
