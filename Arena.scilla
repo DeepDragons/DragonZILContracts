@@ -1,0 +1,75 @@
+scilla_version 0
+
+import PairUtils
+library ArenaLib
+
+type Error =
+  | CodeMinPrice
+
+let factor_60 = Uint256 1000000000000000000000000000000000000000000000000000000000000
+let factor_54 = Uint256 1000000000000000000000000000000000000000000000000000000
+let factor_48 = Uint256 1000000000000000000000000000000000000000000000000
+let factor_42 = Uint256 1000000000000000000000000000000000000000000
+let factor_36 = Uint256 1000000000000000000000000000000000000
+let factor_30 = Uint256 1000000000000000000000000000000
+let factor_24 = Uint256 1000000000000000000000000
+let factor_18 = Uint256 1000000000000000000
+let factor_12 = Uint256 1000000000000
+let factor_6 = Uint256 1000000
+
+let one_msg = 
+  fun (msg : Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+let blc_hash =
+  fun (b0: Uint128) =>
+  fun (b1: Uint128) =>
+    let sum = builtin add b0 b1 in
+      builtin keccak256hash sum
+
+let random =
+  fun (entropy: ByStr32) =>
+  fun (blc: ByStr32) =>
+  fun (block_number: BNum) =>
+  fun (addr: ByStr20) =>
+    let block_hash = builtin keccak256hash block_number in
+    let str = builtin concat entropy addr in
+    let str = builtin concat str block_hash in
+    let str = builtin concat str blc in
+      builtin keccak256hash str
+
+let make_error =
+  fun (result : Error) =>
+    let result_code = 
+      match result with
+      | CodeMinPrice => Int32 -1
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
+contract ArenaContract
+()
+
+field entropy : ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
+
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+transition Test()
+  current_block <- & BLOCKNUMBER;
+  last_entropy <- entropy;
+
+  blk0 = Uint128 123;
+  bkl1 = Uint128 312;
+
+  b32_blc = blc_hash blk0 bkl1;
+  b32 = random last_entropy b32_blc current_block _sender;
+  e = {
+    _eventname: "Test";
+    b32: b32
+  };
+  event e
+end
