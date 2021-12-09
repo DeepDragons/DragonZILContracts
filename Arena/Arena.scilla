@@ -1,0 +1,127 @@
+scilla_version 0
+
+import PairUtils
+library ArenaLib
+
+type Error =
+  | CodeMinPrice
+
+let f1 = Uint256 10
+let f2 = Uint256 100
+let f4 = Uint256 10000
+let f7 = Uint256 1000000
+let f6 = Uint256 10000000
+let f9 = Uint256 100000000
+let f11 = Uint256 10000000000
+let f12 = Uint256 100000000000
+let f13 = Uint256 1000000000000
+let f15 = Uint256 100000000000000
+let f16 = Uint256 1000000000000000
+let f17 = Uint256 10000000000000000
+let f18 = Uint256 100000000000000000
+let f19 = Uint256 1000000000000000000
+let f20 = Uint256 10000000000000000000
+let f21 = Uint256 100000000000000000000
+let f23 = Uint256 10000000000000000000000
+let f22 = Uint256 100000000000000000000000
+let f25 = Uint256 1000000000000000000000000
+let f26 = Uint256 10000000000000000000000000
+let f27 = Uint256 100000000000000000000000000
+let f29 = Uint256 10000000000000000000000000000
+let f31 = Uint256 1000000000000000000000000000000
+let f33 = Uint256 100000000000000000000000000000000
+let f35 = Uint256 10000000000000000000000000000000000
+let f37 = Uint256 1000000000000000000000000000000000000
+let f39 = Uint256 100000000000000000000000000000000000000
+let f41 = Uint256 10000000000000000000000000000000000000000
+let f43 = Uint256 1000000000000000000000000000000000000000000
+
+let one_msg = 
+  fun (msg : Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+let blc_hash =
+  fun (b0: Uint128) =>
+  fun (b1: Uint128) =>
+    let sum = builtin add b0 b1 in
+      builtin keccak256hash sum
+
+let random =
+  fun (entropy: ByStr32) =>
+  fun (blc: ByStr32) =>
+  fun (block_number: BNum) =>
+  fun (addr: ByStr20) =>
+    let block_hash = builtin keccak256hash block_number in
+    let str = builtin concat entropy addr in
+    let str = builtin concat str block_hash in
+    let str = builtin concat str blc in
+      builtin keccak256hash str
+
+let split_gene =
+  fun (gens: Uint256) =>
+  fun (factor: Uint256) =>
+    let n = builtin div gens factor in
+      builtin rem n factor_6
+
+let calc_combat_gens =
+  fun (genes: Uint256) =>
+  fun (s: Uint256) =>
+    let g0 = split_gene genes f43 zero256 in
+    let g1 = split_gene genes f41 g0 in
+    let g2 = split_gene genes f39 g1 in
+    let g3 = split_gene genes f37 g2 in
+    let g4 = split_gene genes f35 g3 in
+    let g5 = split_gene genes f33 g4 in
+    let g6 = split_gene genes f31 g5 in
+    let g7 = split_gene genes f29 g6 in
+    let g8 = split_gene genes f27 g7 in
+    let g9 = split_gene genes f25 g8 in
+    let g10 = split_gene genes f23 g9 in
+    let g11 = split_gene genes f21 g10 in
+    let g12 = split_gene genes f19 g11 in
+    let g13 = split_gene genes f17 g12 in
+    let g14 = split_gene genes f15 g13 in
+    let g15 = split_gene genes f13 g14 in
+    let g16 = split_gene genes f11 g15 in
+    let g17 = split_gene genes f9 g16 in
+    let g18 = split_gene genes f7 g17 in
+    let g19 = split_gene genes f4 g18 in
+    let g20 = split_gene genes f2 g19 in
+    let n = builtin mul g20 f19 in
+      builtin div n s
+
+let make_error =
+  fun (result : Error) =>
+    let result_code = 
+      match result with
+      | CodeMinPrice => Int32 -1
+      end
+    in
+    { _exception : "Error"; code : result_code }
+
+contract ArenaContract
+()
+
+field entropy : ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
+
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+transition Test()
+  current_block <- & BLOCKNUMBER;
+  last_entropy <- entropy;
+
+  blk0 = Uint128 123;
+  bkl1 = Uint128 312;
+
+  b32_blc = blc_hash blk0 bkl1;
+  b32 = random last_entropy b32_blc current_block _sender;
+  e = {
+    _eventname: "Test";
+    b32: b32
+  };
+  event e
+end
