@@ -42,6 +42,16 @@ factor36 = 100000000000000000000000000000000000000000000000000000000000000000000
 factor37 = 10000000000000000000000000000000000000000000000000000000000000000000000000000
 factor38 = 1000000000000000000000000000000000000000000000000000000000000000000000000000000
 
+def an_attack(a: int, b: int):
+  if a > b:
+    return 0
+  return b - a
+
+def calc_by_attack(a: int, b: int):
+  if a > b:
+    return 0
+
+  return 1
 
 def get_gene(last: int, genes: int, factor: int, decimal: int):
   return (genes % factor // decimal) + last
@@ -74,7 +84,7 @@ def get_attack(entropy: int, genes: int, luck: int):
   g18 = get_attack_gene(g17, genes, factor18, factor17, entropy)
   g19 = get_attack_gene(g18, genes, factor19, factor18, entropy)
 
-  entropy_number = entropy % factor0
+  entropy_number = entropy % ten
 
   if entropy_number <= luck:
     value = g19 * entropy_number // factor0
@@ -126,10 +136,31 @@ def start_fight(defender: int, attacker: int):
   dragon0 = get_dragon_stats(defender, True, percent)
   dragon1 = get_dragon_stats(attacker, False, percent)
 
-  print(dragon0)
-  print(dragon1)
+  defence0 = an_attack(dragon1['attack'], dragon0['defence'])
+  defence1 = an_attack(dragon0['attack'], dragon1['defence'])
 
-start_fight(
-  93874527286910525471527470589474811999999999999999999999999999999999999999953,
-  52715327613880199885229470589684616999999999999999999999999999999999999999961
-)
+  if defence0 == defence1:
+    return calc_by_attack(dragon0['attack'], dragon1['attack'])
+
+  if defence0 > defence1:
+    return 1
+
+  return 0
+
+defender = 0
+attacker = 0
+
+for _ in range(10000):
+  won = start_fight(
+    93874527286910525471527470589474811999999999999999999999999999999999999999953,
+    93874527286910525471527470589474811999999999999999999999999999999999999999953
+  )
+
+  if won == 0:
+    defender += 1
+
+  if won == 1:
+    attacker += 1
+  
+
+print(defender, attacker)
