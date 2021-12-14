@@ -203,46 +203,15 @@ contract ArenaContract
 field entropy : ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
 field defender_percent : Uint256 = Uint256 30
 
-transition TestRandom()
-  current_block <- & BLOCKNUMBER;
-  last_entropy <- entropy;
-
-  blk0 = Uint128 123;
-  bkl1 = Uint128 312;
-
-  b32_blc = blc_hash blk0 bkl1;
-  b32 = random last_entropy b32_blc current_block _sender;
-  e = {
-    _eventname: "Attack";
-    b32: b32
+procedure SafeCallback(bytes32: ByStr32)
+  tag = builtin to_string bytes32;
+  call_msg = {
+    _tag: tag;
+    _recipient: _sender;
+    _amount: Uint128 0
   };
-  event e
-end
-
-transition TestFight()
-  defender = Uint256 93874527286910525471527470589474811999999999999999999999999999999999999999953;
-  (* attacker = Uint256 93874527286910525471527470589474811999999999999999999999999999999999999999953; *)
-  entropy_number = Uint256 91037657545574709671269799340021244434523283015194471950588484671419352951172;
-  luck = get_gene zero256 defender factor38 factor37;
-  attack = get_attack entropy_number defender luck;
-  e = {
-    _eventname: "Tests";
-    attack: attack
-  };
-  event e
-end
-
-transition TestDefence()
-  is_defence = True;
-  percent = Uint256 30;
-  genes = Uint256 93874527286910525471527470589474811999999999999999999999999999999999999999953;
-
-  defence = get_defence genes is_defence percent;
-  e = {
-    _eventname: "TestsDefence";
-    defence: defence
-  };
-  event e
+  msg = one_msg call_msg;
+  send msg
 end
 
 transition Fighting(defender: Uint256, attacker: Uint256)
@@ -270,6 +239,8 @@ transition Fighting(defender: Uint256, attacker: Uint256)
   won = who_won
     defender_defence defender_attack
     attacker_defence attacker_attack;
+  
+  SafeCallback b32;
   e = {
     _eventname: "Won";
     won: won
