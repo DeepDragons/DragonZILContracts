@@ -6,35 +6,49 @@ library ArenaLib
 type Error =
   | CodeMinPrice
 
-let f1 = Uint256 10
-let f2 = Uint256 100
-let f4 = Uint256 10000
-let f7 = Uint256 1000000
-let f6 = Uint256 10000000
-let f9 = Uint256 100000000
-let f11 = Uint256 10000000000
-let f12 = Uint256 100000000000
-let f13 = Uint256 1000000000000
-let f15 = Uint256 100000000000000
-let f16 = Uint256 1000000000000000
-let f17 = Uint256 10000000000000000
-let f18 = Uint256 100000000000000000
-let f19 = Uint256 1000000000000000000
-let f20 = Uint256 10000000000000000000
-let f21 = Uint256 100000000000000000000
-let f23 = Uint256 10000000000000000000000
-let f22 = Uint256 100000000000000000000000
-let f25 = Uint256 1000000000000000000000000
-let f26 = Uint256 10000000000000000000000000
-let f27 = Uint256 100000000000000000000000000
-let f29 = Uint256 10000000000000000000000000000
-let f31 = Uint256 1000000000000000000000000000000
-let f33 = Uint256 100000000000000000000000000000000
-let f35 = Uint256 10000000000000000000000000000000000
-let f37 = Uint256 1000000000000000000000000000000000000
-let f39 = Uint256 100000000000000000000000000000000000000
-let f41 = Uint256 10000000000000000000000000000000000000000
-let f43 = Uint256 1000000000000000000000000000000000000000000
+let zero256 = Uint256 0
+let one256 = Uint256 1
+
+let ten = Uint256 10
+let factor0 = Uint256 100
+let factor1 = Uint256 10000
+let factor2 = Uint256 1000000
+let factor3 = Uint256 100000000
+let factor4 = Uint256 10000000000
+let factor5 = Uint256 1000000000000
+let factor6 = Uint256 100000000000000
+let factor7 = Uint256 10000000000000000
+let factor8 = Uint256 1000000000000000000
+let factor9 = Uint256 100000000000000000000
+let factor10 = Uint256 10000000000000000000000
+let factor11 = Uint256 1000000000000000000000000
+let factor12 = Uint256 100000000000000000000000000
+let factor13 = Uint256 10000000000000000000000000000
+let factor14 = Uint256 1000000000000000000000000000000
+let factor15 = Uint256 100000000000000000000000000000000
+let factor16 = Uint256 10000000000000000000000000000000000
+let factor17 = Uint256 1000000000000000000000000000000000000
+let factor18 = Uint256 100000000000000000000000000000000000000
+let factor19 = Uint256 10000000000000000000000000000000000000000
+let factor20 = Uint256 1000000000000000000000000000000000000000000
+let factor21 = Uint256 100000000000000000000000000000000000000000000
+let factor22 = Uint256 10000000000000000000000000000000000000000000000
+let factor23 = Uint256 1000000000000000000000000000000000000000000000000
+let factor24 = Uint256 100000000000000000000000000000000000000000000000000
+let factor25 = Uint256 10000000000000000000000000000000000000000000000000000
+let factor26 = Uint256 1000000000000000000000000000000000000000000000000000000
+let factor27 = Uint256 100000000000000000000000000000000000000000000000000000000
+let factor28 = Uint256 10000000000000000000000000000000000000000000000000000000000
+let factor29 = Uint256 1000000000000000000000000000000000000000000000000000000000000
+let factor30 = Uint256 100000000000000000000000000000000000000000000000000000000000000
+let factor31 = Uint256 10000000000000000000000000000000000000000000000000000000000000000
+let factor32 = Uint256 1000000000000000000000000000000000000000000000000000000000000000000
+let factor33 = Uint256 100000000000000000000000000000000000000000000000000000000000000000000
+let factor34 = Uint256 10000000000000000000000000000000000000000000000000000000000000000000000
+let factor35 = Uint256 1000000000000000000000000000000000000000000000000000000000000000000000000
+let factor36 = Uint256 100000000000000000000000000000000000000000000000000000000000000000000000000
+let factor37 = Uint256 10000000000000000000000000000000000000000000000000000000000000000000000000000
+let factor38 = Uint256 100000000000000000000000000000000000000000000000000000000000000000000000000000
 
 let one_msg = 
   fun (msg : Message) => 
@@ -58,59 +72,87 @@ let random =
     let str = builtin concat str blc in
       builtin keccak256hash str
 
-let split_gene =
-  fun (gens: Uint256) =>
-  fun (factor: Uint256) =>
-    let n = builtin div gens factor in
-      builtin rem n factor_6
+(* Game control *)
+let an_attack =
+  fun (a: Uint256) =>
+  fun (b: Uint256) =>
+    let is_less = builtin lt b a in
+    match is_less with
+    | True => zero256
+    | False => builtin sub b a
+    end
 
-let calc_combat_gens =
+let calc_by_attack =
+  fun (a: Uint256) =>
+  fun (b: Uint256) =>
+    let is_less = builtin lt b a in
+    match is_less with
+    | True => zero256
+    | False => one256
+    end
+
+let get_gene =
+  fun (last: Uint256) =>
   fun (genes: Uint256) =>
-  fun (s: Uint256) =>
-    let g0 = split_gene genes f43 zero256 in
-    let g1 = split_gene genes f41 g0 in
-    let g2 = split_gene genes f39 g1 in
-    let g3 = split_gene genes f37 g2 in
-    let g4 = split_gene genes f35 g3 in
-    let g5 = split_gene genes f33 g4 in
-    let g6 = split_gene genes f31 g5 in
-    let g7 = split_gene genes f29 g6 in
-    let g8 = split_gene genes f27 g7 in
-    let g9 = split_gene genes f25 g8 in
-    let g10 = split_gene genes f23 g9 in
-    let g11 = split_gene genes f21 g10 in
-    let g12 = split_gene genes f19 g11 in
-    let g13 = split_gene genes f17 g12 in
-    let g14 = split_gene genes f15 g13 in
-    let g15 = split_gene genes f13 g14 in
-    let g16 = split_gene genes f11 g15 in
-    let g17 = split_gene genes f9 g16 in
-    let g18 = split_gene genes f7 g17 in
-    let g19 = split_gene genes f4 g18 in
-    let g20 = split_gene genes f2 g19 in
-    let n = builtin mul g20 f19 in
-      builtin div n s
+  fun (factor: Uint256) =>
+  fun (decimal: Uint256) =>
+    let gf = builtin rem genes factor in
+    let gfd = builtin div gf decimal in
+      builtin add gfd last
 
-let make_error =
-  fun (result : Error) =>
-    let result_code = 
-      match result with
-      | CodeMinPrice => Int32 -1
-      end
-    in
-    { _exception : "Error"; code : result_code }
+let get_attack_gene =
+  fun (last: Uint256) =>
+  fun (genes: Uint256) =>
+  fun (factor: Uint256) =>
+  fun (decimal: Uint256) =>
+  fun (entropy: Uint256) =>
+    let gene = get_gene last genes factor decimal in
+    let crit = builtin div entropy factor in
+    let crit = builtin rem crit ten in
+      builtin add gene crit
+
+let get_attack = 
+  fun (entropy: Uint256) =>
+  fun (genes: Uint256) =>
+  fun (luck: Uint256) =>
+    let g0 = builtin rem genes factor0 in
+    let g1 = get_attack_gene g0 genes factor1 factor0 entropy in
+    let g2 = get_attack_gene g1 genes factor2 factor1 entropy in
+    let g3 = get_attack_gene g2 genes factor3 factor2 entropy in
+    let g4 = get_attack_gene g3 genes factor4 factor3 entropy in
+    let g5 = get_attack_gene g4 genes factor5 factor4 entropy in
+    let g6 = get_attack_gene g5 genes factor6 factor5 entropy in
+    let g7 = get_attack_gene g6 genes factor7 factor6 entropy in
+    let g8 = get_attack_gene g7 genes factor8 factor7 entropy in
+    let g9 = get_attack_gene g8 genes factor9 factor8 entropy in
+    let g10 = get_attack_gene g9 genes factor10 factor9 entropy in
+    let g11 = get_attack_gene g10 genes factor11 factor10 entropy in
+    let g12 = get_attack_gene g11 genes factor12 factor11 entropy in
+    let g13 = get_attack_gene g12 genes factor13 factor12 entropy in
+    let g14 = get_attack_gene g13 genes factor14 factor13 entropy in
+    let g15 = get_attack_gene g14 genes factor15 factor14 entropy in
+    let g16 = get_attack_gene g15 genes factor16 factor15 entropy in
+    let g17 = get_attack_gene g16 genes factor17 factor16 entropy in
+    let g18 = get_attack_gene g17 genes factor18 factor17 entropy in
+    let g19 = get_attack_gene g18 genes factor19 factor18 entropy in
+    let entropy_number = builtin rem entropy ten in
+    let is_luck = builtin lt entropy_number luck in
+    match is_luck with
+    | True =>
+      let v = builtin mul g19 entropy_number in
+      let v = builtin div v factor0 in
+        builtin add g19 v
+    | False => g19
+    end
+
+(* Game control *)
 
 contract ArenaContract
 ()
 
 field entropy : ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
 
-procedure ThrowError(err : Error)
-  e = make_error err;
-  throw e
-end
-
-transition Test()
+transition TestRandom()
   current_block <- & BLOCKNUMBER;
   last_entropy <- entropy;
 
@@ -120,8 +162,21 @@ transition Test()
   b32_blc = blc_hash blk0 bkl1;
   b32 = random last_entropy b32_blc current_block _sender;
   e = {
-    _eventname: "Test";
+    _eventname: "Attack";
     b32: b32
+  };
+  event e
+end
+
+transition TestFight()
+  defender = Uint256 93874527286910525471527470589474811999999999999999999999999999999999999999953;
+  (* attacker = Uint256 93874527286910525471527470589474811999999999999999999999999999999999999999953; *)
+  entropy_number = Uint256 91037657545574709671269799340021244434523283015194471950588484671419352951172;
+  luck = get_gene zero256 defender factor38 factor37;
+  attack = get_attack entropy_number defender luck;
+  e = {
+    _eventname: "Tests";
+    attack: attack
   };
   event e
 end
