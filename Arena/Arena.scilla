@@ -3,11 +3,29 @@ scilla_version 0
 import PairUtils
 library ArenaLib
 
+(* Custom ADT storing - price, opponent *)
+type PrivateBattle =
+| PrivateBattle of Uint128 ByStr20
+
 type Error =
-  | CodeMinPrice
+  | CodeNotInWaitingList
+  | CodeNotContractOwner
+  | CodeSameDragon
+  | CodeStageIncorrect
+  | CodePauseIsPaused
+  | CodeNotTokenOwner
+
+type DragonState =
+  | Defender
+  | Attacker
 
 let ff = False
 let tt = True
+
+let zero32 = Uint32 0
+let one32 = Uint32 1
+
+let zero128 = Uint128 0
 
 let zero_int256 = Int256 0
 
@@ -60,6 +78,10 @@ let one_msg =
     let nil_msg = Nil {Message} in
     Cons {Message} msg nil_msg
 
+let make_error =
+  fun (code : Error) =>
+    { _exception : "Error"; code : code }
+
 let option_value =
   tfun 'A =>
   fun (default: 'A) =>
@@ -107,8 +129,8 @@ let who_won =
     let attempt1 = an_attack a0 d1 in
     let diff = builtin lt attempt1 attempt0 in
       match diff with
-      | True => Uint32 0
-      | False => Uint32 1
+      | True => Defender
+      | False => Attacker
       end
 
 let get_gene =
@@ -198,11 +220,90 @@ let get_defence =
 (* Game control *)
 
 contract ArenaContract
-()
+(
+  admin: ByStr20,
+  zlp: ByStr20
+)
 
+field pause: Uint32 = zero32
 field entropy : ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
 field defender_percent : Uint256 = Uint256 30
+field necropolis : ByStr20 = admin
 
+field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
+field private_list: Map Uint256 PrivateBattle = Emp Uint256 PrivateBattle
+field wounded_list: Map Uint256 Uint32 = Emp Uint256 Uint32
+
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+(* MODIFICATIONS *)
+procedure OnlyContractOwner()
+  is_contract_owner = builtin eq admin _sender;
+  match is_contract_owner with
+  | True =>
+  | False =>
+    err = CodeNotContractOwner;
+    ThrowError err
+  end
+end
+
+procedure OnlyInListing(token_id: Uint256)
+  token_inwatinglist <- exists waiting_list[token_id];
+  match token_inwatinglist with
+  | False =>
+    err = CodeNotInWaitingList;
+    ThrowError err
+  | True =>
+  end
+end
+
+procedure OnlyDifferentDragons(id0: Uint256, id1: Uint256)
+  is_same_dragon = builtin eq id0 id1;
+  match is_same_dragon with
+  | True =>
+    err = CodeSameDragon;
+    ThrowError err
+  | False =>
+  end
+end
+
+procedure OnlyDragonStage(stage: Uint32)
+  is_stage_egg = builtin lt stage one32;
+  match is_stage_egg with
+  | False =>
+  | True =>
+    err = CodeStageIncorrect;
+    ThrowError err
+  end
+end
+
+procedure OnlyUnPause()
+  curent_pause <- pause;
+  is_eq = builtin eq zero32 curent_pause;
+  match is_eq with
+  | True =>
+  | False =>
+    err = CodePauseIsPaused;
+    ThrowError err
+  end
+end
+
+procedure OnlyTokenOnwer(owner: ByStr20)
+  is_owner = builtin eq owner _sender;
+  match is_owner with
+  | True =>
+  | False =>
+    err = CodeNotTokenOwner;
+    ThrowError err
+  end
+end
+(* MODIFICATIONS *)
+
+
+(* MSG CALL *)
 procedure SafeCallback(bytes32: ByStr32)
   tag = builtin to_string bytes32;
   call_msg = {
@@ -213,6 +314,32 @@ procedure SafeCallback(bytes32: ByStr32)
   msg = one_msg call_msg;
   send msg
 end
+
+procedure CallTransferFrom(amount: Uint128, from: ByStr20, to: ByStr20)
+  call_transfer_zlp = {
+    _tag: "TransferFrom";
+    _recipient: zlp;
+    _amount: zero128;
+    from: from;
+    to: to;
+    amount: amount
+  };
+  msgs = one_msg call_transfer_zlp;
+  send msgs
+end
+
+procedure CallTransfer(to: ByStr20, amount: Uint128)
+  msg_transfer = {
+    _tag: "Transfer";
+    _recipient: zlp;
+    _amount: zero128;
+    to: to;
+    amount: amount
+  };
+  msgs = one_msg msg_transfer;
+  send msgs
+end
+(* MSG CALL *)
 
 transition Fighting(defender: Uint256, attacker: Uint256)
   current_block <- & BLOCKNUMBER;
@@ -239,8 +366,13 @@ transition Fighting(defender: Uint256, attacker: Uint256)
   won = who_won
     defender_defence defender_attack
     attacker_defence attacker_attack;
-  
   SafeCallback b32;
+
+(*  match won with*)
+(*  | Defender => Uint32 0*)
+(*  | Attacker => Uint32 0*)
+(*  end;*)
+
   e = {
     _eventname: "Won";
     won: won
