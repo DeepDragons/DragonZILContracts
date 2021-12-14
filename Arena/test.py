@@ -146,17 +146,23 @@ def start_fight(defender: int, attacker: int):
 defender = 0
 attacker = 0
 
-for _ in range(100):
-  won = start_fight(
-    110076663326186735694065157349154850016621919904094611281317450973914607307198,
-    110154428326032843508749688438399367999999909999999999889999999999999999999934
-  )
+for _ in range(1000000):
+  b32 = os.urandom(32)
+  entropy_number = int.from_bytes(b32, "big")
+  value = entropy_number % 30
 
-  if won == 0:
-    defender += 1
+  if value > 29:
+    print(value)
+  # won = start_fight(
+  #   110076663326186735694065157349154850016621919904094611281317450973914607307198,
+  #   110154428326032843508749688438399367999999909999999999889999999999999999999934
+  # )
 
-  if won == 1:
-    attacker += 1
+  # if won == 0:
+  #   defender += 1
+
+  # if won == 1:
+  #   attacker += 1
   
 
-print(defender, attacker)
+# print(defender, attacker)

@@ -24,6 +24,7 @@ let tt = True
 
 let zero32 = Uint32 0
 let one32 = Uint32 1
+let nil_list32 = Nil {Uint32}
 
 let zero128 = Uint128 0
 
@@ -92,6 +93,8 @@ let option_value =
     end
 
 let option_int256 = @option_value Int256
+let option_uint32 = @option_value Uint32
+let option_list_uint32 = @option_value (List Uint32)
 
 let blc_hash =
   fun (b0: Uint128) =>
@@ -228,11 +231,12 @@ contract ArenaContract
 field pause: Uint32 = zero32
 field entropy : ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
 field defender_percent : Uint256 = Uint256 30
+field number_of_wound : Uint256 = Uint256 30
 field necropolis : ByStr20 = admin
 
 field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
 field private_list: Map Uint256 PrivateBattle = Emp Uint256 PrivateBattle
-field wounded_list: Map Uint256 Uint32 = Emp Uint256 Uint32
+field wounded_list: Map Uint256 List(Uint32) = Emp Uint256 List(Uint32)
 
 procedure ThrowError(err : Error)
   e = make_error err;
@@ -341,13 +345,44 @@ procedure CallTransfer(to: ByStr20, amount: Uint128)
 end
 (* MSG CALL *)
 
+(* GAME CONTROL *)
+procedure estimeteWounded(id: Uint256, chance: Uint256, en: Uint256)
+  entropy_number = builtin div en chance;
+  en_number = builtin rem entropy_number factor0;
+  is_wound = builtin lt en_number chance;
+
+  match is_wound with
+  | True =>
+    value_wound <- number_of_wound;
+    numbers_list <- wounded_list[id];
+
+    wound = builtin rem entropy_number value_wound;
+    wound = builtin to_uint32 wound;
+    wound = option_uint32 zero32 wound;
+
+    list = option_list_uint32 nil_list32 numbers_list;
+    new_list = Cons {Uint32} wound list;
+    wounded_list[id] := new_list;
+    e = {
+      _eventname: "DragonWounded";
+      wound: wound
+    };
+    event e
+  | False =>
+  end
+end
+(* GAME CONTROL *)
+
+
 transition Fighting(defender: Uint256, attacker: Uint256)
   current_block <- & BLOCKNUMBER;
   last_entropy <- entropy;
   percent <- defender_percent;
 
+  (* TODO: change to zilswap contract *)
   blk0 = Uint128 123;
   bkl1 = Uint128 312;
+  (* TODO: change to zilswap contract *)
 
   b32_blc = blc_hash blk0 bkl1;
   b32 = random last_entropy b32_blc current_block _sender;
