@@ -6,6 +6,11 @@ library ArenaLib
 type Error =
   | CodeMinPrice
 
+let ff = False
+let tt = True
+
+let zero_int256 = Int256 0
+
 let zero256 = Uint256 0
 let one256 = Uint256 1
 
@@ -55,6 +60,17 @@ let one_msg =
     let nil_msg = Nil {Message} in
     Cons {Message} msg nil_msg
 
+let option_value =
+  tfun 'A =>
+  fun (default: 'A) =>
+  fun (opt_val: Option 'A) =>
+    match opt_val with
+    | Some v => v
+    | None => default
+    end
+
+let option_int256 = @option_value Int256
+
 let blc_hash =
   fun (b0: Uint128) =>
   fun (b1: Uint128) =>
@@ -76,20 +92,24 @@ let random =
 let an_attack =
   fun (a: Uint256) =>
   fun (b: Uint256) =>
-    let is_less = builtin lt b a in
-    match is_less with
-    | True => zero256
-    | False => builtin sub b a
-    end
+    let op_a = builtin to_int256 a in
+    let op_b = builtin to_int256 b in
+    let int_a = option_int256 zero_int256 op_a in
+    let int_b = option_int256 zero_int256 op_b in
+      builtin sub int_b int_a
 
-let calc_by_attack =
-  fun (a: Uint256) =>
-  fun (b: Uint256) =>
-    let is_less = builtin lt b a in
-    match is_less with
-    | True => zero256
-    | False => one256
-    end
+let who_won =
+  fun (d0: Uint256) =>
+  fun (a0: Uint256) =>
+  fun (d1: Uint256) =>
+  fun (a1: Uint256) =>
+    let attempt0 = an_attack a1 d0 in
+    let attempt1 = an_attack a0 d1 in
+    let diff = builtin lt attempt1 attempt0 in
+      match diff with
+      | True => Uint32 0
+      | False => Uint32 1
+      end
 
 let get_gene =
   fun (last: Uint256) =>
@@ -181,6 +201,7 @@ contract ArenaContract
 ()
 
 field entropy : ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
+field defender_percent : Uint256 = Uint256 30
 
 transition TestRandom()
   current_block <- & BLOCKNUMBER;
@@ -220,6 +241,38 @@ transition TestDefence()
   e = {
     _eventname: "TestsDefence";
     defence: defence
+  };
+  event e
+end
+
+transition Fighting(defender: Uint256, attacker: Uint256)
+  current_block <- & BLOCKNUMBER;
+  last_entropy <- entropy;
+  percent <- defender_percent;
+
+  blk0 = Uint128 123;
+  bkl1 = Uint128 312;
+
+  b32_blc = blc_hash blk0 bkl1;
+  b32 = random last_entropy b32_blc current_block _sender;
+  entropy_number = builtin to_uint256 b32;
+
+  defender_luck = get_gene zero256 defender factor38 factor37;
+  defender_attack = get_attack entropy_number defender defender_luck;
+  defender_defence = get_defence defender tt percent;
+
+  entropy_number = builtin div entropy_number attacker;
+
+  attacker_luck = get_gene zero256 attacker factor38 factor37;
+  attacker_attack = get_attack entropy_number attacker attacker_luck;
+  attacker_defence = get_defence attacker ff percent;
+
+  won = who_won
+    defender_defence defender_attack
+    attacker_defence attacker_attack;
+  e = {
+    _eventname: "Won";
+    won: won
   };
   event e
 end

@@ -43,8 +43,6 @@ factor37 = 100000000000000000000000000000000000000000000000000000000000000000000
 factor38 = 100000000000000000000000000000000000000000000000000000000000000000000000000000
 
 def an_attack(a: int, b: int):
-  if a > b:
-    return 0
   return b - a
 
 def calc_by_attack(a: int, b: int):
@@ -121,6 +119,7 @@ def get_defence_genes(genes: int, defence: bool, percent: int):
 def get_dragon_stats(genes: int, defence: int, percent: int):
   b32 = os.urandom(32)
   entropy_number = int.from_bytes(b32, "big")
+  # entropy_number = 115085169065819247984225582025768412064576353692739060426961360543845990284306
 
   luck = get_gene(0, genes, factor38, factor37)
   attack = get_attack(entropy_number, genes, luck)
@@ -132,45 +131,32 @@ def get_dragon_stats(genes: int, defence: int, percent: int):
   }
 
 def start_fight(defender: int, attacker: int):
-  percent = 30
+  percent = 1
   dragon0 = get_dragon_stats(defender, True, percent)
   dragon1 = get_dragon_stats(attacker, False, percent)
 
   defence0 = an_attack(dragon1['attack'], dragon0['defence'])
   defence1 = an_attack(dragon0['attack'], dragon1['defence'])
 
-  if defence0 == defence1:
-    return calc_by_attack(dragon0['attack'], dragon1['attack'])
-
   if defence0 > defence1:
-    return 1
+    return 0
 
-  return 0
+  return 1
 
+defender = 0
+attacker = 0
 
-is_defence = True
-percent = 30
-genes = 93874527286910525471527470589474811999999999999999999999999999999999999999953;
+for _ in range(100):
+  won = start_fight(
+    110076663326186735694065157349154850016621919904094611281317450973914607307198,
+    110154428326032843508749688438399367999999909999999999889999999999999999999934
+  )
 
-defence = get_defence_genes(genes, is_defence, percent)
+  if won == 0:
+    defender += 1
 
-print(defence)
-
-
-# defender = 0
-# attacker = 0
-
-# for _ in range(10000):
-#   won = start_fight(
-#     93874527286910525471527470589474811999999999999999999999999999999999999999953,
-#     93874527286910525471527470589474811999999999999999999999999999999999999999953
-#   )
-
-#   if won == 0:
-#     defender += 1
-
-#   if won == 1:
-#     attacker += 1
+  if won == 1:
+    attacker += 1
   
 
-# print(defender, attacker)
+print(defender, attacker)
