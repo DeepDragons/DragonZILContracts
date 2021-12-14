@@ -147,15 +147,15 @@ def start_fight(defender: int, attacker: int):
 
   return 0
 
-def test():
-  defender = 93874527286910525471527470589474811999999999999999999999999999999999999999953
-  entropy_number = 91037657545574709671269799340021244434523283015194471950588484671419352951172
-  luck = get_gene(0, defender, factor38, factor37)
-  attack = get_attack(entropy_number, defender, luck)
 
-  print(attack)
+is_defence = True
+percent = 30
+genes = 93874527286910525471527470589474811999999999999999999999999999999999999999953;
 
-test()
+defence = get_defence_genes(genes, is_defence, percent)
+
+print(defence)
+
 
 # defender = 0
 # attacker = 0

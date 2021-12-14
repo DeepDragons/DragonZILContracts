@@ -145,6 +145,36 @@ let get_attack =
     | False => g19
     end
 
+let get_defence =
+  fun (genes: Uint256) =>
+  fun (defence: Bool) =>
+  fun (percent: Uint256) =>
+    let g20 = get_gene zero256 genes factor20 factor19 in
+    let g21 = get_gene g20 genes factor21 factor20 in
+    let g22 = get_gene g21 genes factor22 factor21 in
+    let g23 = get_gene g22 genes factor23 factor22 in
+    let g24 = get_gene g23 genes factor24 factor23 in
+    let g25 = get_gene g24 genes factor25 factor24 in
+    let g26 = get_gene g25 genes factor26 factor25 in
+    let g27 = get_gene g26 genes factor27 factor26 in
+    let g28 = get_gene g27 genes factor28 factor27 in
+    let g29 = get_gene g28 genes factor29 factor28 in
+    let g30 = get_gene g29 genes factor30 factor29 in
+    let g31 = get_gene g30 genes factor31 factor30 in
+    let g32 = get_gene g31 genes factor32 factor31 in
+    let g33 = get_gene g32 genes factor33 factor32 in
+    let g34 = get_gene g33 genes factor34 factor33 in
+    let g35 = get_gene g34 genes factor35 factor34 in
+    let g36 = get_gene g35 genes factor36 factor35 in
+    let g37 = get_gene g36 genes factor37 factor36 in
+    match defence with
+    | True =>
+      let increase = builtin mul g37 percent in
+      let increase = builtin div increase factor0 in
+        builtin add g37 increase
+    | False => g37
+    end
+
 (* Game control *)
 
 contract ArenaContract
@@ -177,6 +207,19 @@ transition TestFight()
   e = {
     _eventname: "Tests";
     attack: attack
+  };
+  event e
+end
+
+transition TestDefence()
+  is_defence = True;
+  percent = Uint256 30;
+  genes = Uint256 93874527286910525471527470589474811999999999999999999999999999999999999999953;
+
+  defence = get_defence genes is_defence percent;
+  e = {
+    _eventname: "TestsDefence";
+    defence: defence
   };
   event e
 end
