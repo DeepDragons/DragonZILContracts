@@ -39,7 +39,7 @@ let zero256 = Uint256 0
 let one256 = Uint256 1
 
 let ten = Uint256 10
-let tenmul3 = Uint256 30
+let tenmul5 = Uint256 50
 let factor0 = Uint256 100
 let factor1 = Uint256 10000
 let factor2 = Uint256 1000000
@@ -551,13 +551,13 @@ transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
     some_defender_owner <-& main.token_owners[defender_id];
     defender_owner = option_byStr20 zero_address some_defender_owner;
     CallTransfer defender_owner won_amount;
-    EstimeteWounded defender_id zero256 entropy_number;
-    EstimeteWounded attacker_id tenmul3 entropy_number;
+    EstimeteWounded defender_id ten entropy_number;
+    EstimeteWounded attacker_id tenmul5 entropy_number;
     EmitWinner defender_id attacker_id
   | Attacker =>
     CallTransfer dragon_owner won_amount;
-    EstimeteWounded attacker_id zero256 entropy_number;
-    EstimeteWounded defender_id tenmul3 entropy_number;
+    EstimeteWounded attacker_id ten entropy_number;
+    EstimeteWounded defender_id tenmul5 entropy_number;
     EmitWinner attacker_id defender_id
   end;
 
