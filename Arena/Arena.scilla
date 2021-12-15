@@ -423,6 +423,23 @@ transition ToHeal(id: Uint256, wound_id: Uint32)
   event e
 end
 
+transition AddToPublicList(id: Uint256, price: Uint128)
+  OnlyUnPause;
+  (* TODO fech tokens owner filed. *)
+  OnlyTokenOnwer _sender;
+  (* TODO fech state from main contract *)
+  OnlyDragonStage one32;
+
+  waiting_list[id] := price;
+
+  e = {
+    _eventname: "AddedToPublicList";
+    token_id: id;
+    zlp_price: price
+  };
+  event e
+end
+
 transition Fighting(defender: Uint256, attacker: Uint256)
   current_block <- & BLOCKNUMBER;
   last_entropy <- entropy;
