@@ -39,6 +39,7 @@ let zero256 = Uint256 0
 let one256 = Uint256 1
 
 let ten = Uint256 10
+let tenmul3 = Uint256 30
 let factor0 = Uint256 100
 let factor1 = Uint256 10000
 let factor2 = Uint256 1000000
@@ -260,6 +261,17 @@ procedure ThrowError(err : Error)
   e = make_error err;
   throw e
 end
+
+(* EVENTS *)
+procedure EmitWinner(win: Uint256, lost: Uint256)
+  e = {
+    _eventname: "FightResult";
+    won: win;
+    lost: lost
+  };
+  event e
+end
+(* EVENTS *)
 
 (* MODIFICATIONS *)
 procedure OnlyContractOwner()
@@ -486,6 +498,7 @@ end
 
 transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
   OnlyUnPause;
+  OnlyDifferentDragons defender_id attacker_id;
 
   some_attacker_stage <-& main.token_stage[attacker_id];
   some_gene_attacker <-& main.token_gen_battle[attacker_id];
@@ -537,18 +550,18 @@ transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
   | Defender =>
     some_defender_owner <-& main.token_owners[defender_id];
     defender_owner = option_byStr20 zero_address some_defender_owner;
-    CallTransfer defender_owner won_amount
+    CallTransfer defender_owner won_amount;
+    EstimeteWounded defender_id zero256 entropy_number;
+    EstimeteWounded attacker_id tenmul3 entropy_number;
+    EmitWinner defender_id attacker_id
   | Attacker =>
-    CallTransfer dragon_owner won_amount
+    CallTransfer dragon_owner won_amount;
+    EstimeteWounded attacker_id zero256 entropy_number;
+    EstimeteWounded defender_id tenmul3 entropy_number;
+    EmitWinner attacker_id defender_id
   end;
 
-  delete waiting_list[defender_id];
-
-  e = {
-    _eventname: "Won";
-    won: won
-  };
-  event e
+  delete waiting_list[defender_id]
 end
 (* USER INTERACTIONS *)
 
