@@ -126,6 +126,22 @@ let random =
       builtin keccak256hash str
 
 (* Game control *)
+
+(* TODO: can be overflow *)
+let calc_wound_value =
+  fun (wound_value: Uint256) =>
+  fun (amount: Uint256) =>
+    let v = builtin div amount factor0 in
+    let v = builtin mul v wound_value in
+      builtin sub amount v
+
+let calc_percent_from_list =
+  fun (list: List Uint32) =>
+    let length = list_length32 list in
+    let length = builtin mul length ten32 in
+    let some_length = builtin to_uint256 length in
+      option_uint256 one256 some_length
+
 let an_attack =
   fun (a: Uint256) =>
   fun (b: Uint256) =>
@@ -376,24 +392,14 @@ end
 (* MSG CALL *)
 
 (* GAME CONTROL *)
-procedure EstimeteWounded(id: Uint256, chance: Uint256, en: Uint256)
-  numbers_list <- wounded_list[id];
-
-  list = option_list_uint32 nil_list32 numbers_list;
-  length = list_length32 list;
-  length = builtin mul length ten32;
-  some_length = builtin to_uint256 length;
-  length = option_uint256 zero256 some_length;
-  new_chance = builtin add length chance;
-
-  entropy_number = builtin div en new_chance;
+(* TODO: evrytime entropy_number is 0 *)
+(* TODO: everytime wound is 0 *)
+procedure EstimeteWounded(id: Uint256, chance: Uint256, en: Uint256, value_wound: Uint256, list: List Uint32)
+  entropy_number = builtin div en chance;
   en_number = builtin rem entropy_number factor0;
-  is_wound = builtin lt en_number new_chance;
-
+  is_wound = builtin lt en_number chance;
   match is_wound with
   | True =>
-    value_wound <- number_of_wound;
-
     wound = builtin rem entropy_number value_wound;
     wound = builtin to_uint32 wound;
     wound = option_uint32 zero32 wound;
@@ -403,7 +409,7 @@ procedure EstimeteWounded(id: Uint256, chance: Uint256, en: Uint256)
     e = {
       _eventname: "DragonWounded";
       wound: wound;
-      chance: new_chance
+      chance: chance
     };
     event e
   | False =>
@@ -516,10 +522,19 @@ transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
   current_block <- & BLOCKNUMBER;
   last_entropy <- entropy;
   percent <- defender_percent;
+  value_wound <- number_of_wound;
+
   some_price <- waiting_list[defender_id];
+  some_attacker_list <- wounded_list[attacker_id];
+  some_defender_list <- wounded_list[defender_id];
 
   zlp_price = option_uint128 zero128 some_price;
   won_amount = builtin mul zlp_price two128;
+
+  wound_defender_list = option_list_uint32 nil_list32 some_defender_list;
+  wound_attacker_list = option_list_uint32 nil_list32 some_attacker_list;
+  wound_defender = calc_percent_from_list wound_defender_list;
+  wound_attacker = calc_percent_from_list wound_attacker_list;
 
   (* TODO: change to zilswap contract *)
   blk0 = Uint128 123;
@@ -534,11 +549,17 @@ transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
   defender_attack = get_attack entropy_number gene_defender defender_luck;
   defender_defence = get_defence gene_defender tt percent;
 
+  defender_attack = calc_wound_value wound_defender defender_attack;
+  defender_defence = calc_wound_value wound_defender defender_defence;
+
   entropy_number = builtin div entropy_number gene_attacker;
 
   attacker_luck = get_gene zero256 gene_attacker factor38 factor37;
   attacker_attack = get_attack entropy_number gene_attacker attacker_luck;
   attacker_defence = get_defence gene_attacker ff percent;
+
+  attacker_attack = calc_wound_value wound_attacker attacker_attack;
+  attacker_defence = calc_wound_value wound_attacker attacker_defence;
 
   won = who_won
     defender_defence defender_attack
@@ -551,13 +572,21 @@ transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
     some_defender_owner <-& main.token_owners[defender_id];
     defender_owner = option_byStr20 zero_address some_defender_owner;
     CallTransfer defender_owner won_amount;
-    EstimeteWounded defender_id ten entropy_number;
-    EstimeteWounded attacker_id tenmul5 entropy_number;
+
+    defender_chance = builtin add ten wound_defender;
+    attacker_chance = builtin add tenmul5 wound_attacker;
+
+    EstimeteWounded defender_id defender_chance entropy_number value_wound wound_defender_list;
+    EstimeteWounded attacker_id attacker_chance entropy_number value_wound wound_attacker_list;
     EmitWinner defender_id attacker_id
   | Attacker =>
     CallTransfer dragon_owner won_amount;
-    EstimeteWounded attacker_id ten entropy_number;
-    EstimeteWounded defender_id tenmul5 entropy_number;
+
+    defender_chance = builtin add tenmul5 wound_defender;
+    attacker_chance = builtin add ten wound_attacker;
+
+    EstimeteWounded attacker_id attacker_chance entropy_number value_wound wound_attacker_list;
+    EstimeteWounded defender_id defender_chance entropy_number value_wound wound_defender_list;
     EmitWinner attacker_id defender_id
   end;
 
