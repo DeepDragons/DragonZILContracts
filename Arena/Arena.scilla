@@ -1,6 +1,7 @@
 scilla_version 0
 
-import PairUtils
+import PairUtils ListUtils BoolUtils
+
 library ArenaLib
 
 (* Custom ADT storing - price, opponent *)
@@ -24,6 +25,7 @@ let tt = True
 
 let zero32 = Uint32 0
 let one32 = Uint32 1
+let ten32 = Uint32 10
 let nil_list32 = Nil {Uint32}
 
 let zero128 = Uint128 0
@@ -93,8 +95,13 @@ let option_value =
     end
 
 let option_int256 = @option_value Int256
+let option_uint256 = @option_value Uint256
+let option_uint128 = @option_value Uint128
 let option_uint32 = @option_value Uint32
 let option_list_uint32 = @option_value (List Uint32)
+
+let list_length32 = @list_length Uint32
+let list_filter32 = @list_filter Uint32
 
 let blc_hash =
   fun (b0: Uint128) =>
@@ -232,6 +239,7 @@ field pause: Uint32 = zero32
 field entropy : ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
 field defender_percent : Uint256 = Uint256 30
 field number_of_wound : Uint256 = Uint256 30
+field heal_wound_price : Uint128 = Uint128 1000000000000000000
 field necropolis : ByStr20 = admin
 
 field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
@@ -346,26 +354,34 @@ end
 (* MSG CALL *)
 
 (* GAME CONTROL *)
-procedure estimeteWounded(id: Uint256, chance: Uint256, en: Uint256)
-  entropy_number = builtin div en chance;
+transition EstimeteWounded(id: Uint256, chance: Uint256, en: Uint256)
+  numbers_list <- wounded_list[id];
+
+  list = option_list_uint32 nil_list32 numbers_list;
+  length = list_length32 list;
+  length = builtin mul length ten32;
+  some_length = builtin to_uint256 length;
+  length = option_uint256 zero256 some_length;
+  new_chance = builtin add length chance;
+
+  entropy_number = builtin div en new_chance;
   en_number = builtin rem entropy_number factor0;
-  is_wound = builtin lt en_number chance;
+  is_wound = builtin lt en_number new_chance;
 
   match is_wound with
   | True =>
     value_wound <- number_of_wound;
-    numbers_list <- wounded_list[id];
 
     wound = builtin rem entropy_number value_wound;
     wound = builtin to_uint32 wound;
     wound = option_uint32 zero32 wound;
 
-    list = option_list_uint32 nil_list32 numbers_list;
     new_list = Cons {Uint32} wound list;
     wounded_list[id] := new_list;
     e = {
       _eventname: "DragonWounded";
-      wound: wound
+      wound: wound;
+      chance: new_chance
     };
     event e
   | False =>
@@ -373,6 +389,39 @@ procedure estimeteWounded(id: Uint256, chance: Uint256, en: Uint256)
 end
 (* GAME CONTROL *)
 
+
+(* USER INTERACTIONS *)
+transition ToHeal(id: Uint256, wound_id: Uint32)
+  OnlyUnPause;
+  (* TODO fech tokens owner filed. *)
+  OnlyTokenOnwer _sender;
+
+  numbers_list <- wounded_list[id];
+  price <- heal_wound_price;
+  wallet <- necropolis;
+
+  list = option_list_uint32 nil_list32 numbers_list;
+  length = list_length32 list;
+  some_length = builtin to_uint128 length;
+  length = option_uint128 zero128 some_length;
+  heal_price = builtin mul price length;
+
+  CallTransferFrom heal_price _sender wallet;
+
+  wound_filter =
+    fun (a: Uint32) =>
+      let is_eq = builtin eq a wound_id in
+        negb is_eq;
+
+  filtered_list = list_filter32 wound_filter list;
+  wounded_list[id] := filtered_list;
+
+  e = {
+    _eventname: "HealedWound";
+    wound_id: wound_id;
+  };
+  event e
+end
 
 transition Fighting(defender: Uint256, attacker: Uint256)
   current_block <- & BLOCKNUMBER;
@@ -414,3 +463,4 @@ transition Fighting(defender: Uint256, attacker: Uint256)
   };
   event e
 end
+(* USER INTERACTIONS *)
