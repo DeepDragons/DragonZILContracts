@@ -243,8 +243,9 @@ field heal_wound_price : Uint128 = Uint128 1000000000000000000
 field necropolis : ByStr20 = admin
 
 field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
-field private_list: Map ByStr20 PrivateBattle = Emp ByStr20 PrivateBattle
 field wounded_list: Map Uint256 List(Uint32) = Emp Uint256 List(Uint32)
+field private_list: Map ByStr20 (Map ByStr20 PrivateBattle) =
+  Emp ByStr20 (Map ByStr20 PrivateBattle)
 
 procedure ThrowError(err : Error)
   e = make_error err;
@@ -451,7 +452,7 @@ transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
 
   battle = PrivateBattle price id;
 
-  private_list[opponent] := battle;
+  private_list[opponent][_sender] := battle;
 
   e = {
     _eventname: "AddedToPrivateList";
