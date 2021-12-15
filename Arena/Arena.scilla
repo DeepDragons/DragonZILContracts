@@ -23,12 +23,15 @@ type DragonState =
 let ff = False
 let tt = True
 
+let zero_address = 0x0000000000000000000000000000000000000000
+
 let zero32 = Uint32 0
 let one32 = Uint32 1
 let ten32 = Uint32 10
 let nil_list32 = Nil {Uint32}
 
 let zero128 = Uint128 0
+let two128 = Uint128 2
 
 let zero_int256 = Int256 0
 
@@ -95,6 +98,7 @@ let option_value =
     end
 
 let option_int256 = @option_value Int256
+let option_byStr20 = @option_value ByStr20
 let option_uint256 = @option_value Uint256
 let option_uint128 = @option_value Uint128
 let option_uint32 = @option_value Uint32
@@ -232,7 +236,12 @@ let get_defence =
 contract ArenaContract
 (
   admin: ByStr20,
-  zlp: ByStr20
+  zlp: ByStr20,
+  main: ByStr20 with contract
+    field token_gen_battle: Map Uint256 Uint256,
+    field token_stage: Map Uint256 Uint32,
+    field token_owners: Map Uint256 ByStr20
+  end
 )
 
 field pause: Uint32 = zero32
@@ -355,7 +364,7 @@ end
 (* MSG CALL *)
 
 (* GAME CONTROL *)
-transition EstimeteWounded(id: Uint256, chance: Uint256, en: Uint256)
+procedure EstimeteWounded(id: Uint256, chance: Uint256, en: Uint256)
   numbers_list <- wounded_list[id];
 
   list = option_list_uint32 nil_list32 numbers_list;
@@ -394,8 +403,10 @@ end
 (* USER INTERACTIONS *)
 transition ToHeal(id: Uint256, wound_id: Uint32)
   OnlyUnPause;
-  (* TODO fech tokens owner filed. *)
-  OnlyTokenOnwer _sender;
+
+  some_dragon_owner <-& main.token_owners[id];
+  dragon_owner = option_byStr20 zero_address some_dragon_owner;
+  OnlyTokenOnwer dragon_owner;
 
   numbers_list <- wounded_list[id];
   price <- heal_wound_price;
@@ -426,10 +437,15 @@ end
 
 transition AddToPublicList(id: Uint256, price: Uint128)
   OnlyUnPause;
-  (* TODO fech tokens owner filed. *)
-  OnlyTokenOnwer _sender;
-  (* TODO fech state from main contract *)
-  OnlyDragonStage one32;
+
+  some_dragon_owner <-& main.token_owners[id];
+  dragon_owner = option_byStr20 zero_address some_dragon_owner;
+  OnlyTokenOnwer dragon_owner;
+
+  some_stage <-& main.token_stage[id];
+  stage = option_uint32 zero32 some_stage;
+  OnlyDragonStage stage;
+
   CallTransferFrom price _sender _this_address;
 
   waiting_list[id] := price;
@@ -444,10 +460,15 @@ end
 
 transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
   OnlyUnPause;
-  (* TODO fech tokens owner filed. *)
-  OnlyTokenOnwer _sender;
-  (* TODO fech state from main contract *)
-  OnlyDragonStage one32;
+
+  some_dragon_owner <-& main.token_owners[id];
+  dragon_owner = option_byStr20 zero_address some_dragon_owner;
+  OnlyTokenOnwer dragon_owner;
+
+  some_stage <-& main.token_stage[id];
+  stage = option_uint32 zero32 some_stage;
+  OnlyDragonStage stage;
+
   CallTransferFrom price _sender _this_address;
 
   battle = PrivateBattle price id;
@@ -463,10 +484,29 @@ transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
   event e
 end
 
-transition Fighting(defender: Uint256, attacker: Uint256)
+transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
+  OnlyUnPause;
+
+  some_attacker_stage <-& main.token_stage[attacker_id];
+  some_gene_attacker <-& main.token_gen_battle[attacker_id];
+  some_gene_defender <-& main.token_gen_battle[defender_id];
+  some_dragon_owner <-& main.token_owners[attacker_id];
+
+  attacker_stage = option_uint32 zero32 some_attacker_stage;
+  OnlyDragonStage attacker_stage;
+  dragon_owner = option_byStr20 zero_address some_dragon_owner;
+  OnlyTokenOnwer dragon_owner;
+
+  gene_attacker = option_uint256 zero256 some_gene_attacker;
+  gene_defender = option_uint256 zero256 some_gene_defender;
+
   current_block <- & BLOCKNUMBER;
   last_entropy <- entropy;
   percent <- defender_percent;
+  some_price <- waiting_list[defender_id];
+
+  zlp_price = option_uint128 zero128 some_price;
+  won_amount = builtin mul zlp_price two128;
 
   (* TODO: change to zilswap contract *)
   blk0 = Uint128 123;
@@ -477,25 +517,32 @@ transition Fighting(defender: Uint256, attacker: Uint256)
   b32 = random last_entropy b32_blc current_block _sender;
   entropy_number = builtin to_uint256 b32;
 
-  defender_luck = get_gene zero256 defender factor38 factor37;
-  defender_attack = get_attack entropy_number defender defender_luck;
-  defender_defence = get_defence defender tt percent;
+  defender_luck = get_gene zero256 gene_defender factor38 factor37;
+  defender_attack = get_attack entropy_number gene_defender defender_luck;
+  defender_defence = get_defence gene_defender tt percent;
 
-  entropy_number = builtin div entropy_number attacker;
+  entropy_number = builtin div entropy_number gene_attacker;
 
-  attacker_luck = get_gene zero256 attacker factor38 factor37;
-  attacker_attack = get_attack entropy_number attacker attacker_luck;
-  attacker_defence = get_defence attacker ff percent;
+  attacker_luck = get_gene zero256 gene_attacker factor38 factor37;
+  attacker_attack = get_attack entropy_number gene_attacker attacker_luck;
+  attacker_defence = get_defence gene_attacker ff percent;
 
   won = who_won
     defender_defence defender_attack
     attacker_defence attacker_attack;
   SafeCallback b32;
+  CallTransferFrom zlp_price _sender _this_address;
 
-(*  match won with*)
-(*  | Defender => Uint32 0*)
-(*  | Attacker => Uint32 0*)
-(*  end;*)
+  match won with
+  | Defender =>
+    some_defender_owner <-& main.token_owners[defender_id];
+    defender_owner = option_byStr20 zero_address some_defender_owner;
+    CallTransfer defender_owner won_amount
+  | Attacker =>
+    CallTransfer dragon_owner won_amount
+  end;
+
+  delete waiting_list[defender_id];
 
   e = {
     _eventname: "Won";
