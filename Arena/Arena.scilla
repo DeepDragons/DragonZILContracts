@@ -6,7 +6,7 @@ library ArenaLib
 
 (* Custom ADT storing - price, opponent *)
 type PrivateBattle =
-| PrivateBattle of Uint128 ByStr20
+| PrivateBattle of Uint128 Uint256
 
 type Error =
   | CodeNotInWaitingList
@@ -243,7 +243,7 @@ field heal_wound_price : Uint128 = Uint128 1000000000000000000
 field necropolis : ByStr20 = admin
 
 field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
-field private_list: Map Uint256 PrivateBattle = Emp Uint256 PrivateBattle
+field private_list: Map ByStr20 PrivateBattle = Emp ByStr20 PrivateBattle
 field wounded_list: Map Uint256 List(Uint32) = Emp Uint256 List(Uint32)
 
 procedure ThrowError(err : Error)
@@ -418,7 +418,7 @@ transition ToHeal(id: Uint256, wound_id: Uint32)
 
   e = {
     _eventname: "HealedWound";
-    wound_id: wound_id;
+    wound_id: wound_id
   };
   event e
 end
@@ -429,6 +429,7 @@ transition AddToPublicList(id: Uint256, price: Uint128)
   OnlyTokenOnwer _sender;
   (* TODO fech state from main contract *)
   OnlyDragonStage one32;
+  CallTransferFrom price _sender _this_address;
 
   waiting_list[id] := price;
 
@@ -436,6 +437,27 @@ transition AddToPublicList(id: Uint256, price: Uint128)
     _eventname: "AddedToPublicList";
     token_id: id;
     zlp_price: price
+  };
+  event e
+end
+
+transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
+  OnlyUnPause;
+  (* TODO fech tokens owner filed. *)
+  OnlyTokenOnwer _sender;
+  (* TODO fech state from main contract *)
+  OnlyDragonStage one32;
+  CallTransferFrom price _sender _this_address;
+
+  battle = PrivateBattle price id;
+
+  private_list[opponent] := battle;
+
+  e = {
+    _eventname: "AddedToPrivateList";
+    token_id: id;
+    zlp_price: price;
+    opponent: opponent
   };
   event e
 end
@@ -481,3 +503,14 @@ transition Fighting(defender: Uint256, attacker: Uint256)
   event e
 end
 (* USER INTERACTIONS *)
+
+(* ZRC2 CALLBACKS *)
+transition TransferFromSuccessCallBack(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
+end
+
+transition RecipientAcceptTransferFrom(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
+end
+
+transition TransferSuccessCallBack(sender: ByStr20, recipient: ByStr20, amount: Uint128)
+end
+(* ZRC2 CALLBACKS *)
