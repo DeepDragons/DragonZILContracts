@@ -430,6 +430,93 @@ procedure EstimeteWounded(id: Uint256, chance: Uint256, en: Uint256, value_wound
   | False =>
   end
 end
+
+procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool)
+  some_attacker_stage <-& main.token_stage[attacker_id];
+  some_gene_attacker <-& main.token_gen_battle[attacker_id];
+  some_gene_defender <-& main.token_gen_battle[defender_id];
+  some_dragon_owner <-& main.token_owners[attacker_id];
+
+  attacker_stage = option_uint32 zero32 some_attacker_stage;
+  OnlyDragonStage attacker_stage;
+  dragon_owner = option_byStr20 zero_address some_dragon_owner;
+  OnlyTokenOnwer dragon_owner;
+
+  gene_attacker = option_uint256 zero256 some_gene_attacker;
+  gene_defender = option_uint256 zero256 some_gene_defender;
+
+  blk0 <-& first._balance;
+  bkl1 <-& second._balance;
+  current_block <- & BLOCKNUMBER;
+
+  last_entropy <- entropy;
+  percent <- defender_percent;
+  value_wound <- number_of_wound;
+
+  some_price <- waiting_list[defender_id];
+  some_attacker_list <- wounded_list[attacker_id];
+  some_defender_list <- wounded_list[defender_id];
+
+  zlp_price = option_uint128 zero128 some_price;
+  won_amount = builtin mul zlp_price two128;
+
+  wound_defender_list = option_list_uint32 nil_list32 some_defender_list;
+  wound_attacker_list = option_list_uint32 nil_list32 some_attacker_list;
+  wound_defender = calc_percent_from_list wound_defender_list;
+  wound_attacker = calc_percent_from_list wound_attacker_list;
+
+  b32_blc = blc_hash blk0 bkl1;
+  b32 = random last_entropy b32_blc current_block _sender;
+  entropy_number = builtin to_uint256 b32;
+
+  defender_luck = get_gene zero256 gene_defender factor38 factor37;
+  defender_attack = get_attack entropy_number gene_defender defender_luck;
+  defender_defence = get_defence gene_defender pub percent;
+
+  defender_attack = calc_wound_value wound_defender defender_attack;
+  defender_defence = calc_wound_value wound_defender defender_defence;
+
+  entropy_number = builtin div entropy_number tenmul5;
+
+  attacker_luck = get_gene zero256 gene_attacker factor38 factor37;
+  attacker_attack = get_attack entropy_number gene_attacker attacker_luck;
+  attacker_defence = get_defence gene_attacker ff percent;
+
+  attacker_attack = calc_wound_value wound_attacker attacker_attack;
+  attacker_defence = calc_wound_value wound_attacker attacker_defence;
+
+  won = who_won
+    defender_defence defender_attack
+    attacker_defence attacker_attack;
+  SafeCallback b32;
+  CallTransferFrom zlp_price _sender _this_address;
+
+  match won with
+  | Defender =>
+    some_defender_owner <-& main.token_owners[defender_id];
+    defender_owner = option_byStr20 zero_address some_defender_owner;
+    CallTransfer defender_owner won_amount;
+
+    defender_chance = builtin add ten wound_defender;
+    attacker_chance = builtin add tenmul5 wound_attacker;
+
+    EstimeteWounded defender_id defender_chance entropy_number value_wound wound_defender_list;
+    EstimeteWounded attacker_id attacker_chance entropy_number value_wound wound_attacker_list;
+    EmitWinner defender_id attacker_id
+  | Attacker =>
+    CallTransfer dragon_owner won_amount;
+
+    defender_chance = builtin add tenmul5 wound_defender;
+    attacker_chance = builtin add ten wound_attacker;
+
+    EstimeteWounded attacker_id attacker_chance entropy_number value_wound wound_attacker_list;
+    EstimeteWounded defender_id defender_chance entropy_number value_wound wound_defender_list;
+    EmitWinner attacker_id defender_id
+  end;
+
+  entropy := b32;
+  delete waiting_list[defender_id]
+end
 (* GAME CONTROL *)
 
 
@@ -584,89 +671,7 @@ transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
   OnlyDifferentDragons defender_id attacker_id;
   OnlyExistsToken defender_id;
 
-  some_attacker_stage <-& main.token_stage[attacker_id];
-  some_gene_attacker <-& main.token_gen_battle[attacker_id];
-  some_gene_defender <-& main.token_gen_battle[defender_id];
-  some_dragon_owner <-& main.token_owners[attacker_id];
-
-  attacker_stage = option_uint32 zero32 some_attacker_stage;
-  OnlyDragonStage attacker_stage;
-  dragon_owner = option_byStr20 zero_address some_dragon_owner;
-  OnlyTokenOnwer dragon_owner;
-
-  gene_attacker = option_uint256 zero256 some_gene_attacker;
-  gene_defender = option_uint256 zero256 some_gene_defender;
-
-  blk0 <-& first._balance;
-  bkl1 <-& second._balance;
-  current_block <- & BLOCKNUMBER;
-
-  last_entropy <- entropy;
-  percent <- defender_percent;
-  value_wound <- number_of_wound;
-
-  some_price <- waiting_list[defender_id];
-  some_attacker_list <- wounded_list[attacker_id];
-  some_defender_list <- wounded_list[defender_id];
-
-  zlp_price = option_uint128 zero128 some_price;
-  won_amount = builtin mul zlp_price two128;
-
-  wound_defender_list = option_list_uint32 nil_list32 some_defender_list;
-  wound_attacker_list = option_list_uint32 nil_list32 some_attacker_list;
-  wound_defender = calc_percent_from_list wound_defender_list;
-  wound_attacker = calc_percent_from_list wound_attacker_list;
-
-  b32_blc = blc_hash blk0 bkl1;
-  b32 = random last_entropy b32_blc current_block _sender;
-  entropy_number = builtin to_uint256 b32;
-
-  defender_luck = get_gene zero256 gene_defender factor38 factor37;
-  defender_attack = get_attack entropy_number gene_defender defender_luck;
-  defender_defence = get_defence gene_defender tt percent;
-
-  defender_attack = calc_wound_value wound_defender defender_attack;
-  defender_defence = calc_wound_value wound_defender defender_defence;
-
-  entropy_number = builtin div entropy_number tenmul5;
-
-  attacker_luck = get_gene zero256 gene_attacker factor38 factor37;
-  attacker_attack = get_attack entropy_number gene_attacker attacker_luck;
-  attacker_defence = get_defence gene_attacker ff percent;
-
-  attacker_attack = calc_wound_value wound_attacker attacker_attack;
-  attacker_defence = calc_wound_value wound_attacker attacker_defence;
-
-  won = who_won
-    defender_defence defender_attack
-    attacker_defence attacker_attack;
-  SafeCallback b32;
-  CallTransferFrom zlp_price _sender _this_address;
-
-  match won with
-  | Defender =>
-    some_defender_owner <-& main.token_owners[defender_id];
-    defender_owner = option_byStr20 zero_address some_defender_owner;
-    CallTransfer defender_owner won_amount;
-
-    defender_chance = builtin add ten wound_defender;
-    attacker_chance = builtin add tenmul5 wound_attacker;
-
-    EstimeteWounded defender_id defender_chance entropy_number value_wound wound_defender_list;
-    EstimeteWounded attacker_id attacker_chance entropy_number value_wound wound_attacker_list;
-    EmitWinner defender_id attacker_id
-  | Attacker =>
-    CallTransfer dragon_owner won_amount;
-
-    defender_chance = builtin add tenmul5 wound_defender;
-    attacker_chance = builtin add ten wound_attacker;
-
-    EstimeteWounded attacker_id attacker_chance entropy_number value_wound wound_attacker_list;
-    EstimeteWounded defender_id defender_chance entropy_number value_wound wound_defender_list;
-    EmitWinner attacker_id defender_id
-  end;
-
-  delete waiting_list[defender_id]
+  Fighting defender_id attacker_id tt
 end
 (* USER INTERACTIONS *)
 
