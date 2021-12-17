@@ -15,7 +15,6 @@ type Error =
   | CodeStageIncorrect
   | CodePauseIsPaused
   | CodeNotTokenOwner
-  | CodeNotInWaitList
   | CodeNotFound
 
 type DragonState =
@@ -357,16 +356,6 @@ procedure OnlyTokenOnwer(owner: ByStr20)
     ThrowError err
   end
 end
-
-procedure OnlyExistsToken(id: Uint256)
-  wait_exist <- exists waiting_list[id];
-  match wait_exist with
-  | True =>
-  | False =>
-    err = CodeNotInWaitList;
-    ThrowError err
-  end
-end
 (* MODIFICATIONS *)
 
 
@@ -431,7 +420,7 @@ procedure EstimeteWounded(id: Uint256, chance: Uint256, en: Uint256, value_wound
   end
 end
 
-procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool)
+procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool, zlp_price: Uint128)
   some_attacker_stage <-& main.token_stage[attacker_id];
   some_gene_attacker <-& main.token_gen_battle[attacker_id];
   some_gene_defender <-& main.token_gen_battle[defender_id];
@@ -453,11 +442,9 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool)
   percent <- defender_percent;
   value_wound <- number_of_wound;
 
-  some_price <- waiting_list[defender_id];
   some_attacker_list <- wounded_list[attacker_id];
   some_defender_list <- wounded_list[defender_id];
 
-  zlp_price = option_uint128 zero128 some_price;
   won_amount = builtin mul zlp_price two128;
 
   wound_defender_list = option_list_uint32 nil_list32 some_defender_list;
@@ -491,6 +478,8 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool)
   SafeCallback b32;
   CallTransferFrom zlp_price _sender _this_address;
 
+  entropy := b32;
+
   match won with
   | Defender =>
     some_defender_owner <-& main.token_owners[defender_id];
@@ -512,10 +501,7 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool)
     EstimeteWounded attacker_id attacker_chance entropy_number value_wound wound_attacker_list;
     EstimeteWounded defender_id defender_chance entropy_number value_wound wound_defender_list;
     EmitWinner attacker_id defender_id
-  end;
-
-  entropy := b32;
-  delete waiting_list[defender_id]
+  end
 end
 (* GAME CONTROL *)
 
@@ -669,9 +655,20 @@ end
 transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
   OnlyUnPause;
   OnlyDifferentDragons defender_id attacker_id;
-  OnlyExistsToken defender_id;
 
-  Fighting defender_id attacker_id tt
+  some_price <- waiting_list[defender_id];
+
+  match some_price with
+  | Some price =>
+    Fighting defender_id attacker_id tt price;
+    delete waiting_list[defender_id]
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+
+transition StartPrivateFight()
 end
 (* USER INTERACTIONS *)
 
