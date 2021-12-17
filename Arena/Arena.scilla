@@ -547,7 +547,29 @@ transition RmFromPrivateList(opponent: ByStr20)
       e = {
         _eventname: "RemovedFromPrivateList";
         token_id: id;
-        opponent: opponent
+        opponent: opponent;
+        price: price
+      };
+      event e
+    end
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+
+transition RejectPrivateFight(opponent: ByStr20)
+  some_battle <- private_list[_sender][opponent];
+
+  match some_battle with
+  | Some battle =>
+    match battle with
+    | PrivateBattle price id =>
+      delete private_list[_sender][opponent];
+      e = {
+        _eventname: "RejectedPrivateFight";
+        opponent: opponent;
+        price: price
       };
       event e
     end
