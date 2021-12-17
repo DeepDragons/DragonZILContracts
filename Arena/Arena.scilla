@@ -668,7 +668,24 @@ transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
   end
 end
 
-transition StartPrivateFight()
+transition StartPrivateFight(opponent: ByStr20, attacker_id: Uint256)
+  OnlyUnPause;
+
+  some_battle <- private_list[_sender][opponent];
+
+  match some_battle with
+  | Some battle =>
+    match battle with
+    | PrivateBattle price defender_id =>
+      OnlyDifferentDragons defender_id attacker_id;
+      Fighting defender_id attacker_id ff price;
+
+      delete private_list[_sender][opponent]
+    end
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
 end
 (* USER INTERACTIONS *)
 
