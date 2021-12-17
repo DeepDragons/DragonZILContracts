@@ -1,6 +1,6 @@
 scilla_version 0
 
-import PairUtils ListUtils BoolUtils
+import ListUtils BoolUtils
 
 library ArenaLib
 
