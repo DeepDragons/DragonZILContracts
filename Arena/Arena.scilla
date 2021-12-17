@@ -262,7 +262,9 @@ contract ArenaContract
     field token_gen_battle: Map Uint256 Uint256,
     field token_stage: Map Uint256 Uint32,
     field token_owners: Map Uint256 ByStr20
-  end
+  end,
+  first: ByStr20 with contract end,
+  second: ByStr20 with contract end
 )
 
 field pause: Uint32 = zero32
@@ -532,7 +534,10 @@ transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
   gene_attacker = option_uint256 zero256 some_gene_attacker;
   gene_defender = option_uint256 zero256 some_gene_defender;
 
+  blk0 <-& first._balance;
+  bkl1 <-& second._balance;
   current_block <- & BLOCKNUMBER;
+
   last_entropy <- entropy;
   percent <- defender_percent;
   value_wound <- number_of_wound;
@@ -548,11 +553,6 @@ transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
   wound_attacker_list = option_list_uint32 nil_list32 some_attacker_list;
   wound_defender = calc_percent_from_list wound_defender_list;
   wound_attacker = calc_percent_from_list wound_attacker_list;
-
-  (* TODO: change to zilswap contract *)
-  blk0 = Uint128 123;
-  bkl1 = Uint128 312;
-  (* TODO: change to zilswap contract *)
 
   b32_blc = blc_hash blk0 bkl1;
   b32 = random last_entropy b32_blc current_block _sender;
