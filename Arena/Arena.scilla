@@ -4,7 +4,7 @@ import PairUtils ListUtils BoolUtils
 
 library ArenaLib
 
-(* Custom ADT storing - price, opponent *)
+(* Custom ADT storing - price, token_id *)
 type PrivateBattle =
 | PrivateBattle of Uint128 Uint256
 
@@ -16,6 +16,7 @@ type Error =
   | CodePauseIsPaused
   | CodeNotTokenOwner
   | CodeNotInWaitList
+  | CodeNotFound
 
 type DragonState =
   | Defender
@@ -490,6 +491,20 @@ transition AddToPublicList(id: Uint256, price: Uint128)
   event e
 end
 
+transition RmFromPublicList(id: Uint256)
+  some_dragon_owner <-& main.token_owners[id];
+  dragon_owner = option_byStr20 zero_address some_dragon_owner;
+  OnlyTokenOnwer dragon_owner;
+
+  delete waiting_list[id];
+
+  e = {
+    _eventname: "RemovedFromPublicList";
+    token_id: id
+  };
+  event e
+end
+
 transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
   OnlyUnPause;
 
@@ -514,6 +529,32 @@ transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
     opponent: opponent
   };
   event e
+end
+
+transition RmFromPrivateList(opponent: ByStr20)
+  some_battle <- private_list[opponent][_sender];
+
+  match some_battle with
+  | Some battle =>
+    match battle with
+    | PrivateBattle price id =>
+      some_dragon_owner <-& main.token_owners[id];
+      dragon_owner = option_byStr20 zero_address some_dragon_owner;
+      OnlyTokenOnwer dragon_owner;
+
+      delete private_list[opponent][_sender];
+
+      e = {
+        _eventname: "RemovedFromPrivateList";
+        token_id: id;
+        opponent: opponent
+      };
+      event e
+    end
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
 end
 
 transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
