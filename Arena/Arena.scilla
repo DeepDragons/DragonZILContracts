@@ -9,7 +9,6 @@ type PrivateBattle =
 | PrivateBattle of Uint128 Uint256
 
 type Error =
-  | CodeNotInWaitingList
   | CodeNotContractOwner
   | CodeSameDragon
   | CodeStageIncorrect
@@ -162,10 +161,10 @@ let who_won =
   fun (a1: Uint256) =>
     let attempt0 = an_attack a1 d0 in
     let attempt1 = an_attack a0 d1 in
-    let diff = builtin lt attempt1 attempt0 in
+    let diff = builtin lt attempt0 attempt1 in
       match diff with
-      | True => Defender
-      | False => Attacker
+      | True => Attacker
+      | False => Defender
       end
 
 let get_gene =
@@ -306,16 +305,6 @@ procedure OnlyContractOwner()
   end
 end
 
-procedure OnlyInListing(token_id: Uint256)
-  token_inwatinglist <- exists waiting_list[token_id];
-  match token_inwatinglist with
-  | False =>
-    err = CodeNotInWaitingList;
-    ThrowError err
-  | True =>
-  end
-end
-
 procedure OnlyDifferentDragons(id0: Uint256, id1: Uint256)
   is_same_dragon = builtin eq id0 id1;
   match is_same_dragon with
@@ -430,6 +419,7 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool, zlp_pr
   OnlyDragonStage attacker_stage;
   dragon_owner = option_byStr20 zero_address some_dragon_owner;
   OnlyTokenOnwer dragon_owner;
+  CallTransferFrom zlp_price _sender _this_address;
 
   gene_attacker = option_uint256 zero256 some_gene_attacker;
   gene_defender = option_uint256 zero256 some_gene_defender;
@@ -476,7 +466,6 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool, zlp_pr
     defender_defence defender_attack
     attacker_defence attacker_attack;
   SafeCallback b32;
-  CallTransferFrom zlp_price _sender _this_address;
 
   entropy := b32;
 
@@ -564,6 +553,7 @@ transition AddToPublicList(id: Uint256, price: Uint128)
   event e
 end
 
+(* TODO: Make a transfer tokens back *)
 transition RmFromPublicList(id: Uint256)
   some_dragon_owner <-& main.token_owners[id];
   dragon_owner = option_byStr20 zero_address some_dragon_owner;
@@ -604,6 +594,7 @@ transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
   event e
 end
 
+(* TODO: Make a transfer tokens back *)
 transition RmFromPrivateList(opponent: ByStr20)
   some_battle <- private_list[opponent][_sender];
 
@@ -631,6 +622,7 @@ transition RmFromPrivateList(opponent: ByStr20)
   end
 end
 
+(* TODO: Make a transfer tokens back *)
 transition RejectPrivateFight(opponent: ByStr20)
   some_battle <- private_list[_sender][opponent];
 
