@@ -708,6 +708,38 @@ transition StartPrivateFight(opponent: ByStr20, attacker_id: Uint256)
 end
 (* USER INTERACTIONS *)
 
+(* ADMIN INTERACTIONS *)
+transition Configurate(
+  defender_percent_: Uint256,
+  number_of_wound_: Uint256,
+  heal_wound_price_: Uint128,
+  reject_duel_price_: Uint128,
+  necropolis_: ByStr20
+)
+  OnlyContractOwner;
+
+  defender_percent := defender_percent_;
+  number_of_wound := number_of_wound_;
+  heal_wound_price := heal_wound_price_;
+  reject_duel_price := reject_duel_price_;
+  necropolis := necropolis_
+end
+
+transition TogglePause()
+  OnlyContractOwner;
+
+  current_pause <- pause;
+  is_zero = builtin eq current_pause zero32;
+
+  match is_zero with
+  | True =>
+    pause := one32
+  | False =>
+    pause := zero32
+  end
+end
+(* ADMIN INTERACTIONS *)
+
 (* ZRC2 CALLBACKS *)
 transition TransferFromSuccessCallBack(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
 end
