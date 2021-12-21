@@ -267,11 +267,12 @@ contract ArenaContract
 )
 
 field pause: Uint32 = zero32
-field entropy : ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
-field defender_percent : Uint256 = Uint256 30
-field number_of_wound : Uint256 = Uint256 30
-field heal_wound_price : Uint128 = Uint128 1000000000000000000
-field necropolis : ByStr20 = admin
+field entropy: ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
+field defender_percent: Uint256 = Uint256 30
+field number_of_wound: Uint256 = Uint256 30
+field heal_wound_price: Uint128 = Uint128 1000000000000000000
+field reject_duel_price: Uint128 = Uint128 1000000000000000000
+field necropolis: ByStr20 = admin
 
 field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
 field wounded_list: Map Uint256 List(Uint32) = Emp Uint256 List(Uint32)
@@ -361,28 +362,40 @@ procedure SafeCallback(bytes32: ByStr32)
 end
 
 procedure CallTransferFrom(amount: Uint128, from: ByStr20, to: ByStr20)
-  call_transfer_zlp = {
-    _tag: "TransferFrom";
-    _recipient: zlp;
-    _amount: zero128;
-    from: from;
-    to: to;
-    amount: amount
-  };
-  msgs = one_msg call_transfer_zlp;
-  send msgs
+  is_zero = builtin eq amount zero128;
+
+  match is_zero with
+  | False =>
+    call_transfer_zlp = {
+      _tag: "TransferFrom";
+      _recipient: zlp;
+      _amount: zero128;
+      from: from;
+      to: to;
+      amount: amount
+    };
+    msgs = one_msg call_transfer_zlp;
+    send msgs
+  | True =>
+  end
 end
 
 procedure CallTransfer(to: ByStr20, amount: Uint128)
-  msg_transfer = {
-    _tag: "Transfer";
-    _recipient: zlp;
-    _amount: zero128;
-    to: to;
-    amount: amount
-  };
-  msgs = one_msg msg_transfer;
-  send msgs
+  is_zero = builtin eq amount zero128;
+
+  match is_zero with
+  | False =>
+    msg_transfer = {
+      _tag: "Transfer";
+      _recipient: zlp;
+      _amount: zero128;
+      to: to;
+      amount: amount
+    };
+    msgs = one_msg msg_transfer;
+    send msgs
+  | True =>
+  end
 end
 (* MSG CALL *)
 
@@ -553,19 +566,28 @@ transition AddToPublicList(id: Uint256, price: Uint128)
   event e
 end
 
-(* TODO: Make a transfer tokens back *)
 transition RmFromPublicList(id: Uint256)
-  some_dragon_owner <-& main.token_owners[id];
-  dragon_owner = option_byStr20 zero_address some_dragon_owner;
-  OnlyTokenOnwer dragon_owner;
+  some_price <- waiting_list[id];
 
-  delete waiting_list[id];
+  match some_price with
+  | Some price =>
+    some_dragon_owner <-& main.token_owners[id];
 
-  e = {
-    _eventname: "RemovedFromPublicList";
-    token_id: id
-  };
-  event e
+    dragon_owner = option_byStr20 zero_address some_dragon_owner;
+    OnlyTokenOnwer dragon_owner;
+    CallTransfer dragon_owner price;
+
+    delete waiting_list[id];
+  
+    e = {
+      _eventname: "RemovedFromPublicList";
+      token_id: id
+    };
+    event e
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
 end
 
 transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
@@ -594,7 +616,6 @@ transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
   event e
 end
 
-(* TODO: Make a transfer tokens back *)
 transition RmFromPrivateList(opponent: ByStr20)
   some_battle <- private_list[opponent][_sender];
 
@@ -605,6 +626,7 @@ transition RmFromPrivateList(opponent: ByStr20)
       some_dragon_owner <-& main.token_owners[id];
       dragon_owner = option_byStr20 zero_address some_dragon_owner;
       OnlyTokenOnwer dragon_owner;
+      CallTransfer dragon_owner price;
 
       delete private_list[opponent][_sender];
 
@@ -622,7 +644,6 @@ transition RmFromPrivateList(opponent: ByStr20)
   end
 end
 
-(* TODO: Make a transfer tokens back *)
 transition RejectPrivateFight(opponent: ByStr20)
   some_battle <- private_list[_sender][opponent];
 
@@ -630,6 +651,12 @@ transition RejectPrivateFight(opponent: ByStr20)
   | Some battle =>
     match battle with
     | PrivateBattle price id =>
+      reject_price <- reject_duel_price;
+      wallet <- necropolis;
+
+      CallTransfer opponent price;
+      CallTransferFrom reject_price _sender wallet;
+
       delete private_list[_sender][opponent];
       e = {
         _eventname: "RejectedPrivateFight";
