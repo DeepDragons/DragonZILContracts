@@ -766,12 +766,13 @@ transition RemoveFromPublic(id: Uint256)
   OnlyContractOwner;
 
   some_price <- waiting_list[id];
+  necropolis_contract <- necropolis;
 
   match some_price with
   | Some price =>
     some_dragon_owner <-& main.token_owners[id];
 
-    dragon_owner = option_byStr20 zero_address some_dragon_owner;
+    dragon_owner = option_byStr20 necropolis_contract some_dragon_owner;
     CallTransfer dragon_owner price;
 
     delete waiting_list[id];
@@ -791,13 +792,14 @@ transition RemoveFromPrivate(opponent: ByStr20, caller: ByStr20)
   OnlyContractOwner;
 
   some_battle <- private_list[opponent][caller];
+  necropolis_contract <- necropolis;
 
   match some_battle with
   | Some battle =>
     match battle with
     | PrivateBattle price id =>
       some_dragon_owner <-& main.token_owners[id];
-      dragon_owner = option_byStr20 zero_address some_dragon_owner;
+      dragon_owner = option_byStr20 necropolis_contract some_dragon_owner;
       CallTransfer dragon_owner price;
 
       delete private_list[opponent][caller];
