@@ -257,6 +257,7 @@ contract ArenaContract
 (
   initial_owner: ByStr20,
   zlp: ByStr20,
+  initial_necropolis: ByStr20,
   main: ByStr20 with contract
     field token_gen_battle: Map Uint256 Uint256,
     field token_stage: Map Uint256 Uint32,
@@ -272,12 +273,12 @@ field owner: ByStr20 = initial_owner
 field entropy: ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
 field first_entropy_contract: ByStr20 with contract end = initial_first_entropy_contract
 field second_entropy_contract: ByStr20 with contract end = initial_second_entropy_contract
+field necropolis: ByStr20 = initial_necropolis
 
 field defender_percent: Uint256 = Uint256 30
 field number_of_wound: Uint256 = Uint256 30
 field heal_wound_price: Uint128 = Uint128 1000000000000000000
 field reject_duel_price: Uint128 = Uint128 1000000000000000000
-field necropolis: ByStr20 = zero_address
 
 field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
 field wounded_list: Map Uint256 List(Uint32) = Emp Uint256 List(Uint32)
@@ -724,7 +725,7 @@ transition Configurate(
   number_of_wound_: Uint256,
   heal_wound_price_: Uint128,
   reject_duel_price_: Uint128,
-  necropolis_: ByStr20
+  new_necropolis: ByStr20
 )
   OnlyContractOwner;
 
@@ -732,7 +733,7 @@ transition Configurate(
   number_of_wound := number_of_wound_;
   heal_wound_price := heal_wound_price_;
   reject_duel_price := reject_duel_price_;
-  necropolis := necropolis_
+  necropolis := new_necropolis
 end
 
 transition ConfigurateEntropy(
