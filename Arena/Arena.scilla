@@ -255,24 +255,29 @@ let get_defence =
 
 contract ArenaContract
 (
-  admin: ByStr20,
+  initial_owner: ByStr20,
   zlp: ByStr20,
   main: ByStr20 with contract
     field token_gen_battle: Map Uint256 Uint256,
     field token_stage: Map Uint256 Uint32,
     field token_owners: Map Uint256 ByStr20
   end,
-  first: ByStr20 with contract end,
-  second: ByStr20 with contract end
+  initial_first_entropy_contract: ByStr20 with contract end,
+  initial_second_entropy_contract: ByStr20 with contract end
 )
 
 field pause: Uint32 = zero32
+field owner: ByStr20 = initial_owner
+
 field entropy: ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
+field first_entropy_contract: ByStr20 with contract end = initial_first_entropy_contract
+field second_entropy_contract: ByStr20 with contract end = initial_second_entropy_contract
+
 field defender_percent: Uint256 = Uint256 30
 field number_of_wound: Uint256 = Uint256 30
 field heal_wound_price: Uint128 = Uint128 1000000000000000000
 field reject_duel_price: Uint128 = Uint128 1000000000000000000
-field necropolis: ByStr20 = admin
+field necropolis: ByStr20 = zero_address
 
 field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
 field wounded_list: Map Uint256 List(Uint32) = Emp Uint256 List(Uint32)
@@ -297,7 +302,9 @@ end
 
 (* MODIFICATIONS *)
 procedure OnlyContractOwner()
-  is_contract_owner = builtin eq admin _sender;
+  current_admin <- owner;
+
+  is_contract_owner = builtin eq current_admin _sender;
   match is_contract_owner with
   | True =>
   | False =>
@@ -337,8 +344,8 @@ procedure OnlyUnPause()
   end
 end
 
-procedure OnlyTokenOnwer(owner: ByStr20)
-  is_owner = builtin eq owner _sender;
+procedure OnlyTokenOnwer(token_owner: ByStr20)
+  is_owner = builtin eq token_owner _sender;
   match is_owner with
   | True =>
   | False =>
@@ -436,6 +443,9 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool, zlp_pr
 
   gene_attacker = option_uint256 zero256 some_gene_attacker;
   gene_defender = option_uint256 zero256 some_gene_defender;
+
+  first <- first_entropy_contract;
+  second <- second_entropy_contract;
 
   blk0 <-& first._balance;
   bkl1 <-& second._balance;
@@ -725,6 +735,18 @@ transition Configurate(
   necropolis := necropolis_
 end
 
+transition ConfigurateEntropy(
+  new_entropy: ByStr32,
+  new_first_entropy_contract: ByStr20 with contract end,
+  new_second_entropy_contract: ByStr20 with contract end
+)
+  OnlyContractOwner;
+
+  entropy := new_entropy;
+  first_entropy_contract := new_first_entropy_contract;
+  second_entropy_contract := new_second_entropy_contract
+end
+
 transition TogglePause()
   OnlyContractOwner;
 
@@ -737,6 +759,67 @@ transition TogglePause()
   | False =>
     pause := zero32
   end
+end
+
+transition RemoveFromPublic(id: Uint256)
+  OnlyContractOwner;
+
+  some_price <- waiting_list[id];
+
+  match some_price with
+  | Some price =>
+    some_dragon_owner <-& main.token_owners[id];
+
+    dragon_owner = option_byStr20 zero_address some_dragon_owner;
+    CallTransfer dragon_owner price;
+
+    delete waiting_list[id];
+  
+    e = {
+      _eventname: "RemovedFromPublicList";
+      token_id: id
+    };
+    event e
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+
+transition RemoveFromPrivate(opponent: ByStr20, caller: ByStr20)
+  OnlyContractOwner;
+
+  some_battle <- private_list[opponent][caller];
+
+  match some_battle with
+  | Some battle =>
+    match battle with
+    | PrivateBattle price id =>
+      some_dragon_owner <-& main.token_owners[id];
+      dragon_owner = option_byStr20 zero_address some_dragon_owner;
+      CallTransfer dragon_owner price;
+
+      delete private_list[opponent][caller];
+
+      e = {
+        _eventname: "RemovedFromPrivateList";
+        token_id: id;
+        opponent: opponent;
+        price: price
+      };
+      event e
+    end
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+
+transition TransferOwner(new_owner: ByStr20)
+  (* continue executing the transition if _sender is the owner,
+     throw exception and abort otherwise *)
+  OnlyContractOwner;
+  owner := new_owner
 end
 (* ADMIN INTERACTIONS *)
 
