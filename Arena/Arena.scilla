@@ -86,8 +86,39 @@ let one_msg =
     Cons {Message} msg nil_msg
 
 let make_error =
-  fun (code : Error) =>
-    { _exception : "Error"; code : code }
+  fun (result : Error) =>
+    match result with
+    | CodeNotContractOwner =>
+      {
+        _exception: "Sender is not contract owner";
+        code: Int32 -1
+      }
+    | CodeSameDragon =>
+      {
+        _exception: "Token ID is same";
+        code: Int32 -2
+      }
+    | CodeStageIncorrect =>
+      {
+        _exception: "Incorrect Dragon Stage";
+        code: Int32 -3
+      }
+    | CodePauseIsPaused =>
+      {
+        _exception: "Contract was paused";
+        code: Int32 -4
+      }
+    | CodeNotTokenOwner =>
+      {
+        _exception: "Sender is not token owner";
+        code: Int32 -5
+      }
+    | CodeNotFound =>
+      {
+        _exception: "Not found";
+        code: Int32 -6
+      }
+    end
 
 let option_value =
   tfun 'A =>
