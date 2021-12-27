@@ -1,0 +1,869 @@
+scilla_version 0
+
+import ListUtils BoolUtils
+
+library ArenaLib
+
+(* Custom ADT storing - price, token_id *)
+type PrivateBattle =
+| PrivateBattle of Uint128 Uint256
+
+type Error =
+  | CodeNotContractOwner
+  | CodeSameDragon
+  | CodeStageIncorrect
+  | CodePauseIsPaused
+  | CodeNotTokenOwner
+  | CodeNotFound
+
+type DragonState =
+  | Defender
+  | Attacker
+
+let ff = False
+let tt = True
+
+let zero_address = 0x0000000000000000000000000000000000000000
+
+let zero32 = Uint32 0
+let one32 = Uint32 1
+let ten32 = Uint32 10
+let nil_list32 = Nil {Uint32}
+
+let zero128 = Uint128 0
+let two128 = Uint128 2
+
+let zero_int256 = Int256 0
+
+let zero256 = Uint256 0
+let one256 = Uint256 1
+
+let ten = Uint256 10
+let tenmul5 = Uint256 50
+let factor0 = Uint256 100
+let factor1 = Uint256 10000
+let factor2 = Uint256 1000000
+let factor3 = Uint256 100000000
+let factor4 = Uint256 10000000000
+let factor5 = Uint256 1000000000000
+let factor6 = Uint256 100000000000000
+let factor7 = Uint256 10000000000000000
+let factor8 = Uint256 1000000000000000000
+let factor9 = Uint256 100000000000000000000
+let factor10 = Uint256 10000000000000000000000
+let factor11 = Uint256 1000000000000000000000000
+let factor12 = Uint256 100000000000000000000000000
+let factor13 = Uint256 10000000000000000000000000000
+let factor14 = Uint256 1000000000000000000000000000000
+let factor15 = Uint256 100000000000000000000000000000000
+let factor16 = Uint256 10000000000000000000000000000000000
+let factor17 = Uint256 1000000000000000000000000000000000000
+let factor18 = Uint256 100000000000000000000000000000000000000
+let factor19 = Uint256 10000000000000000000000000000000000000000
+let factor20 = Uint256 1000000000000000000000000000000000000000000
+let factor21 = Uint256 100000000000000000000000000000000000000000000
+let factor22 = Uint256 10000000000000000000000000000000000000000000000
+let factor23 = Uint256 1000000000000000000000000000000000000000000000000
+let factor24 = Uint256 100000000000000000000000000000000000000000000000000
+let factor25 = Uint256 10000000000000000000000000000000000000000000000000000
+let factor26 = Uint256 1000000000000000000000000000000000000000000000000000000
+let factor27 = Uint256 100000000000000000000000000000000000000000000000000000000
+let factor28 = Uint256 10000000000000000000000000000000000000000000000000000000000
+let factor29 = Uint256 1000000000000000000000000000000000000000000000000000000000000
+let factor30 = Uint256 100000000000000000000000000000000000000000000000000000000000000
+let factor31 = Uint256 10000000000000000000000000000000000000000000000000000000000000000
+let factor32 = Uint256 1000000000000000000000000000000000000000000000000000000000000000000
+let factor33 = Uint256 100000000000000000000000000000000000000000000000000000000000000000000
+let factor34 = Uint256 10000000000000000000000000000000000000000000000000000000000000000000000
+let factor35 = Uint256 1000000000000000000000000000000000000000000000000000000000000000000000000
+let factor36 = Uint256 100000000000000000000000000000000000000000000000000000000000000000000000000
+let factor37 = Uint256 10000000000000000000000000000000000000000000000000000000000000000000000000000
+let factor38 = Uint256 100000000000000000000000000000000000000000000000000000000000000000000000000000
+
+let one_msg = 
+  fun (msg : Message) => 
+    let nil_msg = Nil {Message} in
+    Cons {Message} msg nil_msg
+
+let make_error =
+  fun (result : Error) =>
+    match result with
+    | CodeNotContractOwner =>
+      {
+        _exception: "Sender is not contract owner";
+        code: Int32 -1
+      }
+    | CodeSameDragon =>
+      {
+        _exception: "Token ID is same";
+        code: Int32 -2
+      }
+    | CodeStageIncorrect =>
+      {
+        _exception: "Incorrect Dragon Stage";
+        code: Int32 -3
+      }
+    | CodePauseIsPaused =>
+      {
+        _exception: "Contract was paused";
+        code: Int32 -4
+      }
+    | CodeNotTokenOwner =>
+      {
+        _exception: "Sender is not token owner";
+        code: Int32 -5
+      }
+    | CodeNotFound =>
+      {
+        _exception: "Not found";
+        code: Int32 -6
+      }
+    end
+
+let option_value =
+  tfun 'A =>
+  fun (default: 'A) =>
+  fun (opt_val: Option 'A) =>
+    match opt_val with
+    | Some v => v
+    | None => default
+    end
+
+let option_int256 = @option_value Int256
+let option_byStr20 = @option_value ByStr20
+let option_uint256 = @option_value Uint256
+let option_uint128 = @option_value Uint128
+let option_uint32 = @option_value Uint32
+let option_list_uint32 = @option_value (List Uint32)
+
+let list_length32 = @list_length Uint32
+let list_filter32 = @list_filter Uint32
+
+let blc_hash =
+  fun (b0: Uint128) =>
+  fun (b1: Uint128) =>
+    let sum = builtin add b0 b1 in
+      builtin keccak256hash sum
+
+let random =
+  fun (entropy: ByStr32) =>
+  fun (blc: ByStr32) =>
+  fun (block_number: BNum) =>
+  fun (addr: ByStr20) =>
+    let block_hash = builtin keccak256hash block_number in
+    let str = builtin concat entropy addr in
+    let str = builtin concat str block_hash in
+    let str = builtin concat str blc in
+      builtin keccak256hash str
+
+(* Game control *)
+
+let calc_wound_value =
+  fun (wound_value: Uint256) =>
+  fun (amount: Uint256) =>
+    let v = builtin div amount factor0 in
+    let v = builtin mul v wound_value in
+    let is_overflow = builtin lt amount v in
+      match is_overflow with
+      | True => zero256
+      | False => builtin sub amount v
+      end
+
+let calc_percent_from_list =
+  fun (list: List Uint32) =>
+    let length = list_length32 list in
+    let length = builtin mul length ten32 in
+    let some_length = builtin to_uint256 length in
+      option_uint256 one256 some_length
+
+let an_attack =
+  fun (a: Uint256) =>
+  fun (b: Uint256) =>
+    let op_a = builtin to_int256 a in
+    let op_b = builtin to_int256 b in
+    let int_a = option_int256 zero_int256 op_a in
+    let int_b = option_int256 zero_int256 op_b in
+      builtin sub int_b int_a
+
+let who_won =
+  fun (d0: Uint256) =>
+  fun (a0: Uint256) =>
+  fun (d1: Uint256) =>
+  fun (a1: Uint256) =>
+    let attempt0 = an_attack a1 d0 in
+    let attempt1 = an_attack a0 d1 in
+    let diff = builtin lt attempt0 attempt1 in
+      match diff with
+      | True => Attacker
+      | False => Defender
+      end
+
+let get_gene =
+  fun (last: Uint256) =>
+  fun (genes: Uint256) =>
+  fun (factor: Uint256) =>
+  fun (decimal: Uint256) =>
+    let gf = builtin rem genes factor in
+    let gfd = builtin div gf decimal in
+      builtin add gfd last
+
+let get_attack_gene =
+  fun (last: Uint256) =>
+  fun (genes: Uint256) =>
+  fun (factor: Uint256) =>
+  fun (decimal: Uint256) =>
+  fun (entropy: Uint256) =>
+    let gene = get_gene last genes factor decimal in
+    let crit = builtin div entropy factor in
+    let crit = builtin rem crit ten in
+      builtin add gene crit
+
+let get_attack = 
+  fun (entropy: Uint256) =>
+  fun (genes: Uint256) =>
+  fun (luck: Uint256) =>
+    let g0 = builtin rem genes factor0 in
+    let g1 = get_attack_gene g0 genes factor1 factor0 entropy in
+    let g2 = get_attack_gene g1 genes factor2 factor1 entropy in
+    let g3 = get_attack_gene g2 genes factor3 factor2 entropy in
+    let g4 = get_attack_gene g3 genes factor4 factor3 entropy in
+    let g5 = get_attack_gene g4 genes factor5 factor4 entropy in
+    let g6 = get_attack_gene g5 genes factor6 factor5 entropy in
+    let g7 = get_attack_gene g6 genes factor7 factor6 entropy in
+    let g8 = get_attack_gene g7 genes factor8 factor7 entropy in
+    let g9 = get_attack_gene g8 genes factor9 factor8 entropy in
+    let g10 = get_attack_gene g9 genes factor10 factor9 entropy in
+    let g11 = get_attack_gene g10 genes factor11 factor10 entropy in
+    let g12 = get_attack_gene g11 genes factor12 factor11 entropy in
+    let g13 = get_attack_gene g12 genes factor13 factor12 entropy in
+    let g14 = get_attack_gene g13 genes factor14 factor13 entropy in
+    let g15 = get_attack_gene g14 genes factor15 factor14 entropy in
+    let g16 = get_attack_gene g15 genes factor16 factor15 entropy in
+    let g17 = get_attack_gene g16 genes factor17 factor16 entropy in
+    let g18 = get_attack_gene g17 genes factor18 factor17 entropy in
+    let g19 = get_attack_gene g18 genes factor19 factor18 entropy in
+    let entropy_number = builtin rem entropy ten in
+    let is_luck = builtin lt entropy_number luck in
+    match is_luck with
+    | True =>
+      let v = builtin mul g19 entropy_number in
+      let v = builtin div v factor0 in
+        builtin add g19 v
+    | False => g19
+    end
+
+let get_defence =
+  fun (genes: Uint256) =>
+  fun (defence: Bool) =>
+  fun (percent: Uint256) =>
+    let g20 = get_gene zero256 genes factor20 factor19 in
+    let g21 = get_gene g20 genes factor21 factor20 in
+    let g22 = get_gene g21 genes factor22 factor21 in
+    let g23 = get_gene g22 genes factor23 factor22 in
+    let g24 = get_gene g23 genes factor24 factor23 in
+    let g25 = get_gene g24 genes factor25 factor24 in
+    let g26 = get_gene g25 genes factor26 factor25 in
+    let g27 = get_gene g26 genes factor27 factor26 in
+    let g28 = get_gene g27 genes factor28 factor27 in
+    let g29 = get_gene g28 genes factor29 factor28 in
+    let g30 = get_gene g29 genes factor30 factor29 in
+    let g31 = get_gene g30 genes factor31 factor30 in
+    let g32 = get_gene g31 genes factor32 factor31 in
+    let g33 = get_gene g32 genes factor33 factor32 in
+    let g34 = get_gene g33 genes factor34 factor33 in
+    let g35 = get_gene g34 genes factor35 factor34 in
+    let g36 = get_gene g35 genes factor36 factor35 in
+    let g37 = get_gene g36 genes factor37 factor36 in
+    match defence with
+    | True =>
+      let increase = builtin mul g37 percent in
+      let increase = builtin div increase factor0 in
+        builtin add g37 increase
+    | False => g37
+    end
+
+(* Game control *)
+
+contract ArenaContract
+(
+  initial_owner: ByStr20,
+  zlp: ByStr20,
+  initial_necropolis: ByStr20,
+  main: ByStr20 with contract
+    field token_gen_battle: Map Uint256 Uint256,
+    field token_stage: Map Uint256 Uint32,
+    field token_owners: Map Uint256 ByStr20
+  end,
+  initial_first_entropy_contract: ByStr20 with contract end,
+  initial_second_entropy_contract: ByStr20 with contract end
+)
+
+field pause: Uint32 = zero32
+field owner: ByStr20 = initial_owner
+
+field entropy: ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
+field first_entropy_contract: ByStr20 with contract end = initial_first_entropy_contract
+field second_entropy_contract: ByStr20 with contract end = initial_second_entropy_contract
+field necropolis: ByStr20 = initial_necropolis
+
+field defender_percent: Uint256 = Uint256 30
+field number_of_wound: Uint256 = Uint256 30
+field heal_wound_price: Uint128 = Uint128 1000000000000000000
+field reject_duel_price: Uint128 = Uint128 1000000000000000000
+
+field waiting_list: Map Uint256 Uint128 = Emp Uint256 Uint128
+field wounded_list: Map Uint256 List(Uint32) = Emp Uint256 List(Uint32)
+field private_list: Map ByStr20 (Map ByStr20 PrivateBattle) =
+  Emp ByStr20 (Map ByStr20 PrivateBattle)
+
+procedure ThrowError(err : Error)
+  e = make_error err;
+  throw e
+end
+
+(* EVENTS *)
+procedure EmitWinner(win: Uint256, lost: Uint256)
+  e = {
+    _eventname: "FightResult";
+    won: win;
+    lost: lost
+  };
+  event e
+end
+(* EVENTS *)
+
+(* MODIFICATIONS *)
+procedure OnlyContractOwner()
+  current_admin <- owner;
+
+  is_contract_owner = builtin eq current_admin _sender;
+  match is_contract_owner with
+  | True =>
+  | False =>
+    err = CodeNotContractOwner;
+    ThrowError err
+  end
+end
+
+procedure OnlyDifferentDragons(id0: Uint256, id1: Uint256)
+  is_same_dragon = builtin eq id0 id1;
+  match is_same_dragon with
+  | True =>
+    err = CodeSameDragon;
+    ThrowError err
+  | False =>
+  end
+end
+
+procedure OnlyDragonStage(stage: Uint32)
+  is_stage_egg = builtin lt stage one32;
+  match is_stage_egg with
+  | False =>
+  | True =>
+    err = CodeStageIncorrect;
+    ThrowError err
+  end
+end
+
+procedure OnlyUnPause()
+  curent_pause <- pause;
+  is_eq = builtin eq zero32 curent_pause;
+  match is_eq with
+  | True =>
+  | False =>
+    err = CodePauseIsPaused;
+    ThrowError err
+  end
+end
+
+procedure OnlyTokenOnwer(token_owner: ByStr20)
+  is_owner = builtin eq token_owner _sender;
+  match is_owner with
+  | True =>
+  | False =>
+    err = CodeNotTokenOwner;
+    ThrowError err
+  end
+end
+(* MODIFICATIONS *)
+
+
+(* MSG CALL *)
+procedure SafeCallback(bytes32: ByStr32)
+  tag = builtin to_string bytes32;
+  call_msg = {
+    _tag: tag;
+    _recipient: _sender;
+    _amount: Uint128 0
+  };
+  msg = one_msg call_msg;
+  send msg
+end
+
+procedure CallTransferFrom(amount: Uint128, from: ByStr20, to: ByStr20)
+  is_zero = builtin eq amount zero128;
+
+  match is_zero with
+  | False =>
+    call_transfer_zlp = {
+      _tag: "TransferFrom";
+      _recipient: zlp;
+      _amount: zero128;
+      from: from;
+      to: to;
+      amount: amount
+    };
+    msgs = one_msg call_transfer_zlp;
+    send msgs
+  | True =>
+  end
+end
+
+procedure CallTransfer(to: ByStr20, amount: Uint128)
+  is_zero = builtin eq amount zero128;
+
+  match is_zero with
+  | False =>
+    msg_transfer = {
+      _tag: "Transfer";
+      _recipient: zlp;
+      _amount: zero128;
+      to: to;
+      amount: amount
+    };
+    msgs = one_msg msg_transfer;
+    send msgs
+  | True =>
+  end
+end
+(* MSG CALL *)
+
+(* GAME CONTROL *)
+procedure EstimeteWounded(id: Uint256, chance: Uint256, en: Uint256, value_wound: Uint256, list: List Uint32)
+  entropy_number = builtin div en chance;
+  en_number = builtin rem entropy_number factor0;
+  is_wound = builtin lt en_number chance;
+  match is_wound with
+  | True =>
+    wound = builtin rem entropy_number value_wound;
+    wound = builtin to_uint32 wound;
+    wound = option_uint32 zero32 wound;
+
+    new_list = Cons {Uint32} wound list;
+    wounded_list[id] := new_list;
+    e = {
+      _eventname: "DragonWounded";
+      wound: wound;
+      chance: chance
+    };
+    event e
+  | False =>
+  end
+end
+
+procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool, zlp_price: Uint128)
+  some_attacker_stage <-& main.token_stage[attacker_id];
+  some_gene_attacker <-& main.token_gen_battle[attacker_id];
+  some_gene_defender <-& main.token_gen_battle[defender_id];
+  some_dragon_owner <-& main.token_owners[attacker_id];
+
+  attacker_stage = option_uint32 zero32 some_attacker_stage;
+  OnlyDragonStage attacker_stage;
+  dragon_owner = option_byStr20 zero_address some_dragon_owner;
+  OnlyTokenOnwer dragon_owner;
+  CallTransferFrom zlp_price _sender _this_address;
+
+  gene_attacker = option_uint256 zero256 some_gene_attacker;
+  gene_defender = option_uint256 zero256 some_gene_defender;
+
+  first <- first_entropy_contract;
+  second <- second_entropy_contract;
+
+  blk0 <-& first._balance;
+  bkl1 <-& second._balance;
+  current_block <- & BLOCKNUMBER;
+
+  last_entropy <- entropy;
+  percent <- defender_percent;
+  value_wound <- number_of_wound;
+
+  some_attacker_list <- wounded_list[attacker_id];
+  some_defender_list <- wounded_list[defender_id];
+
+  won_amount = builtin mul zlp_price two128;
+
+  wound_defender_list = option_list_uint32 nil_list32 some_defender_list;
+  wound_attacker_list = option_list_uint32 nil_list32 some_attacker_list;
+  wound_defender = calc_percent_from_list wound_defender_list;
+  wound_attacker = calc_percent_from_list wound_attacker_list;
+
+  b32_blc = blc_hash blk0 bkl1;
+  b32 = random last_entropy b32_blc current_block _sender;
+  entropy_number = builtin to_uint256 b32;
+
+  defender_luck = get_gene zero256 gene_defender factor38 factor37;
+  defender_attack = get_attack entropy_number gene_defender defender_luck;
+  defender_defence = get_defence gene_defender pub percent;
+
+  defender_attack = calc_wound_value wound_defender defender_attack;
+  defender_defence = calc_wound_value wound_defender defender_defence;
+
+  entropy_number = builtin div entropy_number tenmul5;
+
+  attacker_luck = get_gene zero256 gene_attacker factor38 factor37;
+  attacker_attack = get_attack entropy_number gene_attacker attacker_luck;
+  attacker_defence = get_defence gene_attacker ff percent;
+
+  attacker_attack = calc_wound_value wound_attacker attacker_attack;
+  attacker_defence = calc_wound_value wound_attacker attacker_defence;
+
+  won = who_won
+    defender_defence defender_attack
+    attacker_defence attacker_attack;
+  SafeCallback b32;
+
+  entropy := b32;
+
+  match won with
+  | Defender =>
+    some_defender_owner <-& main.token_owners[defender_id];
+    defender_owner = option_byStr20 zero_address some_defender_owner;
+    CallTransfer defender_owner won_amount;
+
+    defender_chance = builtin add ten wound_defender;
+    attacker_chance = builtin add tenmul5 wound_attacker;
+
+    EstimeteWounded defender_id defender_chance entropy_number value_wound wound_defender_list;
+    EstimeteWounded attacker_id attacker_chance entropy_number value_wound wound_attacker_list;
+    EmitWinner defender_id attacker_id
+  | Attacker =>
+    CallTransfer dragon_owner won_amount;
+
+    defender_chance = builtin add tenmul5 wound_defender;
+    attacker_chance = builtin add ten wound_attacker;
+
+    EstimeteWounded attacker_id attacker_chance entropy_number value_wound wound_attacker_list;
+    EstimeteWounded defender_id defender_chance entropy_number value_wound wound_defender_list;
+    EmitWinner attacker_id defender_id
+  end
+end
+(* GAME CONTROL *)
+
+
+(* USER INTERACTIONS *)
+transition ToHeal(id: Uint256, wound_id: Uint32)
+  OnlyUnPause;
+
+  some_dragon_owner <-& main.token_owners[id];
+  dragon_owner = option_byStr20 zero_address some_dragon_owner;
+  OnlyTokenOnwer dragon_owner;
+
+  numbers_list <- wounded_list[id];
+  price <- heal_wound_price;
+  wallet <- necropolis;
+
+  list = option_list_uint32 nil_list32 numbers_list;
+  length = list_length32 list;
+  some_length = builtin to_uint128 length;
+  length = option_uint128 zero128 some_length;
+  heal_price = builtin mul price length;
+
+  CallTransferFrom heal_price _sender wallet;
+
+  wound_filter =
+    fun (a: Uint32) =>
+      let is_eq = builtin eq a wound_id in
+        negb is_eq;
+
+  filtered_list = list_filter32 wound_filter list;
+  wounded_list[id] := filtered_list;
+
+  e = {
+    _eventname: "HealedWound";
+    wound_id: wound_id
+  };
+  event e
+end
+
+transition AddToPublicList(id: Uint256, price: Uint128)
+  OnlyUnPause;
+
+  some_dragon_owner <-& main.token_owners[id];
+  dragon_owner = option_byStr20 zero_address some_dragon_owner;
+  OnlyTokenOnwer dragon_owner;
+
+  some_stage <-& main.token_stage[id];
+  stage = option_uint32 zero32 some_stage;
+  OnlyDragonStage stage;
+
+  CallTransferFrom price _sender _this_address;
+
+  waiting_list[id] := price;
+
+  e = {
+    _eventname: "AddedToPublicList";
+    token_id: id;
+    zlp_price: price
+  };
+  event e
+end
+
+transition RmFromPublicList(id: Uint256)
+  some_price <- waiting_list[id];
+
+  match some_price with
+  | Some price =>
+    some_dragon_owner <-& main.token_owners[id];
+
+    dragon_owner = option_byStr20 zero_address some_dragon_owner;
+    OnlyTokenOnwer dragon_owner;
+    CallTransfer dragon_owner price;
+
+    delete waiting_list[id];
+  
+    e = {
+      _eventname: "RemovedFromPublicList";
+      token_id: id
+    };
+    event e
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+
+transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
+  OnlyUnPause;
+
+  some_dragon_owner <-& main.token_owners[id];
+  dragon_owner = option_byStr20 zero_address some_dragon_owner;
+  OnlyTokenOnwer dragon_owner;
+
+  some_stage <-& main.token_stage[id];
+  stage = option_uint32 zero32 some_stage;
+  OnlyDragonStage stage;
+
+  CallTransferFrom price _sender _this_address;
+
+  battle = PrivateBattle price id;
+
+  private_list[opponent][_sender] := battle;
+
+  e = {
+    _eventname: "AddedToPrivateList";
+    token_id: id;
+    zlp_price: price;
+    opponent: opponent
+  };
+  event e
+end
+
+transition RmFromPrivateList(opponent: ByStr20)
+  some_battle <- private_list[opponent][_sender];
+
+  match some_battle with
+  | Some battle =>
+    match battle with
+    | PrivateBattle price id =>
+      some_dragon_owner <-& main.token_owners[id];
+      dragon_owner = option_byStr20 zero_address some_dragon_owner;
+      OnlyTokenOnwer dragon_owner;
+      CallTransfer dragon_owner price;
+
+      delete private_list[opponent][_sender];
+
+      e = {
+        _eventname: "RemovedFromPrivateList";
+        token_id: id;
+        opponent: opponent;
+        price: price
+      };
+      event e
+    end
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+
+transition RejectPrivateFight(opponent: ByStr20)
+  some_battle <- private_list[_sender][opponent];
+
+  match some_battle with
+  | Some battle =>
+    match battle with
+    | PrivateBattle price id =>
+      reject_price <- reject_duel_price;
+      wallet <- necropolis;
+
+      CallTransfer opponent price;
+      CallTransferFrom reject_price _sender wallet;
+
+      delete private_list[_sender][opponent];
+      e = {
+        _eventname: "RejectedPrivateFight";
+        opponent: opponent;
+        price: price
+      };
+      event e
+    end
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+
+transition StartPublicFight(defender_id: Uint256, attacker_id: Uint256)
+  OnlyUnPause;
+  OnlyDifferentDragons defender_id attacker_id;
+
+  some_price <- waiting_list[defender_id];
+
+  match some_price with
+  | Some price =>
+    Fighting defender_id attacker_id tt price;
+    delete waiting_list[defender_id]
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+
+transition StartPrivateFight(opponent: ByStr20, attacker_id: Uint256)
+  OnlyUnPause;
+
+  some_battle <- private_list[_sender][opponent];
+
+  match some_battle with
+  | Some battle =>
+    match battle with
+    | PrivateBattle price defender_id =>
+      OnlyDifferentDragons defender_id attacker_id;
+      Fighting defender_id attacker_id ff price;
+
+      delete private_list[_sender][opponent]
+    end
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+(* USER INTERACTIONS *)
+
+(* ADMIN INTERACTIONS *)
+transition Configurate(
+  defender_percent_: Uint256,
+  number_of_wound_: Uint256,
+  heal_wound_price_: Uint128,
+  reject_duel_price_: Uint128,
+  new_necropolis: ByStr20
+)
+  OnlyContractOwner;
+
+  defender_percent := defender_percent_;
+  number_of_wound := number_of_wound_;
+  heal_wound_price := heal_wound_price_;
+  reject_duel_price := reject_duel_price_;
+  necropolis := new_necropolis
+end
+
+transition ConfigurateEntropy(
+  new_entropy: ByStr32,
+  new_first_entropy_contract: ByStr20 with contract end,
+  new_second_entropy_contract: ByStr20 with contract end
+)
+  OnlyContractOwner;
+
+  entropy := new_entropy;
+  first_entropy_contract := new_first_entropy_contract;
+  second_entropy_contract := new_second_entropy_contract
+end
+
+transition TogglePause()
+  OnlyContractOwner;
+
+  current_pause <- pause;
+  is_zero = builtin eq current_pause zero32;
+
+  match is_zero with
+  | True =>
+    pause := one32
+  | False =>
+    pause := zero32
+  end
+end
+
+transition RemoveFromPublic(id: Uint256)
+  OnlyContractOwner;
+
+  some_price <- waiting_list[id];
+  necropolis_contract <- necropolis;
+
+  match some_price with
+  | Some price =>
+    some_dragon_owner <-& main.token_owners[id];
+
+    dragon_owner = option_byStr20 necropolis_contract some_dragon_owner;
+    CallTransfer dragon_owner price;
+
+    delete waiting_list[id];
+  
+    e = {
+      _eventname: "RemovedFromPublicList";
+      token_id: id
+    };
+    event e
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+
+transition RemoveFromPrivate(opponent: ByStr20, caller: ByStr20)
+  OnlyContractOwner;
+
+  some_battle <- private_list[opponent][caller];
+  necropolis_contract <- necropolis;
+
+  match some_battle with
+  | Some battle =>
+    match battle with
+    | PrivateBattle price id =>
+      some_dragon_owner <-& main.token_owners[id];
+      dragon_owner = option_byStr20 necropolis_contract some_dragon_owner;
+      CallTransfer dragon_owner price;
+
+      delete private_list[opponent][caller];
+
+      e = {
+        _eventname: "RemovedFromPrivateList";
+        token_id: id;
+        opponent: opponent;
+        price: price
+      };
+      event e
+    end
+  | None =>
+    err = CodeNotFound;
+    ThrowError err
+  end
+end
+
+transition TransferOwner(new_owner: ByStr20)
+  (* continue executing the transition if _sender is the owner,
+     throw exception and abort otherwise *)
+  OnlyContractOwner;
+  owner := new_owner
+end
+(* ADMIN INTERACTIONS *)
+
+(* ZRC2 CALLBACKS *)
+transition TransferFromSuccessCallBack(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
+end
+
+transition RecipientAcceptTransferFrom(initiator: ByStr20, sender: ByStr20, recipient: ByStr20, amount: Uint128)
+end
+
+transition TransferSuccessCallBack(sender: ByStr20, recipient: ByStr20, amount: Uint128)
+end
+(* ZRC2 CALLBACKS *)
