@@ -171,8 +171,9 @@ let calc_wound_value =
 
 let calc_percent_from_list =
   fun (list: List Uint32) =>
+  fun (power: Uint32) =>
     let length = list_length32 list in
-    let length = builtin mul length ten32 in
+    let length = builtin mul length power in
     let some_length = builtin to_uint256 length in
       option_uint256 one256 some_length
 
@@ -308,6 +309,7 @@ field necropolis: ByStr20 = initial_necropolis
 
 field defender_percent: Uint256 = Uint256 30
 field number_of_wound: Uint256 = Uint256 30
+field power_wound: Uint32 = Uint32 3
 field heal_wound_price: Uint128 = Uint128 1000000000000000000
 field reject_duel_price: Uint128 = Uint128 1000000000000000000
 
@@ -487,6 +489,7 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool, zlp_pr
   percent <- defender_percent;
   value_wound <- number_of_wound;
 
+  wound_power <- power_wound;
   some_attacker_list <- wounded_list[attacker_id];
   some_defender_list <- wounded_list[defender_id];
 
@@ -494,8 +497,8 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool, zlp_pr
 
   wound_defender_list = option_list_uint32 nil_list32 some_defender_list;
   wound_attacker_list = option_list_uint32 nil_list32 some_attacker_list;
-  wound_defender = calc_percent_from_list wound_defender_list;
-  wound_attacker = calc_percent_from_list wound_attacker_list;
+  wound_defender = calc_percent_from_list wound_defender_list wound_power;
+  wound_attacker = calc_percent_from_list wound_attacker_list wound_power;
 
   b32_blc = blc_hash blk0 bkl1;
   b32 = random last_entropy b32_blc current_block _sender;
@@ -754,6 +757,7 @@ end
 transition Configurate(
   defender_percent_: Uint256,
   number_of_wound_: Uint256,
+  power_wound_: Uint32,
   heal_wound_price_: Uint128,
   reject_duel_price_: Uint128,
   new_necropolis: ByStr20
@@ -762,6 +766,7 @@ transition Configurate(
 
   defender_percent := defender_percent_;
   number_of_wound := number_of_wound_;
+  power_wound := power_wound_;
   heal_wound_price := heal_wound_price_;
   reject_duel_price := reject_duel_price_;
   necropolis := new_necropolis
