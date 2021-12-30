@@ -139,12 +139,6 @@ let option_list_uint32 = @option_value (List Uint32)
 let list_length32 = @list_length Uint32
 let list_filter32 = @list_filter Uint32
 
-let blc_hash =
-  fun (b0: Uint128) =>
-  fun (b1: Uint128) =>
-    let sum = builtin add b0 b1 in
-      builtin keccak256hash sum
-
 let random =
   fun (entropy: ByStr32) =>
   fun (blc: ByStr32) =>
@@ -242,15 +236,14 @@ let get_attack =
     let g16 = get_attack_gene g15 genes factor16 factor15 entropy in
     let g17 = get_attack_gene g16 genes factor17 factor16 entropy in
     let g18 = get_attack_gene g17 genes factor18 factor17 entropy in
-    let g19 = get_attack_gene g18 genes factor19 factor18 entropy in
     let entropy_number = builtin rem entropy ten in
     let is_luck = builtin lt entropy_number luck in
     match is_luck with
     | True =>
-      let v = builtin mul g19 entropy_number in
+      let v = builtin mul g18 entropy_number in
       let v = builtin div v factor0 in
-        builtin add g19 v
-    | False => g19
+        builtin add g18 v
+    | False => g18
     end
 
 let get_defence =
@@ -274,13 +267,12 @@ let get_defence =
     let g34 = get_gene g33 genes factor34 factor33 in
     let g35 = get_gene g34 genes factor35 factor34 in
     let g36 = get_gene g35 genes factor36 factor35 in
-    let g37 = get_gene g36 genes factor37 factor36 in
     match defence with
     | True =>
-      let increase = builtin mul g37 percent in
+      let increase = builtin mul g36 percent in
       let increase = builtin div increase factor0 in
-        builtin add g37 increase
-    | False => g37
+        builtin add g36 increase
+    | False => g36
     end
 
 (* Game control *)
@@ -295,16 +287,14 @@ contract ArenaContract
     field token_stage: Map Uint256 Uint32,
     field token_owners: Map Uint256 ByStr20
   end,
-  initial_first_entropy_contract: ByStr20 with contract end,
-  initial_second_entropy_contract: ByStr20 with contract end
+  initial_entropy_contract: ByStr20 with contract end
 )
 
 field pause: Uint32 = zero32
 field owner: ByStr20 = initial_owner
 
 field entropy: ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
-field first_entropy_contract: ByStr20 with contract end = initial_first_entropy_contract
-field second_entropy_contract: ByStr20 with contract end = initial_second_entropy_contract
+field entropy_contract: ByStr20 with contract end = initial_entropy_contract
 field necropolis: ByStr20 = initial_necropolis
 
 field defender_percent: Uint256 = Uint256 30
@@ -478,11 +468,9 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool, zlp_pr
   gene_attacker = option_uint256 zero256 some_gene_attacker;
   gene_defender = option_uint256 zero256 some_gene_defender;
 
-  first <- first_entropy_contract;
-  second <- second_entropy_contract;
+  entropy_contract_addr <- entropy_contract;
 
-  blk0 <-& first._balance;
-  bkl1 <-& second._balance;
+  blk0 <-& entropy_contract_addr._balance;
   current_block <- & BLOCKNUMBER;
 
   last_entropy <- entropy;
@@ -500,7 +488,7 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool, zlp_pr
   wound_defender = calc_percent_from_list wound_defender_list wound_power;
   wound_attacker = calc_percent_from_list wound_attacker_list wound_power;
 
-  b32_blc = blc_hash blk0 bkl1;
+  b32_blc = builtin keccak256hash blk0;
   b32 = random last_entropy b32_blc current_block _sender;
   entropy_number = builtin to_uint256 b32;
 
@@ -774,14 +762,12 @@ end
 
 transition ConfigurateEntropy(
   new_entropy: ByStr32,
-  new_first_entropy_contract: ByStr20 with contract end,
-  new_second_entropy_contract: ByStr20 with contract end
+  new_entropy_contract: ByStr20 with contract end
 )
   OnlyContractOwner;
 
   entropy := new_entropy;
-  first_entropy_contract := new_first_entropy_contract;
-  second_entropy_contract := new_second_entropy_contract
+  entropy_contract := new_entropy_contract
 end
 
 transition TogglePause()
