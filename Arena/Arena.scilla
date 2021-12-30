@@ -538,6 +538,47 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool, zlp_pr
     EmitWinner attacker_id defender_id
   end
 end
+
+procedure Healing(id: Uint256, wound_id: Uint32, fully: Bool)
+  numbers_list <- wounded_list[id];
+  price <- heal_wound_price;
+  wallet <- necropolis;
+
+  list = option_list_uint32 nil_list32 numbers_list;
+  length = list_length32 list;
+  some_length = builtin to_uint128 length;
+  length = option_uint128 zero128 some_length;
+  heal_price = builtin mul price length;
+
+  match fully with
+  | True =>
+    amount = builtin mul length heal_price;
+    CallTransferFrom amount _sender wallet;
+    wounded_list[id] := nil_list32;
+    e = {
+      _eventname: "HealedAllWound";
+      wounds: nil_list32
+    };
+    event e
+  | False =>
+    CallTransferFrom heal_price _sender wallet;
+
+    wound_filter =
+      fun (a: Uint32) =>
+        let is_eq = builtin eq a wound_id in
+          negb is_eq;
+
+    filtered_list = list_filter32 wound_filter list;
+    wounded_list[id] := filtered_list;
+
+    e = {
+      _eventname: "HealedWound";
+      wound_id: wound_id
+    };
+    event e
+  end
+end
+
 (* GAME CONTROL *)
 
 
@@ -549,31 +590,17 @@ transition ToHeal(id: Uint256, wound_id: Uint32)
   dragon_owner = option_byStr20 zero_address some_dragon_owner;
   OnlyTokenOnwer dragon_owner;
 
-  numbers_list <- wounded_list[id];
-  price <- heal_wound_price;
-  wallet <- necropolis;
+  Healing id wound_id ff
+end
 
-  list = option_list_uint32 nil_list32 numbers_list;
-  length = list_length32 list;
-  some_length = builtin to_uint128 length;
-  length = option_uint128 zero128 some_length;
-  heal_price = builtin mul price length;
+transition ToHealAllWounds(id: Uint256)
+  OnlyUnPause;
 
-  CallTransferFrom heal_price _sender wallet;
+  some_dragon_owner <-& main.token_owners[id];
+  dragon_owner = option_byStr20 zero_address some_dragon_owner;
+  OnlyTokenOnwer dragon_owner;
 
-  wound_filter =
-    fun (a: Uint32) =>
-      let is_eq = builtin eq a wound_id in
-        negb is_eq;
-
-  filtered_list = list_filter32 wound_filter list;
-  wounded_list[id] := filtered_list;
-
-  e = {
-    _eventname: "HealedWound";
-    wound_id: wound_id
-  };
-  event e
+  Healing id zero32 tt
 end
 
 transition AddToPublicList(id: Uint256, price: Uint128)
