@@ -15,6 +15,7 @@ type Error =
   | CodePauseIsPaused
   | CodeNotTokenOwner
   | CodeNotFound
+  | CodeAlreadyExists
 
 type DragonState =
   | Defender
@@ -118,6 +119,11 @@ let make_error =
         _exception: "Not found";
         code: Int32 -6
       }
+    | CodeAlreadyExists =>
+      {
+        _exception: "Already Exists in the list";
+        code: Int32 -7
+      }
     end
 
 let option_value =
@@ -138,12 +144,6 @@ let option_list_uint32 = @option_value (List Uint32)
 
 let list_length32 = @list_length Uint32
 let list_filter32 = @list_filter Uint32
-
-let blc_hash =
-  fun (b0: Uint128) =>
-  fun (b1: Uint128) =>
-    let sum = builtin add b0 b1 in
-      builtin keccak256hash sum
 
 let random =
   fun (entropy: ByStr32) =>
@@ -171,8 +171,9 @@ let calc_wound_value =
 
 let calc_percent_from_list =
   fun (list: List Uint32) =>
+  fun (power: Uint32) =>
     let length = list_length32 list in
-    let length = builtin mul length ten32 in
+    let length = builtin mul length power in
     let some_length = builtin to_uint256 length in
       option_uint256 one256 some_length
 
@@ -241,15 +242,14 @@ let get_attack =
     let g16 = get_attack_gene g15 genes factor16 factor15 entropy in
     let g17 = get_attack_gene g16 genes factor17 factor16 entropy in
     let g18 = get_attack_gene g17 genes factor18 factor17 entropy in
-    let g19 = get_attack_gene g18 genes factor19 factor18 entropy in
     let entropy_number = builtin rem entropy ten in
     let is_luck = builtin lt entropy_number luck in
     match is_luck with
     | True =>
-      let v = builtin mul g19 entropy_number in
+      let v = builtin mul g18 entropy_number in
       let v = builtin div v factor0 in
-        builtin add g19 v
-    | False => g19
+        builtin add g18 v
+    | False => g18
     end
 
 let get_defence =
@@ -273,13 +273,12 @@ let get_defence =
     let g34 = get_gene g33 genes factor34 factor33 in
     let g35 = get_gene g34 genes factor35 factor34 in
     let g36 = get_gene g35 genes factor36 factor35 in
-    let g37 = get_gene g36 genes factor37 factor36 in
     match defence with
     | True =>
-      let increase = builtin mul g37 percent in
+      let increase = builtin mul g36 percent in
       let increase = builtin div increase factor0 in
-        builtin add g37 increase
-    | False => g37
+        builtin add g36 increase
+    | False => g36
     end
 
 (* Game control *)
@@ -294,20 +293,19 @@ contract ArenaContract
     field token_stage: Map Uint256 Uint32,
     field token_owners: Map Uint256 ByStr20
   end,
-  initial_first_entropy_contract: ByStr20 with contract end,
-  initial_second_entropy_contract: ByStr20 with contract end
+  initial_entropy_contract: ByStr20 with contract end
 )
 
 field pause: Uint32 = zero32
 field owner: ByStr20 = initial_owner
 
 field entropy: ByStr32 = 0x16d4a835f774af976a5e5dbeed5bdbac2ae1b173e09d3f37e87833f32d0ffb83
-field first_entropy_contract: ByStr20 with contract end = initial_first_entropy_contract
-field second_entropy_contract: ByStr20 with contract end = initial_second_entropy_contract
+field entropy_contract: ByStr20 with contract end = initial_entropy_contract
 field necropolis: ByStr20 = initial_necropolis
 
 field defender_percent: Uint256 = Uint256 30
 field number_of_wound: Uint256 = Uint256 30
+field power_wound: Uint32 = Uint32 3
 field heal_wound_price: Uint128 = Uint128 1000000000000000000
 field reject_duel_price: Uint128 = Uint128 1000000000000000000
 
@@ -385,6 +383,7 @@ procedure OnlyTokenOnwer(token_owner: ByStr20)
     ThrowError err
   end
 end
+
 (* MODIFICATIONS *)
 
 
@@ -476,17 +475,16 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool, zlp_pr
   gene_attacker = option_uint256 zero256 some_gene_attacker;
   gene_defender = option_uint256 zero256 some_gene_defender;
 
-  first <- first_entropy_contract;
-  second <- second_entropy_contract;
+  entropy_contract_addr <- entropy_contract;
 
-  blk0 <-& first._balance;
-  bkl1 <-& second._balance;
+  blk0 <-& entropy_contract_addr._balance;
   current_block <- & BLOCKNUMBER;
 
   last_entropy <- entropy;
   percent <- defender_percent;
   value_wound <- number_of_wound;
 
+  wound_power <- power_wound;
   some_attacker_list <- wounded_list[attacker_id];
   some_defender_list <- wounded_list[defender_id];
 
@@ -494,10 +492,10 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool, zlp_pr
 
   wound_defender_list = option_list_uint32 nil_list32 some_defender_list;
   wound_attacker_list = option_list_uint32 nil_list32 some_attacker_list;
-  wound_defender = calc_percent_from_list wound_defender_list;
-  wound_attacker = calc_percent_from_list wound_attacker_list;
+  wound_defender = calc_percent_from_list wound_defender_list wound_power;
+  wound_attacker = calc_percent_from_list wound_attacker_list wound_power;
 
-  b32_blc = blc_hash blk0 bkl1;
+  b32_blc = builtin keccak256hash blk0;
   b32 = random last_entropy b32_blc current_block _sender;
   entropy_number = builtin to_uint256 b32;
 
@@ -547,6 +545,47 @@ procedure Fighting(defender_id: Uint256, attacker_id: Uint256, pub: Bool, zlp_pr
     EmitWinner attacker_id defender_id
   end
 end
+
+procedure Healing(id: Uint256, wound_id: Uint32, fully: Bool)
+  numbers_list <- wounded_list[id];
+  price <- heal_wound_price;
+  wallet <- necropolis;
+
+  list = option_list_uint32 nil_list32 numbers_list;
+  length = list_length32 list;
+  some_length = builtin to_uint128 length;
+  length = option_uint128 zero128 some_length;
+  heal_price = builtin mul price length;
+
+  match fully with
+  | True =>
+    amount = builtin mul length heal_price;
+    CallTransferFrom amount _sender wallet;
+    wounded_list[id] := nil_list32;
+    e = {
+      _eventname: "HealedAllWound";
+      wounds: nil_list32
+    };
+    event e
+  | False =>
+    CallTransferFrom heal_price _sender wallet;
+
+    wound_filter =
+      fun (a: Uint32) =>
+        let is_eq = builtin eq a wound_id in
+          negb is_eq;
+
+    filtered_list = list_filter32 wound_filter list;
+    wounded_list[id] := filtered_list;
+
+    e = {
+      _eventname: "HealedWound";
+      wound_id: wound_id
+    };
+    event e
+  end
+end
+
 (* GAME CONTROL *)
 
 
@@ -558,36 +597,23 @@ transition ToHeal(id: Uint256, wound_id: Uint32)
   dragon_owner = option_byStr20 zero_address some_dragon_owner;
   OnlyTokenOnwer dragon_owner;
 
-  numbers_list <- wounded_list[id];
-  price <- heal_wound_price;
-  wallet <- necropolis;
+  Healing id wound_id ff
+end
 
-  list = option_list_uint32 nil_list32 numbers_list;
-  length = list_length32 list;
-  some_length = builtin to_uint128 length;
-  length = option_uint128 zero128 some_length;
-  heal_price = builtin mul price length;
+transition ToHealAllWounds(id: Uint256)
+  OnlyUnPause;
 
-  CallTransferFrom heal_price _sender wallet;
+  some_dragon_owner <-& main.token_owners[id];
+  dragon_owner = option_byStr20 zero_address some_dragon_owner;
+  OnlyTokenOnwer dragon_owner;
 
-  wound_filter =
-    fun (a: Uint32) =>
-      let is_eq = builtin eq a wound_id in
-        negb is_eq;
-
-  filtered_list = list_filter32 wound_filter list;
-  wounded_list[id] := filtered_list;
-
-  e = {
-    _eventname: "HealedWound";
-    wound_id: wound_id
-  };
-  event e
+  Healing id zero32 tt
 end
 
 transition AddToPublicList(id: Uint256, price: Uint128)
   OnlyUnPause;
 
+  some_exists_price <- waiting_list[id];
   some_dragon_owner <-& main.token_owners[id];
   dragon_owner = option_byStr20 zero_address some_dragon_owner;
   OnlyTokenOnwer dragon_owner;
@@ -598,12 +624,15 @@ transition AddToPublicList(id: Uint256, price: Uint128)
 
   CallTransferFrom price _sender _this_address;
 
-  waiting_list[id] := price;
+  exists_price = option_uint128 zero128 some_exists_price;
+  new_price = builtin add exists_price price;
+
+  waiting_list[id] := new_price;
 
   e = {
     _eventname: "AddedToPublicList";
     token_id: id;
-    zlp_price: price
+    zlp_price: new_price
   };
   event e
 end
@@ -635,6 +664,7 @@ end
 transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
   OnlyUnPause;
 
+  has_battle <- exists private_list[opponent][_sender];
   some_dragon_owner <-& main.token_owners[id];
   dragon_owner = option_byStr20 zero_address some_dragon_owner;
   OnlyTokenOnwer dragon_owner;
@@ -643,19 +673,25 @@ transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
   stage = option_uint32 zero32 some_stage;
   OnlyDragonStage stage;
 
-  CallTransferFrom price _sender _this_address;
+  match has_battle with
+  | False =>
+    CallTransferFrom price _sender _this_address;
 
-  battle = PrivateBattle price id;
+    battle = PrivateBattle price id;
 
-  private_list[opponent][_sender] := battle;
+    private_list[opponent][_sender] := battle;
 
-  e = {
-    _eventname: "AddedToPrivateList";
-    token_id: id;
-    zlp_price: price;
-    opponent: opponent
-  };
-  event e
+    e = {
+      _eventname: "AddedToPrivateList";
+      token_id: id;
+      zlp_price: price;
+      opponent: opponent
+    };
+    event e
+  | True =>
+    err = CodeAlreadyExists;
+    ThrowError err
+  end
 end
 
 transition RmFromPrivateList(opponent: ByStr20)
@@ -754,6 +790,7 @@ end
 transition Configurate(
   defender_percent_: Uint256,
   number_of_wound_: Uint256,
+  power_wound_: Uint32,
   heal_wound_price_: Uint128,
   reject_duel_price_: Uint128,
   new_necropolis: ByStr20
@@ -762,6 +799,7 @@ transition Configurate(
 
   defender_percent := defender_percent_;
   number_of_wound := number_of_wound_;
+  power_wound := power_wound_;
   heal_wound_price := heal_wound_price_;
   reject_duel_price := reject_duel_price_;
   necropolis := new_necropolis
@@ -769,14 +807,12 @@ end
 
 transition ConfigurateEntropy(
   new_entropy: ByStr32,
-  new_first_entropy_contract: ByStr20 with contract end,
-  new_second_entropy_contract: ByStr20 with contract end
+  new_entropy_contract: ByStr20 with contract end
 )
   OnlyContractOwner;
 
   entropy := new_entropy;
-  first_entropy_contract := new_first_entropy_contract;
-  second_entropy_contract := new_second_entropy_contract
+  entropy_contract := new_entropy_contract
 end
 
 transition TogglePause()
