@@ -15,6 +15,7 @@ type Error =
   | CodePauseIsPaused
   | CodeNotTokenOwner
   | CodeNotFound
+  | CodeAlreadyExists
 
 type DragonState =
   | Defender
@@ -117,6 +118,11 @@ let make_error =
       {
         _exception: "Not found";
         code: Int32 -6
+      }
+    | CodeAlreadyExists =>
+      {
+        _exception: "Already Exists in the list";
+        code: Int32 -7
       }
     end
 
@@ -377,6 +383,7 @@ procedure OnlyTokenOnwer(token_owner: ByStr20)
     ThrowError err
   end
 end
+
 (* MODIFICATIONS *)
 
 
@@ -606,6 +613,7 @@ end
 transition AddToPublicList(id: Uint256, price: Uint128)
   OnlyUnPause;
 
+  some_exists_price <- waiting_list[id];
   some_dragon_owner <-& main.token_owners[id];
   dragon_owner = option_byStr20 zero_address some_dragon_owner;
   OnlyTokenOnwer dragon_owner;
@@ -616,12 +624,15 @@ transition AddToPublicList(id: Uint256, price: Uint128)
 
   CallTransferFrom price _sender _this_address;
 
-  waiting_list[id] := price;
+  exists_price = option_uint128 zero128 some_exists_price;
+  new_price = builtin add exists_price price;
+
+  waiting_list[id] := new_price;
 
   e = {
     _eventname: "AddedToPublicList";
     token_id: id;
-    zlp_price: price
+    zlp_price: new_price
   };
   event e
 end
@@ -653,6 +664,7 @@ end
 transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
   OnlyUnPause;
 
+  has_battle <- exists private_list[opponent][_sender];
   some_dragon_owner <-& main.token_owners[id];
   dragon_owner = option_byStr20 zero_address some_dragon_owner;
   OnlyTokenOnwer dragon_owner;
@@ -661,19 +673,25 @@ transition AddToPrivateList(id: Uint256, price: Uint128, opponent: ByStr20)
   stage = option_uint32 zero32 some_stage;
   OnlyDragonStage stage;
 
-  CallTransferFrom price _sender _this_address;
+  match has_battle with
+  | False =>
+    CallTransferFrom price _sender _this_address;
 
-  battle = PrivateBattle price id;
+    battle = PrivateBattle price id;
 
-  private_list[opponent][_sender] := battle;
+    private_list[opponent][_sender] := battle;
 
-  e = {
-    _eventname: "AddedToPrivateList";
-    token_id: id;
-    zlp_price: price;
-    opponent: opponent
-  };
-  event e
+    e = {
+      _eventname: "AddedToPrivateList";
+      token_id: id;
+      zlp_price: price;
+      opponent: opponent
+    };
+    event e
+  | True =>
+    err = CodeAlreadyExists;
+    ThrowError err
+  end
 end
 
 transition RmFromPrivateList(opponent: ByStr20)
